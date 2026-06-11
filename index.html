@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Triple R Dump — Dumpster Rental | West Haven, Utah | 801-564-3164</title>
   <meta name="description" content="Family-owned roll-off dumpster rental serving Weber, Morgan, Davis & Salt Lake County. 15, 20 & 25 yard bins, dump fees included. Call 801-564-3164.">
+  <link rel="preload" as="image" href="assets/triple-r-dump-nav.webp" type="image/webp">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Anton&family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -126,7 +127,7 @@
       display: flex; align-items: center; justify-content: space-between;
     }
     .nav-mark { display: flex; align-items: center; text-decoration: none; }
-    .nav-mark img { height: 22px; width: auto; }
+    .nav-mark img { height: 38px; width: auto; }
 
     /* desktop inline links */
     .nav-inline {
@@ -808,7 +809,7 @@
       grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.4fr);
       gap: var(--space-xl);
     }
-    .foot-mark { width: min(13rem, 100%); margin-bottom: var(--space-sm); }
+    .foot-mark { height: 2.75rem; width: auto; max-width: 100%; margin-bottom: var(--space-sm); }
     .foot-brand p { color: var(--color-ink-2); font-size: var(--text-sm); max-width: 26em; }
     .foot-social { display: flex; gap: var(--space-2xs); margin-top: var(--space-sm); }
     .foot-social a {
@@ -903,7 +904,10 @@
 <nav aria-label="Primary">
   <div class="nav-row">
     <a href="#" class="nav-mark" aria-label="Triple R Dump — home">
-      <img src="triple-r-dump2.png" alt="Triple R Dump">
+      <picture>
+        <source srcset="assets/triple-r-dump-nav.webp" type="image/webp">
+        <img src="assets/triple-r-dump-nav.png" alt="Triple R Dump" width="454" height="88">
+      </picture>
     </a>
     <ul class="nav-inline">
       <li><a href="#rates">Bins &amp; Rates</a></li>
@@ -1208,7 +1212,10 @@
 <footer>
   <div class="foot-grid wrap">
     <div class="foot-brand">
-      <img class="foot-mark" src="assets/triple-r-dump-light.png" alt="Triple R Dump">
+      <picture>
+        <source srcset="assets/triple-r-dump-foot.webp" type="image/webp">
+        <img class="foot-mark" src="assets/triple-r-dump-foot.png" alt="Triple R Dump" width="416" height="80" loading="lazy">
+      </picture>
       <p>Family-owned roll-off dumpster rental — West Haven, Utah. Sustainable solutions for all.</p>
       <div class="foot-social">
         <a href="https://www.instagram.com/triple.r.dump/" target="_blank" rel="noopener" aria-label="Instagram">
