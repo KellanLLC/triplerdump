@@ -232,6 +232,7 @@
     .hero-content {
       position: relative; z-index: 2;
       padding: calc(64px + var(--space-xl)) var(--page-gutter) var(--space-2xl);
+      padding-left: max(var(--page-gutter), calc((100% - var(--page-max)) / 2 + var(--page-gutter)));
       max-width: 46rem;
     }
     .hero h1 {
@@ -250,7 +251,8 @@
 
     /* 24/7 stencil bottom-right */
     .hero-247 {
-      position: absolute; bottom: 2rem; right: clamp(1.5rem, 5vw, 4rem);
+      position: absolute; bottom: 2rem;
+      right: max(var(--page-gutter), calc((100% - var(--page-max)) / 2 + var(--page-gutter)));
       z-index: 2;
       width: clamp(13rem, 22vw, 19rem);
       filter: drop-shadow(0 4px 20px rgba(0, 0, 0, 0.7));
