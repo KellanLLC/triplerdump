@@ -1,0 +1,52 @@
+/* Hallmark · tokens — Triple R Dump
+ * theme: brand (source: triplerdump.com brand palette — info.md)
+ * brand: accent blue #116DFF · baby blue #BDE9FB · dark navy base
+ * fonts: Anton (display) + Montserrat (body) + Permanent Marker (annotations)
+ * axes: dark asphalt-navy / spray-stencil / jobsite-paper
+ */
+:root {
+  --color-paper:       #161e2c;   /* asphalt navy */
+  --color-paper-deep:  #10161f;   /* deeper navy */
+  --color-card:        #1f2a3d;   /* raised card navy */
+  --color-ink:         #fbfaf6;   /* off-white */
+  --color-ink-2:       #a8b4c4;   /* muted body on navy */
+  --color-rule:        #2c3a52;
+
+  --color-accent:      #116dff;   /* brand blue */
+  --color-accent-deep: #0d56c9;
+  --color-accent-ink:  #ffffff;   /* text on blue */
+  --color-sky:         #bde9fb;   /* baby blue — annotations, highlights */
+  --color-focus:       #4d92ff;
+
+  /* paper (work-order) sections */
+  --sheet:             #f2eee3;   /* aged paper */
+  --sheet-deep:        #e9e3d3;
+  --sheet-ink:         #1c2535;   /* navy ink on paper */
+  --sheet-ink-2:       #5c6678;
+  --sheet-rule:        #d4ccb6;
+
+  --font-display: "Anton", "Arial Narrow", sans-serif;
+  --font-body:    "Montserrat", system-ui, sans-serif;
+  --font-marker:  "Permanent Marker", "Comic Sans MS", cursive;
+
+  --space-3xs: 0.25rem;  --space-2xs: 0.5rem;  --space-xs: 0.75rem;
+  --space-sm:  1rem;     --space-md:  1.5rem;  --space-lg: 2rem;
+  --space-xl:  3rem;     --space-2xl: 4.5rem;  --space-3xl: 7rem;
+
+  --text-xs: 0.75rem;   --text-sm: 0.875rem;  --text-md: 1rem;
+  --text-lg: 1.2rem;    --text-xl: 1.6rem;    --text-2xl: 2.25rem;
+  --text-display-s: clamp(2rem, 4.5vw, 3.25rem);
+  --text-display:   clamp(2.8rem, 7vw, 5.5rem);
+  --text-phone:     clamp(2.4rem, 8vw, 5.5rem);
+
+  --ease-out:    cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in:     cubic-bezier(0.7, 0, 0.84, 0);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-short: 180ms;
+
+  --rule-hair: 1px solid var(--color-rule);
+  --radius-card: 4px; --radius-btn: 2px; --radius-pill: 9999px;
+
+  --page-gutter: clamp(1rem, 4.5vw, 3rem);
+  --page-max: 74rem;
+}

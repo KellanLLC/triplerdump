@@ -1,0 +1,1447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Triple R Dump — Dumpster Rental | West Haven, Utah | 801-564-3164</title>
+  <meta name="description" content="Family-owned roll-off dumpster rental serving Weber, Morgan, Davis & Salt Lake County. 15, 20 & 25 yard bins, dump fees included. Call 801-564-3164.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="tokens.css">
+  <style>
+    /* Triple R Dump — v5 "framework + grit"
+     * skeleton: photo hero / hazard stripe / blue ticker / pricing table /
+     *   steps 01-04 / difference split / mosaic gallery / counties / black phone CTA
+     * personality: film grain · scanned stencil assets (hero 24/7, CTA phone, footer mark)
+     *   · scrolling ticker · blue glow accents
+     *   · row hover states · graded photos · scroll reveals
+     * palette: brand blue #116DFF + baby blue + navy/black · hazard red/white (bin livery)
+     */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
+    html, body { overflow-x: clip; }
+
+    body {
+      font-family: var(--font-body);
+      font-size: var(--text-md);
+      line-height: 1.65;
+      /* continuous asphalt under every section; 50vw size keeps the grain
+         scale identical to the texture embedded in the transition strips */
+      background: url('assets/asphalt-navy.webp') var(--color-paper-deep);
+      background-size: 100% auto;
+      color: var(--color-ink);
+    }
+
+    /* film grain over everything */
+    body::after {
+      content: '';
+      position: fixed; inset: 0; z-index: 90;
+      pointer-events: none;
+      opacity: 0.06;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    }
+
+    img { max-width: 100%; display: block; }
+    a { color: inherit; }
+    :focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+
+    h1, h2, h3 {
+      font-family: var(--font-display);
+      font-weight: 400;
+      text-transform: uppercase;
+      line-height: 1.02;
+      letter-spacing: 0.01em;
+      overflow-wrap: anywhere;
+      min-width: 0;
+      text-wrap: balance;
+    }
+
+    .wrap { max-width: var(--page-max); margin-inline: auto; padding-inline: var(--page-gutter); }
+
+    .sr-only {
+      position: absolute; width: 1px; height: 1px;
+      overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+    }
+
+    /* hazard stripe — red/white, same as the bin livery */
+    .hazard {
+      height: 9px;
+      background: repeating-linear-gradient(-55deg,
+        #c0392b 0 14px, #f4f1ea 14px 26px);
+      border-top: 2px solid var(--color-paper-deep);
+    }
+
+    /* section label */
+    .label {
+      font-size: var(--text-xs);
+      font-weight: 700;
+      letter-spacing: 0.24em;
+      text-transform: uppercase;
+      color: var(--color-accent);
+      display: flex; align-items: center; gap: 0.6rem;
+      margin-bottom: var(--space-sm);
+    }
+    .label::before { content: ''; width: 30px; height: 2px; background: var(--color-accent); }
+
+    .sec-head { position: relative; margin-bottom: var(--space-xl); }
+    .sec-head h2 { font-size: var(--text-display-s); position: relative; z-index: 1; }
+    .sec-head h2 em { font-style: normal; color: var(--color-accent); }
+    .sec-head p { color: var(--color-ink-2); max-width: 40em; margin-top: var(--space-xs); position: relative; z-index: 1; }
+
+
+    /* ── Buttons ── */
+    .btn {
+      font-family: var(--font-display);
+      font-size: var(--text-md);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      text-decoration: none;
+      white-space: nowrap;
+      border-radius: var(--radius-btn);
+      min-height: 44px;
+      display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+      padding: var(--space-2xs) var(--space-md);
+      transition: background-color var(--dur-short) var(--ease-out), color var(--dur-short) var(--ease-out), transform var(--dur-short) var(--ease-out), box-shadow var(--dur-short) var(--ease-out);
+    }
+    .btn:active { transform: translateY(1px); }
+    .btn-fill { background: var(--color-accent); color: var(--color-accent-ink); box-shadow: 0 4px 18px rgba(17, 109, 255, 0.35); }
+    .btn-fill:hover { background: var(--color-accent-deep); box-shadow: 0 6px 24px rgba(17, 109, 255, 0.5); }
+    .btn-ghost { border: 2px solid rgba(251, 250, 246, 0.4); color: var(--color-ink); }
+    .btn-ghost:hover { border-color: var(--color-ink); }
+
+    /* ── Nav ── */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      background: rgba(16, 22, 31, 0.94);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--color-rule);
+      height: 64px;
+      display: flex; align-items: center;
+    }
+    .nav-row {
+      width: 100%;
+      padding-inline: clamp(1.5rem, 5vw, 4rem);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .nav-mark { display: flex; align-items: center; text-decoration: none; }
+    .nav-mark img { height: 22px; width: auto; }
+
+    /* desktop inline links */
+    .nav-inline {
+      display: flex; align-items: center; gap: var(--space-lg);
+      list-style: none;
+    }
+    .nav-inline a:not(.btn) {
+      font-size: var(--text-xs);
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      text-decoration: none;
+      color: var(--color-ink-2);
+      white-space: nowrap;
+      transition: color var(--dur-short) var(--ease-out);
+    }
+    .nav-inline a:not(.btn):hover { color: var(--color-ink); }
+    .nav-inline .btn { font-size: var(--text-sm); min-height: 40px; }
+
+    /* hamburger button — mobile only */
+    .nav-toggle {
+      background: none; border: none; cursor: pointer;
+      display: none; flex-direction: column; justify-content: center; gap: 5px;
+      width: 44px; height: 44px; padding: 10px;
+      transition: opacity var(--dur-short) var(--ease-out);
+    }
+    .nav-toggle:hover { opacity: 0.7; }
+    .nav-toggle span {
+      display: block; width: 24px; height: 2px;
+      background: var(--color-ink);
+      border-radius: 1px;
+      transition: transform 0.28s var(--ease-out), opacity 0.18s var(--ease-out);
+      transform-origin: center;
+    }
+    /* animate to × */
+    .nav-toggle[aria-expanded="true"] span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+    .nav-toggle[aria-expanded="true"] span:nth-child(2) { opacity: 0; transform: scaleX(0); }
+    .nav-toggle[aria-expanded="true"] span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+    /* full-screen menu overlay */
+    .nav-drawer {
+      position: fixed; inset: 0; z-index: 99;
+      background: rgba(10, 14, 20, 0.97);
+      backdrop-filter: blur(6px);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: var(--space-xl);
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.3s var(--ease-out);
+    }
+    .nav-drawer.open { opacity: 1; pointer-events: all; }
+    .nav-drawer ul {
+      list-style: none;
+      display: flex; flex-direction: column; align-items: center; gap: var(--space-lg);
+    }
+    .nav-drawer a:not(.btn) {
+      font-family: var(--font-display);
+      font-size: clamp(2.2rem, 6vw, 3.8rem);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      text-decoration: none;
+      color: var(--color-ink);
+      transition: color var(--dur-short) var(--ease-out), opacity var(--dur-short) var(--ease-out);
+      opacity: 0.82;
+    }
+    .nav-drawer a:not(.btn):hover { color: var(--color-accent); opacity: 1; }
+    .nav-drawer .btn { font-size: var(--text-xl); min-height: 54px; padding-inline: var(--space-xl); }
+
+    /* swap to hamburger on mobile */
+    @media (max-width: 56rem) {
+      .nav-inline { display: none; }
+      .nav-toggle { display: flex; }
+    }
+
+    /* ── Hero ── */
+    .hero {
+      position: relative;
+      min-height: 100svh;
+      display: flex; align-items: center;
+      overflow: clip;
+    }
+    .hero-bg {
+      position: absolute; inset: 0;
+      background-image: url('uploads/triple.r.dump-photo-DY2CxEIFMkG-20260527_075118_707154355.jpg');
+      background-size: cover; background-position: center 40%;
+      filter: saturate(0.85) contrast(1.05);
+      transform: scale(1.05);
+      animation: hero-settle 6s var(--ease-out) forwards;
+    }
+    @keyframes hero-settle { to { transform: scale(1); } }
+    .hero-overlay {
+      position: absolute; inset: 0;
+      background:
+        linear-gradient(100deg, rgba(10, 14, 20, 0.92) 0%, rgba(10, 14, 20, 0.6) 52%, rgba(10, 14, 20, 0.15) 100%),
+        linear-gradient(to top, rgba(10, 14, 20, 0.85) 0%, transparent 30%);
+    }
+    .hero-content {
+      position: relative; z-index: 2;
+      padding: calc(64px + var(--space-xl)) var(--page-gutter) var(--space-2xl);
+      max-width: 46rem;
+    }
+    .hero h1 {
+      font-size: clamp(3.2rem, 9vw, 7rem);
+      margin-bottom: var(--space-md);
+    }
+    .hero h1 em { font-style: normal; color: var(--color-accent); }
+    .hero-sub {
+      color: rgba(251, 250, 246, 0.82);
+      font-size: clamp(1rem, 2vw, 1.15rem);
+      max-width: 30em;
+      margin-bottom: var(--space-lg);
+    }
+    .hero-actions { display: flex; gap: var(--space-sm); flex-wrap: wrap; }
+    .hero-actions .btn { font-size: var(--text-lg); min-height: 52px; padding-inline: var(--space-lg); }
+
+    /* 24/7 stencil bottom-right */
+    .hero-247 {
+      position: absolute; bottom: 2rem; right: clamp(1.5rem, 5vw, 4rem);
+      z-index: 2;
+      width: clamp(13rem, 22vw, 19rem);
+      filter: drop-shadow(0 4px 20px rgba(0, 0, 0, 0.7));
+      transition: transform var(--dur-short) var(--ease-out);
+    }
+    .hero-247:hover { transform: scale(1.03); }
+    .hero-247 img { width: 100%; }
+    @media (max-width: 48rem) { .hero-247 { display: none; } }
+
+    /* ── Ticker (blue banner) ── */
+    .ticker {
+      background: var(--color-accent);
+      overflow: clip;
+      padding-block: 0.6rem;
+      border-bottom: 2px solid var(--color-paper-deep);
+    }
+    .ticker-track {
+      display: flex; gap: 3rem; width: max-content;
+      animation: ticker 28s linear infinite;
+    }
+    .ticker:hover .ticker-track { animation-play-state: paused; }
+    @keyframes ticker { to { transform: translateX(-50%); } }
+    .ticker-track span {
+      font-family: var(--font-display);
+      font-size: var(--text-sm);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--color-accent-ink);
+      white-space: nowrap;
+      display: inline-flex; align-items: center; gap: 3rem;
+    }
+    .ticker-track span::after { content: '★'; font-size: 0.7em; opacity: 0.7; }
+    @media (prefers-reduced-motion: reduce) {
+      .ticker-track { animation: none; flex-wrap: wrap; width: auto; justify-content: center; }
+      .ticker-track > span:nth-child(n+5) { display: none; }
+    }
+
+    /* ── Asphalt transition strips ──
+     * The asphalt itself lives on <body>; sections are transparent except
+     * #reviews (solid). These strips hand off between asphalt and solid:
+     * tear-down = pavement tears away above the reviews slab,
+     * tear-up   = pavement resumes below it,
+     * seam      = navy pavement cracks into the charcoal CTA slab.
+     * Their solid edges are pre-blended into the tile texture, so the strip
+     * top/bottom rows are literally tile pixels — no visible junction. */
+    .asphalt-tear-down, .asphalt-tear-up {
+      /* --solid is set per-instance to the adjoining solid section's color */
+      background-color: var(--solid, var(--color-paper-deep));
+      background-repeat: no-repeat;
+      background-position: center;
+      background-size: 100% 100%;
+      margin-block: -1px;
+    }
+    .asphalt-tear-down {
+      aspect-ratio: 1536 / 164;
+      background-image: url('assets/asphalt-tear-down.webp');
+    }
+    .asphalt-tear-up {
+      aspect-ratio: 1536 / 144;
+      background-image: url('assets/asphalt-tear-up.webp');
+    }
+    /* bare tear sits INSIDE a glowing section: no flat fill of its own, so
+       the section's gradient + grit show through the torn opening */
+    .asphalt-tear-down.bare { background-color: transparent; position: relative; }
+    /* keep the strips legible on narrow screens (slight vertical stretch
+       preserves the horizontal grain scale so junctions stay invisible) */
+    @media (max-width: 40rem) {
+      .asphalt-tear-down { min-height: 74px; }
+      .asphalt-tear-up { min-height: 64px; }
+    }
+
+    /* ── Pricing table ── */
+    #rates { padding-block: var(--space-3xl) var(--space-2xl); background: var(--color-paper); }
+    .rate-size .nb { white-space: nowrap; }
+    .rate-table { border: 1px solid var(--color-rule); border-radius: var(--radius-card); overflow: hidden; }
+    .rate-head, .rate-row {
+      display: grid;
+      grid-template-columns: 110px 110px minmax(0, 1fr) 100px 100px 150px;
+      gap: var(--space-sm);
+      align-items: center;
+      padding: var(--space-sm) var(--space-md);
+    }
+    .rate-head {
+      background: var(--color-paper-deep);
+      font-size: var(--text-xs);
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--color-ink-2);
+      padding-block: var(--space-xs);
+    }
+    .rate-row { border-top: 1px solid var(--color-rule); position: relative; transition: background-color var(--dur-short) var(--ease-out); }
+    .rate-row::before {
+      content: '';
+      position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+      background: var(--color-accent);
+      transform: scaleY(0);
+      transition: transform var(--dur-short) var(--ease-out);
+    }
+    .rate-row:hover { background: var(--color-card); }
+    .rate-row:hover::before { transform: scaleY(1); }
+    .rate-thumb { width: 110px; height: 64px; object-fit: cover; border-radius: 3px; border: 1px solid var(--color-rule); filter: saturate(0.9); }
+    .rate-size {
+      font-family: var(--font-display);
+      font-size: var(--text-2xl);
+      line-height: 0.95;
+      text-transform: uppercase;
+    }
+    .rate-size small { display: block; font-size: 0.42em; letter-spacing: 0.14em; color: var(--color-accent); }
+    .rate-best { font-size: var(--text-sm); color: var(--color-ink-2); }
+    .rate-best strong { color: var(--color-ink); font-weight: 600; }
+    .rate-price {
+      font-family: var(--font-display);
+      font-size: var(--text-xl);
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+    .rate-price small { display: block; font-family: var(--font-body); font-size: var(--text-xs); font-weight: 600; letter-spacing: 0.06em; color: var(--color-ink-2); }
+    .rate-row .btn { font-size: var(--text-sm); min-height: 42px; width: 100%; }
+
+    .rate-sub {
+      margin-top: var(--space-2xl);
+    }
+    .rate-sub h3 {
+      font-size: var(--text-lg);
+      letter-spacing: 0.1em;
+      color: var(--color-ink-2);
+      margin-bottom: var(--space-sm);
+      display: flex; align-items: center; gap: var(--space-sm);
+    }
+    .rate-sub h3::after { content: ''; flex: 1; border-top: 1px dashed var(--color-rule); }
+    .svc-row {
+      display: grid;
+      grid-template-columns: 200px minmax(0, 1fr) 100px 150px;
+      gap: var(--space-sm);
+      align-items: center;
+      padding: var(--space-sm) var(--space-md);
+      border: 1px solid var(--color-rule);
+      border-radius: var(--radius-card);
+      transition: background-color var(--dur-short) var(--ease-out), border-color var(--dur-short) var(--ease-out);
+    }
+    .svc-row + .svc-row { margin-top: var(--space-2xs); }
+    .svc-row:hover { background: var(--color-card); border-color: rgba(17, 109, 255, 0.5); }
+    .svc-name { font-family: var(--font-display); font-size: var(--text-lg); text-transform: uppercase; letter-spacing: 0.04em; }
+    .svc-desc { font-size: var(--text-sm); color: var(--color-ink-2); }
+    .svc-desc strong { color: var(--color-ink); font-weight: 600; }
+    .rate-note { margin-top: var(--space-md); font-size: var(--text-sm); color: var(--color-ink-2); }
+    .rate-note a { color: var(--color-sky); font-weight: 600; }
+
+    @media (max-width: 60rem) {
+      .rate-head { display: none; }
+      .rate-row {
+        grid-template-columns: 96px minmax(0, 1fr);
+        grid-template-areas: "thumb size" "thumb best" "prices prices" "cta cta";
+        row-gap: var(--space-2xs);
+      }
+      .rate-thumb { grid-area: thumb; width: 96px; height: 96px; }
+      .rate-size { grid-area: size; }
+      .rate-best { grid-area: best; }
+      .rate-prices-m { grid-area: prices; display: flex; gap: var(--space-lg); padding-top: var(--space-2xs); }
+      .rate-row .btn { grid-area: cta; }
+      .svc-row { grid-template-columns: minmax(0, 1fr) 100px; grid-template-areas: "name price" "desc desc" "cta cta"; }
+      .svc-name { grid-area: name; }
+      .svc-desc { grid-area: desc; }
+      .svc-row .rate-price { grid-area: price; text-align: right; }
+      .svc-row .btn { grid-area: cta; }
+    }
+    @media (min-width: 60.01rem) { .rate-prices-m { display: contents; } }
+
+    /* ── How it works ── */
+    #how { padding-block: var(--space-2xl); }
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      border: 1px solid var(--color-rule);
+      border-radius: var(--radius-card);
+      overflow: hidden;
+      gap: 1px; background: var(--color-rule);
+    }
+    .step {
+      position: relative;
+      min-height: 440px;
+      display: flex; flex-direction: column; justify-content: flex-end;
+      padding: var(--space-lg);
+      overflow: hidden;
+      isolation: isolate;
+    }
+    /* full-bleed background image */
+    .step-img {
+      position: absolute; inset: 0; z-index: -3;
+    }
+    .step-img img {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      filter: saturate(0.72) contrast(1.08) brightness(0.92);
+      transition: transform 0.6s var(--ease-out), filter 0.6s var(--ease-out);
+    }
+    .step:hover .step-img img { transform: scale(1.07); filter: saturate(0.95) contrast(1.1) brightness(1); }
+    /* dark gradient so text stays legible — heavier at the bottom */
+    .step::before {
+      content: '';
+      position: absolute; inset: 0; z-index: -2;
+      background: linear-gradient(to top,
+        rgba(8, 11, 16, 0.94) 0%,
+        rgba(8, 11, 16, 0.78) 32%,
+        rgba(8, 11, 16, 0.4) 62%,
+        rgba(8, 11, 16, 0.55) 100%);
+      transition: background var(--dur-short) var(--ease-out);
+    }
+    /* grit: grain texture in front of the image, behind the text */
+    .step::after {
+      content: '';
+      position: absolute; inset: 0; z-index: -1;
+      opacity: 0.22;
+      mix-blend-mode: overlay;
+      pointer-events: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
+    }
+    /* blue wash creeps in on hover */
+    .step:hover::before {
+      background: linear-gradient(to top,
+        rgba(8, 11, 16, 0.94) 0%,
+        rgba(11, 40, 92, 0.7) 38%,
+        rgba(17, 109, 255, 0.18) 70%,
+        rgba(8, 11, 16, 0.5) 100%);
+    }
+
+    .step-num {
+      font-family: var(--font-display);
+      font-size: 5rem;
+      line-height: 0.9;
+      color: transparent;
+      -webkit-text-stroke: 1.5px rgba(255, 255, 255, 0.55);
+      display: block;
+      margin-bottom: var(--space-xs);
+      transition: color var(--dur-short) var(--ease-out), -webkit-text-stroke-color var(--dur-short) var(--ease-out);
+    }
+    .step:hover .step-num { color: var(--color-accent); -webkit-text-stroke-color: var(--color-accent); }
+    .step h3 {
+      font-size: var(--text-xl); letter-spacing: 0.04em; margin-bottom: var(--space-2xs);
+      text-shadow: 0 2px 14px rgba(0, 0, 0, 0.6);
+    }
+    .step p {
+      color: rgba(251, 250, 246, 0.86); font-size: var(--text-sm);
+      text-shadow: 0 1px 10px rgba(0, 0, 0, 0.7);
+    }
+    @media (max-width: 60rem) {
+      .steps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .step { min-height: 380px; }
+    }
+    @media (max-width: 36rem) {
+      .steps { grid-template-columns: minmax(0, 1fr); }
+      .step { min-height: 320px; }
+    }
+
+    /* ── Difference split ── */
+    #about { padding-block: var(--space-2xl); background: var(--color-card); }
+    .split {
+      display: grid;
+      grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+      gap: var(--space-2xl);
+      align-items: center;
+    }
+    .split-media { position: relative; }
+    .split-media img {
+      width: 100%; height: 480px; object-fit: cover;
+      border-radius: var(--radius-card);
+      border: 1px solid var(--color-rule);
+      filter: saturate(0.88) contrast(1.04);
+    }
+    .split-media::before {
+      content: '';
+      position: absolute; inset: 14px -14px -14px 14px;
+      border: 2px solid rgba(17, 109, 255, 0.4);
+      border-radius: var(--radius-card);
+      z-index: -1;
+    }
+    .split-cap {
+      position: absolute; left: 0; bottom: 0;
+      background: var(--color-paper-deep);
+      font-size: var(--text-xs);
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--color-sky);
+      padding: 0.45rem 0.9rem;
+      border-radius: 0 var(--radius-card) 0 var(--radius-card);
+    }
+    .points { list-style: none; margin-top: var(--space-lg); }
+    .points li {
+      padding-block: var(--space-sm);
+      border-top: 1px solid var(--color-rule);
+      font-size: var(--text-sm);
+      color: var(--color-ink-2);
+      display: grid;
+      grid-template-columns: 26px minmax(0, 1fr);
+      column-gap: var(--space-sm);
+    }
+    .points li::before {
+      content: '';
+      width: 18px; height: 18px; margin-top: 4px;
+      background: var(--color-accent);
+      clip-path: polygon(40% 0, 100% 0, 60% 100%, 0 100%);
+      opacity: 0.9;
+    }
+    .points strong {
+      display: block;
+      font-family: var(--font-display);
+      font-weight: 400;
+      font-size: var(--text-lg);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--color-ink);
+    }
+    @media (max-width: 56rem) {
+      .split { grid-template-columns: 1fr; gap: var(--space-xl); }
+      .split-media img { height: 320px; }
+      .split-media::before { display: none; }
+    }
+
+    /* ── Gallery mosaic ── */
+    #gallery { padding-block: var(--space-2xl) var(--space-xl); }
+    .mosaic {
+      display: grid;
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      grid-auto-rows: 230px;
+      gap: 6px;
+    }
+    .mosaic a { position: relative; overflow: hidden; border-radius: 3px; display: block; }
+    .mosaic img {
+      width: 100%; height: 100%; object-fit: cover;
+      filter: saturate(0.85) contrast(1.04);
+      transition: transform 0.5s var(--ease-out), filter 0.3s var(--ease-out);
+    }
+    .mosaic a:hover img { transform: scale(1.05); filter: saturate(1.05) contrast(1.05); }
+    .mosaic a::after {
+      content: '';
+      position: absolute; inset: 0;
+      background: linear-gradient(to top, rgba(17, 109, 255, 0.35), transparent 45%);
+      opacity: 0;
+      transition: opacity var(--dur-short) var(--ease-out);
+    }
+    .mosaic a:hover::after { opacity: 1; }
+    .m1 { grid-column: span 5; } .m2 { grid-column: span 3; } .m3 { grid-column: span 4; }
+    .m4 { grid-column: span 3; } .m5 { grid-column: span 4; } .m6 { grid-column: span 5; }
+    .mosaic-cap {
+      font-size: var(--text-xs);
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--color-ink-2);
+      margin-top: var(--space-sm);
+    }
+    @media (max-width: 52rem) {
+      .mosaic { grid-auto-rows: 160px; }
+      .m1, .m6 { grid-column: span 12; }
+      .m2, .m3 { grid-column: span 6; }
+      .m4 { grid-column: span 5; } .m5 { grid-column: span 7; }
+    }
+
+    /* ── Reviews — Google coverflow carousel ── */
+    #reviews {
+      padding-block: var(--space-xl);
+      background: var(--color-paper-deep);
+      position: relative; overflow: hidden;
+      text-align: center;
+    }
+    /* soft blue glow so the dark section doesn't read as flat */
+    #reviews::before {
+      content: '';
+      position: absolute; top: 8%; left: 50%; transform: translateX(-50%);
+      width: min(900px, 90%); height: 60%;
+      background: radial-gradient(ellipse at center, rgba(17,109,255,0.16) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    #reviews .wrap { position: relative; z-index: 1; }
+    .rc-head { margin-bottom: var(--space-xl); }
+    .rc-eyebrow {
+      display: inline-flex; align-items: center; gap: 7px;
+      font-size: var(--text-sm); color: var(--color-ink-2); font-weight: 600;
+      margin-bottom: var(--space-2xs);
+    }
+    .rc-title {
+      font-family: var(--font-display);
+      font-size: var(--text-display-s);
+      color: var(--color-ink);
+      text-transform: uppercase;
+      letter-spacing: 0.01em;
+    }
+    .rc-rating-line {
+      display: inline-flex; align-items: center; gap: 8px;
+      margin-top: var(--space-xs);
+      font-size: var(--text-sm); color: var(--color-ink-2); font-weight: 500;
+    }
+    .rc-rating-line strong { color: var(--color-ink); font-size: var(--text-md); }
+
+    /* 3D coverflow stage */
+    .rc-stage {
+      perspective: 1100px;
+      perspective-origin: 50% 50%;
+      width: 100%; max-width: 860px;
+      height: 250px;
+      position: relative;
+      margin: 0 auto;
+    }
+    .rc-card-wrap {
+      position: absolute; left: 50%; top: 50%;
+      width: 340px;
+      transform-origin: center center;
+      transition: transform 0.55s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.55s cubic-bezier(0.4, 0, 0.2, 1);
+      will-change: transform, opacity;
+    }
+    .rc-card-wrap.rc-hidden { opacity: 0 !important; pointer-events: none; }
+    .rc-card-wrap.rc-side { cursor: pointer; }
+
+    .rc-card {
+      background: #fff;
+      border-radius: 14px;
+      padding: 18px 20px;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06);
+      height: 210px;
+      display: flex; flex-direction: column; gap: 10px;
+      text-align: left;
+      box-sizing: border-box;
+    }
+    .rc-card-top { display: flex; align-items: center; justify-content: space-between; }
+    .rc-id { display: flex; align-items: center; gap: 10px; }
+    .rc-avatar {
+      width: 38px; height: 38px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      color: #fff; font-weight: 700; font-size: 15px; flex-shrink: 0;
+    }
+    .rc-name { font-weight: 600; font-size: 14px; color: #202124; line-height: 1.2; }
+    .rc-date { font-size: 11.5px; color: #80868b; margin-top: 2px; }
+    .rc-stars { display: flex; gap: 2px; }
+    .rc-text {
+      font-size: 13.5px; color: #3c4043; line-height: 1.6; margin: 0; flex: 1;
+      overflow: hidden; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical;
+    }
+
+    /* progress dots */
+    .rc-dots { display: flex; gap: 7px; margin: var(--space-md) auto 0; align-items: center; justify-content: center; }
+    .rc-dot {
+      width: 8px; height: 8px; border-radius: 4px;
+      background: rgba(168, 180, 196, 0.35); cursor: pointer;
+      transition: width 0.45s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.3s ease;
+      position: relative; overflow: hidden; border: none; padding: 0;
+    }
+    .rc-dot.rc-active { width: 30px; background: var(--color-accent); }
+    .rc-dot-fill {
+      position: absolute; left: 0; top: 0; height: 100%; width: 0;
+      border-radius: 4px;
+      background: linear-gradient(90deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.55) 100%);
+    }
+    .rc-dot.rc-active .rc-dot-fill { animation: rc-fill 4500ms linear forwards; }
+    @keyframes rc-fill { from { width: 0; } to { width: 100%; } }
+    @media (prefers-reduced-motion: reduce) {
+      .rc-dot.rc-active .rc-dot-fill { animation: none; }
+    }
+
+    .rc-cta { margin-top: var(--space-md); }
+    .rc-cta a {
+      display: inline-flex; align-items: center; gap: 8px;
+      font-weight: 700; font-size: var(--text-sm); color: var(--color-sky);
+      text-decoration: underline; text-decoration-color: var(--color-accent);
+      text-decoration-thickness: 2px; text-underline-offset: 4px;
+      min-height: 44px;
+    }
+    .rc-cta a:hover { text-decoration-thickness: 4px; }
+
+    /* let touch drag horizontally without the page hijacking it */
+    .rc-stage { touch-action: pan-y; }
+
+    @media (max-width: 40rem) {
+      .rc-stage { height: 230px; }
+      .rc-card-wrap { width: 280px; }
+    }
+
+    /* ── Where we haul ── */
+    #area { padding-block: var(--space-xl) var(--space-3xl); }
+    .area-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 6fr) minmax(0, 5fr);
+      gap: var(--space-2xl);
+      align-items: center;
+    }
+    .counties { margin-top: var(--space-lg); }
+    .county {
+      display: flex; align-items: baseline; gap: var(--space-sm);
+      padding-block: var(--space-xs);
+      border-top: 1px solid var(--color-rule);
+      transition: background-color var(--dur-short) var(--ease-out), padding-left var(--dur-short) var(--ease-out);
+    }
+    .county:hover { background: rgba(17, 109, 255, 0.07); padding-left: var(--space-2xs); }
+    .county strong {
+      font-family: var(--font-display);
+      font-weight: 400;
+      font-size: var(--text-lg);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      flex-shrink: 0;
+    }
+    .county .dots { flex: 1; border-bottom: 2px dotted var(--color-rule); align-self: center; }
+    .county span { font-size: var(--text-sm); color: var(--color-ink-2); text-align: right; }
+    .area-note { margin-top: var(--space-md); font-size: var(--text-sm); color: var(--color-ink-2); }
+    .area-media { position: relative; }
+    .area-media img {
+      width: 100%; height: 440px; object-fit: cover;
+      border-radius: var(--radius-card);
+      border: 1px solid var(--color-rule);
+      filter: saturate(0.88) contrast(1.04);
+    }
+    .area-media .split-cap { border-radius: 0 var(--radius-card) 0 var(--radius-card); }
+    @media (max-width: 56rem) {
+      .area-grid { grid-template-columns: 1fr; gap: var(--space-xl); }
+      .area-media img { height: 300px; }
+    }
+
+    /* ── Final CTA ── */
+    /* solid slab: blue energy radiating out from behind the stencil */
+    #contact {
+      position: relative;
+      background:
+        radial-gradient(circle at 50% 42%,
+          rgba(17, 109, 255, 0.34) 0%,
+          rgba(17, 109, 255, 0.14) 26%,
+          rgba(13, 86, 201, 0.06) 44%,
+          transparent 64%),
+        #0a0e14;
+      text-align: center;
+      overflow: clip;
+    }
+    /* hard sand-grit over the glow */
+    #contact::before {
+      content: '';
+      position: absolute; inset: 0;
+      pointer-events: none;
+      opacity: 0.32;
+      mix-blend-mode: overlay;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='s'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.52' numOctaves='3' stitchTiles='stitch'/%3E%3CfeComponentTransfer%3E%3CfeFuncR type='discrete' tableValues='0 0 0.4 1'/%3E%3CfeFuncG type='discrete' tableValues='0 0 0.4 1'/%3E%3CfeFuncB type='discrete' tableValues='0 0 0.4 1'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23s)'/%3E%3C/svg%3E");
+    }
+    #contact .wrap { position: relative; padding-block: var(--space-xl) var(--space-3xl); }
+    #contact .label { justify-content: center; }
+    #contact .label::after { content: ''; width: 30px; height: 2px; background: var(--color-accent); }
+    #contact h2 { font-size: var(--text-display-s); margin-bottom: var(--space-lg); }
+    .cta-stencil {
+      display: block;
+      width: min(42rem, 100%);
+      margin-inline: auto;
+      filter: drop-shadow(0 10px 32px rgba(0, 0, 0, 0.6));
+      transition: transform var(--dur-short) var(--ease-out);
+    }
+    a:hover .cta-stencil { transform: scale(1.015); }
+    #contact p { color: var(--color-ink-2); max-width: 34em; margin: var(--space-lg) auto; }
+    .cta-actions { display: flex; justify-content: center; gap: var(--space-sm); flex-wrap: wrap; }
+    .cta-actions .btn { font-size: var(--text-lg); min-height: 52px; padding-inline: var(--space-lg); }
+
+    /* ── Footer ── */
+    footer { background: #0a0e14; border-top: 1px solid var(--color-rule); padding-block: var(--space-xl) var(--space-lg); }
+    .foot-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.4fr);
+      gap: var(--space-xl);
+    }
+    .foot-mark { width: min(13rem, 100%); margin-bottom: var(--space-sm); }
+    .foot-brand p { color: var(--color-ink-2); font-size: var(--text-sm); max-width: 26em; }
+    .foot-social { display: flex; gap: var(--space-2xs); margin-top: var(--space-sm); }
+    .foot-social a {
+      width: 38px; height: 38px;
+      border: 1px solid var(--color-rule);
+      border-radius: var(--radius-card);
+      display: inline-flex; align-items: center; justify-content: center;
+      color: var(--color-ink-2);
+      transition: border-color var(--dur-short) var(--ease-out), color var(--dur-short) var(--ease-out);
+    }
+    .foot-social a:hover { border-color: var(--color-accent); color: var(--color-ink); }
+    .foot-col h3 {
+      font-family: var(--font-body);
+      font-size: var(--text-xs);
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--color-ink-2);
+      margin-bottom: var(--space-xs);
+    }
+    .foot-col ul { list-style: none; display: flex; flex-direction: column; }
+    .foot-col a, .foot-col li {
+      color: var(--color-ink-2);
+      font-size: var(--text-sm);
+      text-decoration: none;
+      min-height: 34px;
+      display: inline-flex; align-items: center;
+      transition: color var(--dur-short) var(--ease-out);
+    }
+    .foot-col a:hover { color: var(--color-sky); }
+    .foot-bottom {
+      border-top: 1px solid var(--color-rule);
+      margin-top: var(--space-lg);
+      padding-top: var(--space-sm);
+      font-size: var(--text-xs);
+      color: var(--color-ink-2);
+      display: flex; justify-content: space-between; flex-wrap: wrap; gap: var(--space-2xs);
+    }
+    @media (max-width: 56rem) { .foot-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+    @media (max-width: 40rem) { .foot-grid { grid-template-columns: minmax(0, 1fr); gap: var(--space-lg); } }
+
+    /* ── Sticky call pill ── */
+    @keyframes ring {
+      0%, 100% { transform: rotate(0deg); }
+      8%  { transform: rotate(-18deg); }
+      16% { transform: rotate(16deg); }
+      24% { transform: rotate(-14deg); }
+      32% { transform: rotate(12deg); }
+      40% { transform: rotate(-8deg); }
+      48% { transform: rotate(6deg); }
+      56% { transform: rotate(0deg); }
+    }
+    .call-pill {
+      position: fixed; bottom: clamp(1.25rem, 3vw, 2rem); left: 50%; z-index: 95;
+      transform: translateX(-50%) translateY(0);
+      display: flex; align-items: center; gap: 0.75rem;
+      background: var(--color-accent);
+      color: var(--color-accent-ink);
+      text-decoration: none;
+      padding: 0.85rem 1.75rem;
+      border-radius: var(--radius-pill);
+      box-shadow: 0 6px 28px rgba(17, 109, 255, 0.55), 0 2px 8px rgba(0,0,0,0.5);
+      font-family: var(--font-display);
+      font-size: clamp(1rem, 2.5vw, 1.2rem);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      white-space: nowrap;
+      transition: opacity 0.35s var(--ease-out), transform 0.35s var(--ease-out), box-shadow var(--dur-short) var(--ease-out);
+    }
+    .call-pill:hover { box-shadow: 0 8px 36px rgba(17, 109, 255, 0.75), 0 2px 10px rgba(0,0,0,0.5); }
+    .call-pill.hidden { opacity: 0; transform: translateX(-50%) translateY(120%); pointer-events: none; }
+    /* call pill is a mobile thing — desktop keeps the nav Call button */
+    @media (min-width: 56.01rem) { .call-pill { display: none !important; } }
+    .call-pill svg { flex-shrink: 0; animation: ring 3.5s ease-in-out 2s infinite; }
+    .call-pill-label { display: flex; flex-direction: column; line-height: 1.1; }
+    .call-pill-label em { font-style: normal; font-family: var(--font-body); font-size: 0.6em; font-weight: 600; letter-spacing: 0.14em; opacity: 0.82; }
+
+    /* ── Scroll reveals ── */
+    .reveal { opacity: 0; transform: translateY(26px); transition: opacity 0.6s var(--ease-out), transform 0.6s var(--ease-out); }
+    .reveal.in { opacity: 1; transform: none; }
+
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      *, *::before, *::after { transition-duration: 1ms !important; animation-duration: 1ms !important; }
+      .reveal { opacity: 1; transform: none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Nav -->
+<nav aria-label="Primary">
+  <div class="nav-row">
+    <a href="#" class="nav-mark" aria-label="Triple R Dump — home">
+      <img src="triple-r-dump2.png" alt="Triple R Dump">
+    </a>
+    <ul class="nav-inline">
+      <li><a href="#rates">Bins &amp; Rates</a></li>
+      <li><a href="#how">How It Works</a></li>
+      <li><a href="#about">About</a></li>
+      <li><a href="#gallery">Gallery</a></li>
+      <li><a href="#reviews">Reviews</a></li>
+      <li><a href="tel:8015643164" class="btn btn-fill">Call 801-564-3164</a></li>
+    </ul>
+    <button class="nav-toggle" aria-label="Open menu" aria-expanded="false" aria-controls="nav-drawer">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+</nav>
+
+<!-- Full-screen nav drawer -->
+<div class="nav-drawer" id="nav-drawer" role="dialog" aria-label="Navigation menu" aria-modal="true">
+  <ul>
+    <li><a href="#rates"    class="drawer-link">Bins &amp; Rates</a></li>
+    <li><a href="#how"      class="drawer-link">How It Works</a></li>
+    <li><a href="#about"    class="drawer-link">About</a></li>
+    <li><a href="#gallery"  class="drawer-link">Gallery</a></li>
+    <li><a href="#reviews"  class="drawer-link">Reviews</a></li>
+    <li><a href="#haul"     class="drawer-link">Service Area</a></li>
+  </ul>
+  <a href="tel:8015643164" class="btn btn-fill">Call 801-564-3164</a>
+</div>
+
+<!-- Hero -->
+<section class="hero" id="home">
+  <div class="hero-bg" aria-hidden="true"></div>
+  <div class="hero-overlay" aria-hidden="true"></div>
+  <div class="hero-content">
+    <p class="label">Family Owned &amp; Operated · Utah</p>
+    <h1>West Haven's<br><em>Family</em> Dumpster Rental</h1>
+    <p class="hero-sub">On-demand dumpster rental serving Weber, Morgan, Davis &amp; Salt Lake County. 15, 20 &amp; 25 yard bins — residential and commercial. Dump fee included, always.</p>
+    <div class="hero-actions">
+      <a href="tel:8015643164" class="btn btn-fill">Call 801-564-3164</a>
+      <a href="#rates" class="btn btn-ghost">View Bin Sizes</a>
+    </div>
+  </div>
+  <a class="hero-247" href="tel:8015643164" aria-label="24/7 service — call 801-564-3164">
+    <img src="assets/247-paper.png" alt="24/7 SERVICE — 801-564-3164">
+  </a>
+</section>
+
+<div class="hazard" aria-hidden="true"></div>
+
+<!-- Ticker -->
+<div class="ticker" aria-label="Service highlights">
+  <div class="ticker-track">
+    <span>Family Owned &amp; Operated</span>
+    <span>Weber · Morgan · Davis · Salt Lake</span>
+    <span>Same-Day Delivery Available</span>
+    <span>Residential &amp; Commercial</span>
+    <span>Dump Fee Included</span>
+    <span>Family Owned &amp; Operated</span>
+    <span>Weber · Morgan · Davis · Salt Lake</span>
+    <span>Same-Day Delivery Available</span>
+    <span>Residential &amp; Commercial</span>
+    <span>Dump Fee Included</span>
+  </div>
+</div>
+
+<!-- Pricing -->
+<section id="rates">
+  <div class="wrap">
+    <header class="sec-head reveal">
+      <p class="label">Bins &amp; Rates</p>
+      <h2>Straight prices.<br><em>Dump's included.</em></h2>
+      <p>The price you see is the price you pay — every bin rental covers the dump fee. Not sure on size? Call and we'll fit the bin to the job.</p>
+    </header>
+
+    <div class="rate-table reveal">
+      <div class="rate-head" aria-hidden="true">
+        <span>Bin</span><span></span><span>Best for</span><span>1–3 days</span><span>4–7 days</span><span></span>
+      </div>
+      <div class="rate-row">
+        <img class="rate-thumb" src="uploads/triplerdump_photos/triplerdump_photos/01_15yd_bin.png" alt="15 yard roll-off bin" loading="lazy">
+        <p class="rate-size">15<small>yard</small></p>
+        <p class="rate-best"><strong>Garage cleanouts, small remodels, yard waste, moving.</strong> Fits in a standard driveway.</p>
+        <div class="rate-prices-m">
+          <p class="rate-price">$300<small>1–3 days</small></p>
+          <p class="rate-price">$325<small>4–7 days</small></p>
+        </div>
+        <a href="https://triplerdump.com/booking-calendar/15-yd-bin-1-3-day-rental-dump-included" target="_blank" rel="noopener" class="btn btn-fill">Book 15 yd</a>
+      </div>
+      <div class="rate-row">
+        <img class="rate-thumb" src="uploads/triplerdump_photos/triplerdump_photos/02_20yd_bin_side.jpeg" alt="20 yard roll-off bin" loading="lazy">
+        <p class="rate-size">20<small>yard · <span class="nb">top pick</span></small></p>
+        <p class="rate-best"><strong>Kitchen remodels, landscaping, flooring, estate cleanouts.</strong> Our most-rented size.</p>
+        <div class="rate-prices-m">
+          <p class="rate-price">$350<small>1–3 days</small></p>
+          <p class="rate-price">$375<small>4–7 days</small></p>
+        </div>
+        <a href="https://triplerdump.com/booking-calendar/20-yd-bin-1-3-day-rental-dump-included" target="_blank" rel="noopener" class="btn btn-fill">Book 20 yd</a>
+      </div>
+      <div class="rate-row">
+        <img class="rate-thumb" src="uploads/triplerdump_photos/triplerdump_photos/03_25yd_bin_side.jpeg" alt="25 yard roll-off bin" loading="lazy">
+        <p class="rate-size">25<small>yard</small></p>
+        <p class="rate-best"><strong>Construction, roofing, full-home cleanouts, commercial jobs.</strong> Maximum capacity.</p>
+        <div class="rate-prices-m">
+          <p class="rate-price">$400<small>1–3 days</small></p>
+          <p class="rate-price">$425<small>4–7 days</small></p>
+        </div>
+        <a href="https://triplerdump.com/booking-calendar/25-yd-bin-1-3-day-rental-dump-included" target="_blank" rel="noopener" class="btn btn-fill">Book 25 yd</a>
+      </div>
+    </div>
+
+    <div class="rate-sub reveal">
+      <h3>Other services</h3>
+      <div class="svc-row">
+        <p class="svc-name">Junk Removal</p>
+        <p class="svc-desc"><strong>Full service — we do the heavy lifting.</strong> Weekends only; call to schedule.</p>
+        <p class="rate-price">$550<small>flat rate</small></p>
+        <a href="https://triplerdump.com/booking-calendar/junk-removal-services-weekends-only" target="_blank" rel="noopener" class="btn btn-fill">Book it</a>
+      </div>
+      <div class="svc-row">
+        <p class="svc-name">Trailer Rental</p>
+        <p class="svc-desc"><strong>By the day</strong> — hauling, moving, or your own disposal runs.</p>
+        <p class="rate-price">$200<small>per day</small></p>
+        <a href="https://triplerdump.com/booking-calendar/trailer-rental-daily" target="_blank" rel="noopener" class="btn btn-fill">Book it</a>
+      </div>
+      <div class="svc-row">
+        <p class="svc-name">Bin Switch</p>
+        <p class="svc-desc"><strong>Full bin mid-project?</strong> We haul it away and drop a fresh one, same trip.</p>
+        <p class="rate-price">$200<small>per switch</small></p>
+        <a href="https://triplerdump.com/booking-calendar/bin-switch-multi-dump" target="_blank" rel="noopener" class="btn btn-fill">Book it</a>
+      </div>
+      <p class="rate-note">Surrounding areas outside the four counties — <a href="tel:8015643164">call to confirm</a>.</p>
+    </div>
+  </div>
+</section>
+
+<!-- pavement begins: rates slab gives way to asphalt -->
+<div class="asphalt-tear-up" style="--solid: var(--color-paper)" aria-hidden="true"></div>
+
+<!-- How it works -->
+<section id="how">
+  <div class="wrap">
+    <header class="sec-head reveal">
+      <p class="label">Simple Process</p>
+      <h2>How it <em>works</em></h2>
+    </header>
+    <div class="steps reveal">
+      <div class="step">
+        <div class="step-img">
+          <img src="uploads/triplerdump_photos/triplerdump_photos/11_gallery_photo_1.jpeg" alt="Triple R Dump team ready to take your call" loading="lazy">
+        </div>
+        <span class="step-num">01</span>
+        <h3>Call or Book</h3>
+        <p>Call 801-564-3164 or book online. Tell us the project, the size, and the address — we handle the rest.</p>
+      </div>
+      <div class="step">
+        <div class="step-img">
+          <img src="uploads/triplerdump_photos/triplerdump_photos/10_gallery_vertical.jpeg" alt="Bin placed at a residential driveway" loading="lazy">
+        </div>
+        <span class="step-num">02</span>
+        <h3>We Deliver</h3>
+        <p>We drop the bin exactly where you need it — driveway, job site, or street. Same-day and next-day available.</p>
+      </div>
+      <div class="step">
+        <div class="step-img">
+          <img src="uploads/triplerdump_photos/triplerdump_photos/06_bin_rental_3.jpeg" alt="Dumpster bin loaded with debris" loading="lazy">
+        </div>
+        <span class="step-num">03</span>
+        <h3>Fill It Up</h3>
+        <p>Load at your own pace. Need more time? Just call — rental periods flex to your schedule.</p>
+      </div>
+      <div class="step">
+        <div class="step-img">
+          <img src="uploads/triplerdump_photos/triplerdump_photos/12_gallery_photo_2.jpeg" alt="Triple R Dump truck hauling away the bin" loading="lazy">
+        </div>
+        <span class="step-num">04</span>
+        <h3>We Haul Away</h3>
+        <p>When you're done, we pick up the bin and responsibly dispose of everything. Dump fee already covered.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- pavement tears away: the about slab sits beneath the asphalt -->
+<div class="asphalt-tear-down" style="--solid: var(--color-card)" aria-hidden="true"></div>
+
+<!-- Difference -->
+<section id="about">
+  <div class="split wrap">
+    <div class="split-media reveal">
+      <img src="uploads/triplerdump_photos/triplerdump_photos/07_bin_rental_4.jpeg" alt="Triple R Dump roll-off bin on a residential job" loading="lazy">
+      <p class="split-cap">West Haven, Utah</p>
+    </div>
+    <div class="reveal">
+      <header class="sec-head" style="margin-bottom: 0;">
+          <p class="label">Why Choose Us</p>
+        <h2>The Triple R <em>difference</em></h2>
+        <p>Triple R Dump is a family-owned and operated roll-off rental business in West Haven. We've spent 15 years keeping job sites clean and weekend projects moving — for homeowners, contractors, and community events across the Wasatch Front.</p>
+      </header>
+      <ul class="points">
+        <li><div><strong>Transparent pricing</strong>You'll know the total cost before we drop the bin — no hidden fees, no surprises at pickup.</div></li>
+        <li><div><strong>You talk to the owner</strong>Joseph and his team pick up the phone. No call center, no voicemail runaround.</div></li>
+        <li><div><strong>Residential &amp; commercial</strong>Home projects, businesses, and community events — sized and scheduled to fit.</div></li>
+        <li><div><strong>15 years in the work</strong>Enough reps to place a bin right the first time and haul it out clean.</div></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- pavement resumes below the about slab -->
+<div class="asphalt-tear-up" style="--solid: var(--color-card)" aria-hidden="true"></div>
+
+<!-- Gallery -->
+<section id="gallery">
+  <div class="wrap">
+    <header class="sec-head reveal">
+      <p class="label">Our Work</p>
+      <h2>On the <em>job</em></h2>
+    </header>
+    <div class="mosaic reveal">
+      <a class="m1" href="uploads/triplerdump_photos/triplerdump_photos/02_20yd_bin_side.jpeg" target="_blank" rel="noopener"><img src="uploads/triplerdump_photos/triplerdump_photos/02_20yd_bin_side.jpeg" alt="Triple R Dump bins lined up in the yard" loading="lazy"></a>
+      <a class="m2" href="uploads/triplerdump_photos/triplerdump_photos/03_25yd_bin_side.jpeg" target="_blank" rel="noopener"><img src="uploads/triplerdump_photos/triplerdump_photos/03_25yd_bin_side.jpeg" alt="Joseph with a 25 yard Triple R Dump bin" loading="lazy"></a>
+      <a class="m3" href="uploads/triplerdump_photos/triplerdump_photos/14_gallery_photo_4.jpg" target="_blank" rel="noopener"><img src="uploads/triplerdump_photos/triplerdump_photos/14_gallery_photo_4.jpg" alt="Truck and dumpster heading out at dusk" loading="lazy"></a>
+      <a class="m4" href="uploads/triplerdump_photos/triplerdump_photos/13_gallery_photo_3.jpeg" target="_blank" rel="noopener"><img src="uploads/triplerdump_photos/triplerdump_photos/13_gallery_photo_3.jpeg" alt="Roll-off bins staged and ready" loading="lazy"></a>
+      <a class="m5" href="uploads/triplerdump_photos/triplerdump_photos/05_bin_rental_2.jpeg" target="_blank" rel="noopener"><img src="uploads/triplerdump_photos/triplerdump_photos/05_bin_rental_2.jpeg" alt="Joseph with a Triple R Dump bin" loading="lazy"></a>
+      <a class="m6" href="uploads/triplerdump_photos/triplerdump_photos/11_gallery_photo_1.jpeg" target="_blank" rel="noopener"><img src="uploads/triplerdump_photos/triplerdump_photos/11_gallery_photo_1.jpeg" alt="Delivery run on a neighborhood street" loading="lazy"></a>
+    </div>
+    <p class="mosaic-cap">Deliveries and pickups across the Wasatch Front</p>
+  </div>
+</section>
+
+<!-- pavement tears away: the reviews slab sits beneath the asphalt -->
+<div class="asphalt-tear-down" aria-hidden="true"></div>
+
+<!-- Reviews — Google coverflow carousel -->
+<section id="reviews">
+  <div class="wrap">
+    <header class="rc-head reveal">
+      <p class="rc-eyebrow">
+        <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#4285F4" d="M44.5 20H24v8.5h11.8C34.7 33.9 29.8 37 24 37c-7.2 0-13-5.8-13-13s5.8-13 13-13c3.1 0 5.9 1.1 8.1 2.9l6.4-6.4C34.6 4.1 29.6 2 24 2 11.8 2 2 11.8 2 24s9.8 22 22 22c11 0 21-8 21-22 0-1.3-.2-2.7-.5-4z"/><path fill="#34A853" d="M6.3 15.7l7 5.1C15 17.1 19.1 14 24 14c3.1 0 5.9 1.1 8.1 2.9l6.4-6.4C34.6 5.1 29.6 3 24 3 15.5 3 8.2 8.3 6.3 15.7z"/><path fill="#FBBC05" d="M24 45c5.5 0 10.5-1.9 14.4-5l-6.7-5.5C29.7 36 27 37 24 37c-5.7 0-10.6-3.8-12.3-9l-7 5.4C8.2 40.7 15.5 45 24 45z"/><path fill="#EA4335" d="M44.5 20H24v8.5h11.8c-.9 2.8-2.8 5.1-5.3 6.6l6.7 5.5c3.9-3.6 6.3-8.9 6.3-15.6 0-1.3-.2-2.7-.5-4z"/></svg>
+        Google Reviews
+      </p>
+      <h2 class="rc-title">What our clients are saying</h2>
+      <p class="rc-rating-line"><strong>5.0</strong> ★★★★★ · based on real Google reviews</p>
+    </header>
+
+    <div class="rc-stage" id="rc-stage" aria-roledescription="carousel" aria-label="Customer reviews"></div>
+
+    <div class="rc-dots" id="rc-dots" role="tablist" aria-label="Choose a review"></div>
+
+    <p class="rc-cta reveal">
+      <a href="https://g.page/r/CcTKEv0Yu0gPEBM/review" target="_blank" rel="noopener">Worked with us? Leave a review ★</a>
+    </p>
+  </div>
+</section>
+
+<!-- pavement resumes below the reviews slab -->
+<div class="asphalt-tear-up" aria-hidden="true"></div>
+
+<!-- Where we haul -->
+<section id="area">
+  <div class="area-grid wrap">
+    <div class="reveal">
+      <header class="sec-head" style="margin-bottom: 0;">
+          <p class="label">Where We Serve</p>
+        <h2>Where we <em>haul</em></h2>
+        <p>Based in West Haven, serving the Wasatch Front — heart of the city or out past the edge of it.</p>
+      </header>
+      <div class="counties">
+        <div class="county"><strong>Weber County</strong><span class="dots"></span><span>Ogden · Roy · West Haven</span></div>
+        <div class="county"><strong>Morgan County</strong><span class="dots"></span><span>Morgan · Mountain Green</span></div>
+        <div class="county"><strong>Davis County</strong><span class="dots"></span><span>Layton · Kaysville · Farmington</span></div>
+        <div class="county"><strong>Salt Lake County</strong><span class="dots"></span><span>Salt Lake City &amp; surrounding</span></div>
+      </div>
+      <p class="area-note">Surrounding areas too — call to confirm your address.</p>
+    </div>
+    <div class="area-media reveal">
+      <img src="uploads/triple.r.dump-photo-DY2CxEIFMkG-20260527_075118_707005240.jpg" alt="Triple R Dump serving Utah neighborhoods" loading="lazy">
+      <p class="split-cap">Wasatch Front, Utah</p>
+    </div>
+  </div>
+</section>
+
+<!-- Final CTA — pavement tears open at the top, glow radiates from beneath -->
+<section id="contact">
+  <div class="asphalt-tear-down bare" aria-hidden="true"></div>
+  <div class="wrap">
+    <p class="label reveal">Ready When You Are</p>
+    <h2 class="reveal">Call us <em>anytime</em></h2>
+    <a class="reveal" href="tel:8015643164" aria-label="24/7 service — call 801-564-3164">
+      <img class="cta-stencil" src="assets/247-paper.png" alt="24/7 SERVICE — 801-564-3164">
+    </a>
+    <p class="reveal">No voicemail runaround — Joseph and his team pick up. Or skip the call and grab a date on the booking calendar.</p>
+    <div class="cta-actions reveal">
+      <a href="tel:8015643164" class="btn btn-fill">Call or Text</a>
+      <a href="https://www.triplerdump.com" target="_blank" rel="noopener" class="btn btn-ghost">Book Online</a>
+    </div>
+  </div>
+</section>
+
+<div class="hazard" aria-hidden="true"></div>
+
+<!-- Footer -->
+<footer>
+  <div class="foot-grid wrap">
+    <div class="foot-brand">
+      <img class="foot-mark" src="assets/triple-r-dump-light.png" alt="Triple R Dump">
+      <p>Family-owned roll-off dumpster rental — West Haven, Utah. Sustainable solutions for all.</p>
+      <div class="foot-social">
+        <a href="https://www.instagram.com/triple.r.dump/" target="_blank" rel="noopener" aria-label="Instagram">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
+        </a>
+        <a href="https://www.facebook.com/profile.php?id=61587229028024" target="_blank" rel="noopener" aria-label="Facebook">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+        </a>
+      </div>
+    </div>
+    <div class="foot-col">
+      <h3>Services</h3>
+      <ul>
+        <li><a href="#rates">15 yd bin</a></li>
+        <li><a href="#rates">20 yd bin</a></li>
+        <li><a href="#rates">25 yd bin</a></li>
+        <li><a href="#rates">Junk removal</a></li>
+        <li><a href="#rates">Trailer rental</a></li>
+        <li><a href="#rates">Bin switch</a></li>
+      </ul>
+    </div>
+    <div class="foot-col">
+      <h3>Service Area</h3>
+      <ul>
+        <li>Weber County</li>
+        <li>Morgan County</li>
+        <li>Davis County</li>
+        <li>Salt Lake County</li>
+      </ul>
+    </div>
+    <div class="foot-col">
+      <h3>Contact</h3>
+      <ul>
+        <li><a href="tel:8015643164">801-564-3164</a></li>
+        <li><a href="mailto:Joseph.Rodrigues@triplerdump.com">Joseph.Rodrigues@triplerdump.com</a></li>
+        <li>3539 S 4250 W, West Haven, UT 84401</li>
+        <li><a href="https://www.triplerdump.com" target="_blank" rel="noopener">triplerdump.com</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="foot-bottom wrap">
+    <p>© 2026 J. Rodrigues · Triple R Dump · Family owned &amp; operated</p>
+    <p>Sustainable solutions for all</p>
+  </div>
+</footer>
+
+<!-- Sticky call pill -->
+<a class="call-pill hidden" href="tel:8015643164" aria-label="Call Triple R Dump — 801-564-3164">
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.55 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.46 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.09 8.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
+  </svg>
+  <span class="call-pill-label">
+    801-564-3164
+    <em>Tap to call · same-day available</em>
+  </span>
+</a>
+
+<script>
+  // scroll reveals
+  const els = document.querySelectorAll('.reveal');
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach((e, i) => {
+      if (e.isIntersecting) {
+        setTimeout(() => e.target.classList.add('in'), i * 70);
+        io.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.12 });
+  els.forEach(el => io.observe(el));
+
+  // hamburger / drawer
+  const toggle = document.querySelector('.nav-toggle');
+  const drawer = document.getElementById('nav-drawer');
+  const drawerLinks = drawer.querySelectorAll('.drawer-link, .btn');
+  function closeDrawer() {
+    drawer.classList.remove('open');
+    toggle.setAttribute('aria-expanded', 'false');
+    toggle.setAttribute('aria-label', 'Open menu');
+    document.body.style.overflow = '';
+  }
+  toggle.addEventListener('click', () => {
+    const isOpen = drawer.classList.toggle('open');
+    toggle.setAttribute('aria-expanded', String(isOpen));
+    toggle.setAttribute('aria-label', isOpen ? 'Close menu' : 'Open menu');
+    document.body.style.overflow = isOpen ? 'hidden' : '';
+  });
+  drawerLinks.forEach(l => l.addEventListener('click', closeDrawer));
+  drawer.addEventListener('click', e => { if (e.target === drawer) closeDrawer(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDrawer(); });
+
+  // ── Google review coverflow carousel ──
+  (function () {
+    const REVIEWS = [
+      { name: "Greg",           avatar: "G", color: "#116DFF", rating: 5, date: "2 months ago",  text: "Excellent experience! Joe got us set up fast with the perfect dumpster, and delivery, pickup, and hauling were all on time. Great service, highly recommend!" },
+      { name: "Scott",          avatar: "S", color: "#6B3FA0", rating: 5, date: "a month ago",   text: "Easy booking and they delivered right on time. The driver was professional and careful not to damage the driveway. Smooth pickup, no hidden fees or surprises." },
+      { name: "Nadine Rendon",  avatar: "N", color: "#00897B", rating: 5, date: "a month ago",   text: "Dropped off the dumpster exactly when they said, and set it on wooden beams so it wouldn't damage my driveway. Would recommend them to anyone. Great business!!" },
+      { name: "Jorge Martinez", avatar: "J", color: "#1A73E8", rating: 5, date: "a month ago",   text: "Couldn't be happier, everything went smoothly start to finish. Joseph communicated clearly, answered all my questions, and made the whole process incredibly easy." },
+      { name: "Clayton Coombs", avatar: "C", color: "#0D56C9", rating: 5, date: "3 weeks ago",   text: "Made the whole process easy. Midway through I needed a bigger bin and Joseph switched me from a 15 to a 20 yd, no headache. That kind of service is hard to find." },
+      { name: "Jordyn Hill",    avatar: "J", color: "#D32F2F", rating: 5, date: "a month ago",   text: "Such a great experience! Scheduling was a breeze and he delivered right on time. I even asked for same-day pickup on a Saturday and he made it happen!" },
+    ];
+    const AUTO = 4500;
+    const stage = document.getElementById('rc-stage');
+    const dotsBox = document.getElementById('rc-dots');
+    if (!stage) return;
+    const total = REVIEWS.length;
+    let current = 0, timer = null;
+
+    const stars = (n) => Array.from({ length: 5 }, (_, i) =>
+      `<svg width="15" height="15" viewBox="0 0 24 24" fill="${i < n ? '#FBBC05' : '#E0E0E0'}"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>`
+    ).join('');
+    const gLogo = `<svg width="18" height="18" viewBox="0 0 48 48" style="flex-shrink:0"><path fill="#4285F4" d="M44.5 20H24v8.5h11.8C34.7 33.9 29.8 37 24 37c-7.2 0-13-5.8-13-13s5.8-13 13-13c3.1 0 5.9 1.1 8.1 2.9l6.4-6.4C34.6 4.1 29.6 2 24 2 11.8 2 2 11.8 2 24s9.8 22 22 22c11 0 21-8 21-22 0-1.3-.2-2.7-.5-4z"/><path fill="#34A853" d="M6.3 15.7l7 5.1C15 17.1 19.1 14 24 14c3.1 0 5.9 1.1 8.1 2.9l6.4-6.4C34.6 5.1 29.6 3 24 3 15.5 3 8.2 8.3 6.3 15.7z"/><path fill="#FBBC05" d="M24 45c5.5 0 10.5-1.9 14.4-5l-6.7-5.5C29.7 36 27 37 24 37c-5.7 0-10.6-3.8-12.3-9l-7 5.4C8.2 40.7 15.5 45 24 45z"/><path fill="#EA4335" d="M44.5 20H24v8.5h11.8c-.9 2.8-2.8 5.1-5.3 6.6l6.7 5.5c3.9-3.6 6.3-8.9 6.3-15.6 0-1.3-.2-2.7-.5-4z"/></svg>`;
+
+    // build cards + dots once
+    const wraps = REVIEWS.map((r, i) => {
+      const w = document.createElement('div');
+      w.className = 'rc-card-wrap';
+      w.innerHTML = `
+        <div class="rc-card">
+          <div class="rc-card-top">
+            <div class="rc-id">
+              <div class="rc-avatar" style="background:${r.color}">${r.avatar}</div>
+              <div><div class="rc-name">${r.name}</div><div class="rc-date">${r.date}</div></div>
+            </div>
+            ${gLogo}
+          </div>
+          <div class="rc-stars">${stars(r.rating)}</div>
+          <p class="rc-text">${r.text}</p>
+        </div>`;
+      w.addEventListener('click', () => { if (i !== current) goTo(i); });
+      stage.appendChild(w);
+      return w;
+    });
+    const dots = REVIEWS.map((_, i) => {
+      const d = document.createElement('button');
+      d.className = 'rc-dot';
+      d.setAttribute('role', 'tab');
+      d.setAttribute('aria-label', `Review ${i + 1}`);
+      d.innerHTML = '<span class="rc-dot-fill"></span>';
+      d.addEventListener('click', () => goTo(i));
+      dotsBox.appendChild(d);
+      return d;
+    });
+
+    function render() {
+      wraps.forEach((w, i) => {
+        let offset = i - current;
+        if (offset > total / 2) offset -= total;
+        if (offset < -total / 2) offset += total;
+        const isCenter = offset === 0;
+        const visible = Math.abs(offset) <= 1.5;
+        w.classList.toggle('rc-hidden', !visible);
+        w.classList.toggle('rc-side', visible && !isCenter);
+        const rotateY = offset * -42;
+        const translateX = offset * 260;
+        const scale = isCenter ? 1 : 0.76;
+        w.style.opacity = isCenter ? 1 : 0.52;
+        w.style.zIndex = isCenter ? 10 : 5 - Math.abs(offset);
+        w.style.transform = `translate(-50%, -50%) translateX(${translateX}px) rotateY(${rotateY}deg) scale(${scale})`;
+        w.setAttribute('aria-hidden', isCenter ? 'false' : 'true');
+      });
+      dots.forEach((d, i) => {
+        const active = i === current;
+        d.classList.toggle('rc-active', active);
+        d.setAttribute('aria-selected', String(active));
+        if (active) {
+          const fill = d.querySelector('.rc-dot-fill');
+          const clone = fill.cloneNode(true);   // restart fill animation
+          fill.replaceWith(clone);
+        }
+      });
+    }
+    function schedule() { clearTimeout(timer); timer = setTimeout(() => goTo((current + 1) % total), AUTO); }
+    function goTo(i) { current = i; render(); schedule(); }
+
+    function next() { goTo((current + 1) % total); }
+    function prev() { goTo((current - 1 + total) % total); }
+
+    render();
+    schedule();
+    // pause on hover
+    stage.addEventListener('mouseenter', () => clearTimeout(timer));
+    stage.addEventListener('mouseleave', schedule);
+
+    // swipe / drag — works for touch + mouse via pointer events
+    let dragX = null, dragY = null, dragging = false;
+    stage.addEventListener('pointerdown', (e) => {
+      dragX = e.clientX; dragY = e.clientY; dragging = true;
+      clearTimeout(timer);
+    });
+    stage.addEventListener('pointermove', (e) => {
+      if (!dragging) return;
+      // if it's clearly a horizontal drag, stop the page from scrolling
+      if (Math.abs(e.clientX - dragX) > Math.abs(e.clientY - dragY)) e.preventDefault();
+    });
+    function endDrag(e) {
+      if (!dragging) return;
+      dragging = false;
+      const dx = e.clientX - dragX;
+      const dy = e.clientY - dragY;
+      if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy)) {
+        dx < 0 ? next() : prev();   // swipe left → next
+      } else {
+        schedule();
+      }
+      dragX = dragY = null;
+    }
+    stage.addEventListener('pointerup', endDrag);
+    stage.addEventListener('pointercancel', () => { dragging = false; schedule(); });
+    stage.addEventListener('pointerleave', (e) => { if (dragging) endDrag(e); });
+
+    // keyboard arrows
+    stage.setAttribute('tabindex', '0');
+    stage.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowLeft') { prev(); e.preventDefault(); }
+      else if (e.key === 'ArrowRight') { next(); e.preventDefault(); }
+    });
+  })();
+
+  // show call pill only when #contact CTA section is off-screen
+  const callPill = document.querySelector('.call-pill');
+  const ctaSection = document.getElementById('contact');
+  const ctaObserver = new IntersectionObserver(([entry]) => {
+    callPill.classList.toggle('hidden', entry.isIntersecting);
+  }, { threshold: 0.05 });
+  ctaObserver.observe(ctaSection);
+  // also hide while near top of page (hero has its own call button)
+  const heroSection = document.querySelector('.hero');
+  const heroObserver = new IntersectionObserver(([entry]) => {
+    if (entry.isIntersecting) callPill.classList.add('hidden');
+    else callPill.classList.remove('hidden');
+  }, { threshold: 0.1 });
+  heroObserver.observe(heroSection);
+</script>
+
+</body>
+</html>
