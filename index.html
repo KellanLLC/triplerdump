@@ -234,12 +234,14 @@
       position: relative; z-index: 2;
       padding: calc(48px + var(--space-xl)) var(--page-gutter) var(--space-2xl);
       padding-left: max(var(--page-gutter), calc((100% - var(--page-max)) / 2 + var(--page-gutter)));
+      width: 55vw;
       max-width: 46rem;
     }
     .hero h1 {
-      font-size: clamp(2.4rem, 6.5vw, 5rem);
+      font-size: clamp(2rem, 4.5vw, 4.5rem);
       line-height: 1.05;
       margin-bottom: var(--space-md);
+      text-wrap: balance;
     }
     .hero h1 em { font-style: normal; color: var(--color-accent); }
     .hero-sub {
@@ -324,6 +326,9 @@
     @media (max-width: 40rem) {
       .asphalt-tear-down { min-height: 74px; }
       .asphalt-tear-up { min-height: 64px; }
+    }
+    @media (max-width: 48rem) {
+      .hero-content { width: auto; }
     }
 
     /* ── Pricing table ── */
@@ -956,7 +961,7 @@
   <div class="hero-overlay" aria-hidden="true"></div>
   <div class="hero-content">
     <p class="label">Family Owned &amp; Operated · Utah</p>
-    <h1>West Haven's<br><em>Family</em> Dumpster Rental</h1>
+    <h1>West Haven's<br><em>Family</em><br>Dumpster Rental</h1>
     <p class="hero-sub">On-demand dumpster rental serving Weber, Morgan, Davis &amp; Salt Lake County. 15, 20 &amp; 25 yard bins — residential and commercial. Dump fee included, always.</p>
     <div class="hero-actions">
       <a href="tel:8015643164" class="btn btn-fill">Call 801-564-3164</a>
