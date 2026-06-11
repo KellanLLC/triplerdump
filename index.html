@@ -119,10 +119,17 @@
 
     /* ── Nav ── */
     nav {
-      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      position: fixed; top: 0.75rem; left: 0; right: 0; z-index: 100;
       background: transparent;
-      height: 48px;
+      height: 56px;
       display: flex; align-items: center;
+      transition: background-color var(--dur-short) var(--ease-out), box-shadow var(--dur-short) var(--ease-out), transform var(--dur-short) var(--ease-out);
+    }
+    nav.scrolled {
+      background: rgba(10, 14, 20, 0.85);
+      backdrop-filter: blur(8px);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+      transform: translateY(-0.75rem);
     }
     .nav-row {
       width: 100%;
@@ -132,8 +139,8 @@
       display: flex; align-items: center; justify-content: space-between;
     }
     .nav-mark { display: flex; align-items: center; gap: 0.6rem; text-decoration: none; }
-    .nav-mark img { height: 28px; width: auto; }
-    .nav-mark .nav-icon { height: 38px; }
+    .nav-mark img { height: 32px; width: auto; }
+    .nav-mark .nav-icon { height: 42px; }
 
     /* desktop inline links */
     .nav-inline {
@@ -234,14 +241,16 @@
       position: relative; z-index: 2;
       padding: calc(48px + var(--space-xl)) var(--page-gutter) var(--space-2xl);
       padding-left: max(var(--page-gutter), calc((100% - var(--page-max)) / 2 + var(--page-gutter)));
-      width: 55vw;
-      max-width: 46rem;
+      width: 800vw;
+      max-width: 59rem;
     }
     .hero h1 {
       font-size: clamp(2rem, 4.5vw, 4.5rem);
       line-height: 1.05;
       margin-bottom: var(--space-md);
       text-wrap: balance;
+      overflow-wrap: normal;
+      word-break: keep-all;
     }
     .hero h1 em { font-style: normal; color: var(--color-accent); }
     .hero-sub {
@@ -253,18 +262,6 @@
     .hero-actions { display: flex; gap: var(--space-sm); flex-wrap: wrap; }
     .hero-actions .btn { font-size: var(--text-lg); min-height: 52px; padding-inline: var(--space-lg); }
 
-    /* 24/7 stencil bottom-right */
-    .hero-247 {
-      position: absolute; bottom: 2rem;
-      right: max(var(--page-gutter), calc((100% - var(--page-max)) / 2 + var(--page-gutter)));
-      z-index: 2;
-      width: clamp(13rem, 22vw, 19rem);
-      filter: drop-shadow(0 4px 20px rgba(0, 0, 0, 0.7));
-      transition: transform var(--dur-short) var(--ease-out);
-    }
-    .hero-247:hover { transform: scale(1.03); }
-    .hero-247 img { width: 100%; }
-    @media (max-width: 48rem) { .hero-247 { display: none; } }
 
     /* ── Ticker (blue banner) ── */
     .ticker {
@@ -968,9 +965,6 @@
       <a href="#rates" class="btn btn-ghost">View Bin Sizes</a>
     </div>
   </div>
-  <a class="hero-247" href="tel:8015643164" aria-label="24/7 service — call 801-564-3164">
-    <img src="assets/247-paper.png" alt="24/7 SERVICE — 801-564-3164">
-  </a>
 </section>
 
 <div class="hazard" aria-hidden="true"></div>
@@ -1293,6 +1287,12 @@
 </a>
 
 <script>
+  // nav background on scroll
+  const navEl = document.querySelector('nav');
+  const onNavScroll = () => navEl.classList.toggle('scrolled', window.scrollY > 40);
+  onNavScroll();
+  window.addEventListener('scroll', onNavScroll, { passive: true });
+
   // scroll reveals
   const els = document.querySelectorAll('.reveal');
   const io = new IntersectionObserver((entries) => {
