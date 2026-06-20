@@ -87,6 +87,12 @@ domain/DNS until the final cutover (the last step in the whole project).
 - `.env` edits by the user can lag the shell mount; the Read/editor tool sees the current
   file - use it to read freshly-saved values (that is how we got CLOUDFLARE_TOKEN).
 
+- DEPLOY GOTCHA (cost a rollback once): `deploy/` is a SEPARATE nested git repo and can be
+  many commits STALE vs origin/main (it was the initial build, 8 commits behind = wrong
+  site). ALWAYS run `git -C deploy fetch && git -C deploy reset --hard origin/main` BEFORE
+  `cd worker && npx wrangler deploy`, then curl `/` and diff vs the known-good site to
+  confirm you did not clobber it. The live site == deploy/ origin/main.
+
 ## Conventions
 - Never commit secrets (.env and worker/.dev.vars stay gitignored).
 - Build/test in isolation; when testing against the live worker, clean up test rows after.
