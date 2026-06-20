@@ -1,0 +1,19 @@
+name = "triplerdump-api"
+main = "src/index.js"
+compatibility_date = "2026-06-01"
+workers_dev = true
+
+# Bookings database (created in the client's Cloudflare account)
+[[d1_databases]]
+binding = "DB"
+database_name = "triplerdump_bookings"
+database_id = "c9394039-46ce-4d42-99cc-4fc195d7ded0"
+
+# Daily review-request sweep — 16:00 UTC = ~10am Mountain
+[triggers]
+crons = ["0 16 * * *"]
+
+# Non-secret config. Secrets (Stripe keys, GHL webhooks, calendar token,
+# owner phone) are set with `wrangler secret put NAME` or via .dev.vars locally.
+[vars]
+SITE_ORIGIN = "https://triplerdump.bkthueson.workers.dev"

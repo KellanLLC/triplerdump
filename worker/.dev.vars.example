@@ -1,0 +1,18 @@
+# Copy this file to ".dev.vars" for local `wrangler dev`.
+# .dev.vars is gitignored — never commit real secrets.
+# In production these are set with: wrangler secret put NAME
+
+# Stripe (lands when Joseph grants admin access). Use rk_test_/pk_test_ first.
+STRIPE_SECRET_KEY=rk_test_xxx
+STRIPE_PUBLISHABLE_KEY=pk_test_xxx
+STRIPE_WEBHOOK_SECRET=whsec_xxx
+
+# GoHighLevel inbound webhooks (paste URLs when ready)
+GHL_SMS_WEBHOOK_URL=
+GHL_REVIEW_WEBHOOK_URL=
+
+# Owner's cell for new-booking alerts
+OWNER_PHONE=
+
+# Long random string — guards the private calendar feed URL
+CALENDAR_TOKEN=change-me-to-a-long-random-string
