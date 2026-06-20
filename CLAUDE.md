@@ -1,72 +1,94 @@
-# Triple R Dump — Project Context
+# Triple R Dump - Project Context
 
-> Read this before starting work. Update it before ending a session — what changed, what's still open, new decisions or blockers. This file exists so no session has to re-learn the project from scratch.
+> Read this at the START of every session. Update it before you finish.
 
-Last updated: 2026-06-19
+Last updated: 2026-06-20
 
 ## What this is
-Roll-off dumpster rental site for Triple R Dump (West Haven, UT — 15/20/25yd bins).
-Owner: Joseph. Client is a separate party building this for him.
-**Production site right now is Wix, at https://www.triplerdump.com — do not touch domain/DNS until final cutover (explicitly the last step in the whole project).**
+Roll-off dumpster rental site for Triple R Dump (West Haven, UT - 15/20/25yd bins).
+Owner: Joseph Rodrigues. Built by the agency (KellanLLC / user "Kellan").
+Joseph's CURRENT live revenue site is Wix at https://www.triplerdump.com - DO NOT touch
+domain/DNS until the final cutover (the last step in the whole project).
 
-## Architecture
-- Static site repo: `KellanLLC/triplerdump` on GitHub, ships via the `deploy/` folder.
-- Production-mirror worker: `triplerdump.bkthueson.workers.dev` — dashboard-wired to `deploy/` output, **not** auto-deployed from git push. Manual via wrangler or Cloudflare dashboard. Treat as a demo/staging worker, not the live money site (Wix is). Safe to edit/redeploy as long as source is saved first.
-- Backend/API worker: `triplerdump-api.bkthueson.workers.dev` — built separately so early booking/payment dev couldn't risk breaking the live site mirror.
-- **Open decision as of last session:** consolidate into one worker (serves static site + `/book` + `/api/*` + `/calendar`), or keep API split out permanently. Check latest session notes below for the resolution.
-- D1 database: `triplerdump_bookings` — rental tier, drop + pickup address, ground condition, permit/HOA flags, terms agreement, pricing, tax.
-- Calendar: ICS subscribe feed, token-protected URL, no Google OAuth required.
+## Architecture (CONSOLIDATED 2026-06-20)
+- ONE Cloudflare Worker: `triplerdump` -> https://triplerdump.bkthueson.workers.dev
+  - Serves the static marketing site via Workers Static Assets (directory ../deploy).
+  - Runs dynamic routes: /book, /api/book, /api/availability, /admin (CMS),
+    /r/<token> + /api/review (+ /feedback) review funnel, /calendar/<token>.ics.
+  - wrangler-managed. Deploy: `cd worker && npx wrangler deploy` (manual; no git CI).
+  - The old `triplerdump-api` worker was merged in and DELETED. Source lives in worker/.
+- Static site: index.html + tokens.css + assets/ + uploads/, built into ../deploy by
+  build_deploy.py. Repo KellanLLC/triplerdump (deploy/ is a nested git repo).
+- D1 db `triplerdump_bookings` (id c9394039-46ce-4d42-99cc-4fc195d7ded0).
+  Tables: bookings, settings (CMS overrides), reviews.
 
-## Stack decisions (and why, so they don't get re-litigated)
-- Booking + payments live in a Cloudflare Worker — not Cal.com (wrong shape: timed appointments vs. drop-a-bin-on-a-date), not GHL (monthly sub-account cost, generic widget clashes with custom site).
-- GHL is used **only** as the SMS relay via webhook. Not booking, not calendar.
-- Payments: residential pays in full via Stripe Checkout. Commercial gets a manual "we'll invoice you" path — owner sends that invoice himself.
-- Capacity cap: 11 bins out at once, total, across all sizes.
+## Config / CMS
+- Editable config lives in D1 `settings` (key -> JSON), layered over code defaults
+  (src/config.js) by src/settings.js. The CMS edits it live - NO deploy needed.
+- /admin: password (secret ADMIN_PASSWORD) -> HMAC-signed cookie (secret ADMIN_SECRET).
+  Edits pricing+tax, inventory+cap, GHL webhook URLs, review link/mode/threshold,
+  require_payment toggle, owner phone, SMS templates. Shows recent bookings + feedback.
+- Admin password + calendar token are Worker secrets (ask Kellan; not in repo).
 
-## Credentials / secrets
-- `.env` is gitignored (it was **not** gitignored when this project started — fixed immediately, before any commit).
-- **Stripe: blocked.** Waiting on Joseph to grant the agency admin access to his Stripe account (ETA was 1–5hrs as of last session — check current status). The original `mk_...` value in `.env` was not a valid Stripe key at all.
-  - Use a **restricted key** (`rk_`), not a full secret key — it's someone else's account.
-  - Scope: Checkout Sessions, Payment Intents, Customers → Write. Charges, Events → Read. Add Refunds → Write only if cancellations should be handled from the site itself.
-  - Build and fully test against `rk_test_...` first. Swap to `rk_live_...` only at go-live.
-  - Webhook signature verification uses a separate `whsec_...` signing secret, not the API key.
-- GHL booking-confirmation webhook: `https://services.leadconnectorhq.com/hooks/rAseXl2Fqh0SQ0hV9Qsk/webhook-trigger/e05f015d-46ad-4673-815a-d7320b29eab0` — stored as Worker secret `GHL_SMS_WEBHOOK_URL`.
-- **Unresolved:** is the review-request webhook the same URL as above, or a separate one? Never confirmed — check before wiring the review funnel.
-- Google review link: `https://search.google.com/local/writereview?placeid=ChIJc1Zhse8j7AcRxMoS_Ri7SA8`
-- GHL payload convention: client passes message text / phone / email directly in the webhook payload; empty fields are skipped on GHL's end.
+## Stack decisions (don't re-litigate)
+- Custom booking + Stripe on the Worker - NOT Cal.com, NOT a GHL booking sub-account.
+- GHL = SMS relay ONLY (inbound webhook; payload carries the message text; empty skipped).
+- Payments: residential pays in full via Stripe Checkout; commercial = manual Stripe invoice.
+- Capacity: per-size inventory + 11-bin total cap.
 
-## Pricing (confirmed with owner, matches his live Wix site)
-| Size | 1–3 day | 4–7 day |
-|---|---|---|
-| 15yd | $300 | $325 |
-| 20yd | $350 | $375 |
-| 25yd | $400 | $425 |
+## Booking / payment flow
+- src/booking.js (settings-driven). Residential AUTO-CONFIRMS while `require_payment`=false
+  (Stripe still stubbed) so the whole pipeline is testable now. When Stripe goes live, flip
+  require_payment ON in the CMS -> residential routes through Checkout, confirms on payment.
+- SMS consent (TCPA) checkbox on the form; confirmation text only fires with consent.
 
-Utah sales tax: 7.5%, auto-calculated on top.
+## Review funnel
+- Daily cron (16:00 UTC) -> rentals past pickup w/ no review sent -> mints review_token,
+  texts /r/<token> via GHL review webhook (falls back to SMS webhook if review URL blank).
+- /r/<token>: customer rates 1-5. GATED mode (DEFAULT, CMS toggle): 4-5 -> Google review
+  link; 1-3 -> private feedback form -> texts owner. OPEN mode: everyone gets the Google
+  link + a feedback box. Gating is enforced SERVER-SIDE (low ratings never get the link).
+- POLICY NOTE: gated / "review gating" violates Google's review policy and is FTC-risky
+  (Fashion Nova precedent). Owner accepted the risk knowingly; it is a CMS toggle.
 
-## Built and tested (as of last session)
-- `/book` — matches Joseph's real intake form: bin size, rental tier, drop + pickup address, ground condition, permit/HOA questions, terms agreement.
-- `/api/book` — validates input, enforces per-size + 11-bin total caps, writes to D1, routes residential → Stripe (stubbed) and commercial → invoice path.
-- Calendar ICS feed — token-protected, shows DROP and PICKUP events with address + phone.
-- Daily cron sweep for completed rentals — logic tested against a **mocked** DB only, never run against real data or fired a real webhook.
-- Folder cleanup: 132MB → 93MB. Old design drafts (`index-v1`–`v4`) deleted. Irreplaceable source art archived to `_archive/` (untracked, only copies — confirm before hard-deleting).
+## Secrets
+- `.env` (root, gitignored): stripe-api (the `mk_...` value is NOT a valid Stripe key),
+  CLOUDFLARE_TOKEN (cfut_... prefix; Kellan's account; used to deploy from the sandbox).
+- Worker secrets (wrangler secret put): GHL_SMS_WEBHOOK_URL, CALENDAR_TOKEN, ADMIN_PASSWORD,
+  ADMIN_SECRET. worker/.dev.vars (gitignored) holds local copies for `wrangler dev`.
+- GHL SMS webhook: https://services.leadconnectorhq.com/hooks/rAseXl2Fqh0SQ0hV9Qsk/webhook-trigger/e05f015d-46ad-4673-815a-d7320b29eab0
+- Review webhook: same as SMS for now (configurable separately in the CMS).
+- Google review link placeid: ChIJc1Zhse8j7AcRxMoS_Ri7SA8
+
+## Pricing (confirmed, matches Wix) - now editable in the CMS
+15yd 300/325, 20yd 350/375, 25yd 400/425 ($, 1-3 day / 4-7 day). Utah sales tax 7.5%.
+
+## Built + tested LIVE (2026-06-20)
+- Consolidated worker: static site + /book + /admin CMS + booking + calendar + review funnel.
+- Booking: validation, per-size + 11 cap, pricing+tax, auto-confirm (payment stubbed).
+- CMS: login (wrong->401, right->cookie), panel renders, settings save to D1.
+- Review funnel: gated 5*->Google, 2*->private feedback (no link leaked), owner alert path.
+- Calendar ICS feed (token-gated; wrong token 404). All verified live; test rows cleaned up.
 
 ## Not done / blocked
-- Stripe integration — stubbed, blocked on admin access grant.
-- Live SMS sending — wired but nothing has actually fired a real text yet.
-- Review-request funnel — logic exists but untested live; webhook question above unresolved; review link only just landed.
-- CMS / admin panel — owner wants a password-protected panel to manage webhook URLs, pricing, caps, review link, etc. without a code deploy each time. Not scoped, not built.
-- Worker consolidation — decide and execute.
-- Git commit of the `worker/` code — was offered, confirmation never logged.
-- Dedicated phone number for Joseph (for branded SMS/email later) — undecided.
-- Email — intentionally deferred until domain cutover (needs the domain to look legit).
-- Domain transfer off Wix/LegalZoom — intentionally the **final** step, only once everything else is live and tested, to avoid downtime on the owner's current revenue.
+- Stripe/POS - stubbed (src/stripe.js). Blocked on Joseph's rk_ key. When it lands:
+  implement Checkout via REST + /api/stripe-webhook (verify whsec), flip require_payment ON,
+  add unpaid-hold expiry so pending bookings don't tie up bin capacity.
+- Live SMS - plumbing deployed + GHL secret set, but no real text fired yet (needs consent /
+  owner number / Stripe confirm). OWNER_PHONE empty (Joseph has no dedicated number yet).
+- Branded email - deferred until the domain (needs SPF/DKIM to be deliverable).
+- Domain transfer off Wix/LegalZoom - the FINAL step.
 
 ## Known gotchas
-- The file-write tool has silently truncated large files containing non-ASCII punctuation (en/em dashes, ellipses) — reports success but corrupts the file. Workaround: write via bash heredoc, keep content ASCII-only for anything non-trivial in size.
-- `.env` edits can lag between the shell mount and the live file — if a shell read looks stale right after an edit, re-check with the file viewer before assuming the edit didn't land.
+- The file Write/Edit tool intermittently TRUNCATES files mid-content (reports success
+  anyway). NOT specific to non-ASCII - ASCII rewrites truncated too. RELIABLE FIX: write
+  via bash heredoc (cat > file <<'EOF' ... EOF), then verify with `wc -c` + `node --check`.
+- Files created by `cp` from the read-only uploads mount inherit read-only perms; `chmod u+w` before overwriting.
+- `.env` edits by the user can lag the shell mount; the Read/editor tool sees the current
+  file - use it to read freshly-saved values (that is how we got CLOUDFLARE_TOKEN).
 
 ## Conventions
-- Never commit secrets. `.env` stays gitignored, always.
-- Build and test new functionality in isolation before it touches the live site or real customer data.
-- Stripe: test mode first, always, for anything new.
+- Never commit secrets (.env and worker/.dev.vars stay gitignored).
+- Build/test in isolation; when testing against the live worker, clean up test rows after.
+- Stripe test mode first, always.
+- Deploy: `cd worker && npx wrangler deploy` (needs CLOUDFLARE_API_TOKEN exported from .env).
