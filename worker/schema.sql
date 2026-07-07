@@ -60,3 +60,16 @@ CREATE TABLE IF NOT EXISTS reviews (
   created_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_reviews_booking ON reviews(booking_id);
+
+-- Powers /r/<token> review-landing lookups (review_token). Live in prod; kept here too.
+CREATE INDEX IF NOT EXISTS idx_bookings_token ON bookings(review_token);
+
+-- CMS overrides: one row per setting key -> JSON value, layered over code defaults by
+-- src/settings.js (loadSettings). saveSetting() upserts here. This table is REQUIRED for
+-- the admin CMS to persist edits; it was live in prod but previously missing from this file,
+-- so a from-scratch rebuild would break every /admin save.
+CREATE TABLE IF NOT EXISTS settings (
+  key        TEXT PRIMARY KEY,
+  value      TEXT,               -- JSON-encoded (parsed by loadSettings)
+  updated_at TEXT
+);
