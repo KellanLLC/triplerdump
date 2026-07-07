@@ -28,11 +28,79 @@ export const CONFIG = {
   totalBinsCap: 11,
 
   booking: { minLeadDays: 1, maxAdvanceDays: 90 },
+
+  // NEW services beyond the dumpster flow. Prices in cents, pre-tax.
+  // The dumpster service keeps its own `bins`/`tiers` shape above (unchanged);
+  // these three are described here and are overridable via the "services"
+  // settings key (see settings.js). Each has a `pricing.model`:
+  //   - "perDay": amount = dayRate_cents * days (days bounded by min/maxDays)
+  //   - "flat":   amount = flat_cents
+  // `deposit_cents` is tracked separately and is NOT taxed.
+  // `dailyCap` is a simple per-service per-date booking cap; `inventory` (trailer)
+  // is checked across the rental window like dumpster bins.
+  services: {
+    trailer: {
+      label: "Dump Trailer Rental",
+      pricing: { model: "perDay", dayRate_cents: 20000, minDays: 1, maxDays: 14, deposit_cents: 30000 },
+      inventory: 2,
+    },
+    junk: {
+      label: "Junk Removal",
+      pricing: { model: "flat", flat_cents: 55000 },
+      weekendOnly: true,
+      dailyCap: 2,
+    },
+    binswitch: {
+      label: "Bin Switch / Multi-Dump",
+      pricing: { model: "flat", flat_cents: 20000 },
+      dailyCap: 2,
+    },
+  },
 };
 
+// Canonical pricing for ALL services. opts: { tier } for dumpster, { days } for trailer.
+// Returns { subtotal_cents, tax_cents, amount_cents, deposit_cents }.
+// taxRate/bins/services are passed in so callers can use either CONFIG defaults
+// or merged settings (S). deposit is untaxed.
+export function quoteService(serviceType, opts, ctx) {
+  const taxRate = ctx && typeof ctx.taxRate === "number" ? ctx.taxRate : CONFIG.business.taxRate;
+  const bins = (ctx && ctx.bins) || CONFIG.bins;
+  const services = (ctx && ctx.services) || CONFIG.services;
+  const type = serviceType || "dumpster";
+  let subtotal = null;
+  let deposit = 0;
+
+  if (type === "dumpster") {
+    const size = opts && opts.size;
+    const tier = opts && opts.tier;
+    const p = bins[size] && bins[size].prices && bins[size].prices[tier];
+    if (p === undefined || p === null) return null;
+    subtotal = p;
+  } else {
+    const svc = services[type];
+    if (!svc || !svc.pricing) return null;
+    const model = svc.pricing.model;
+    if (model === "perDay") {
+      let days = Number(opts && opts.days);
+      if (!Number.isFinite(days)) return null;
+      const minD = svc.pricing.minDays || 1;
+      const maxD = svc.pricing.maxDays || 365;
+      if (days < minD || days > maxD) return null;
+      subtotal = Math.round(svc.pricing.dayRate_cents * days);
+      deposit = svc.pricing.deposit_cents || 0;
+    } else if (model === "flat") {
+      subtotal = svc.pricing.flat_cents;
+      deposit = svc.pricing.deposit_cents || 0;
+    } else {
+      return null;
+    }
+  }
+
+  if (subtotal === undefined || subtotal === null) return null;
+  const tax = Math.round(subtotal * taxRate);
+  return { subtotal_cents: subtotal, tax_cents: tax, amount_cents: subtotal + tax, deposit_cents: deposit };
+}
+
 export function quote(binSize, tier) {
-  const sub = CONFIG.bins[binSize] && CONFIG.bins[binSize].prices[tier];
-  if (!sub && sub !== 0) return null;
-  const tax = Math.round(sub * CONFIG.business.taxRate);
-  return { subtotal_cents: sub, tax_cents: tax, amount_cents: sub + tax };
+  return quoteService("dumpster", { size: binSize, tier }, null);
 }

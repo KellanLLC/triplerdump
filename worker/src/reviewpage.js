@@ -3,12 +3,14 @@
 // when the rating qualifies, so low-rating customers never receive it.
 import { notifyOwnerLowRating } from "./sms.js";
 
+const esc = (s) => String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
 export function renderReviewLanding(S, token, firstName) {
   const star = '&#9733;';
   const stars = [1, 2, 3, 4, 5].map((n) =>
     '<button class="star" data-n="' + n + '" aria-label="' + n + ' star">' + star + '</button>'
   ).join("");
-  const hi = firstName ? (", " + firstName) : "";
+  const hi = firstName ? (", " + esc(firstName)) : "";
   return '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">' +
 '<meta name="viewport" content="width=device-width,initial-scale=1"><title>Rate Triple R Dump</title><style>' +
 'body{margin:0;font:17px/1.5 system-ui,Segoe UI,Roboto,sans-serif;color:#0b1b2b;background:#f5f8fc}' +
@@ -35,8 +37,9 @@ export function renderReviewLanding(S, token, firstName) {
 'try{var r=await fetch("/api/review",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({token:TOKEN,rating:n})});var j=await r.json();}catch(e){next.innerHTML="<div class=card>Thanks for your feedback!</div>";return;}' +
 'if(!j.ok){next.innerHTML="<div class=card>This link has expired. Thanks anyway!</div>";return;}' +
 'if(j.action==="feedback"){feedbackForm("We are sorry we missed the mark. What could we have done better?");return;}' +
+'if(j.action==="google"){window.location.href=j.url;return;}' +
 'var g="<div class=card><b>Thank you!</b><p class=muted>Mind sharing it on Google? It really helps a small local business.</p><a class=btn href="+JSON.stringify(j.url)+" target=_blank rel=noopener>Leave a Google review</a></div>";' +
-'if(j.action==="both"){next.innerHTML=g;feedbackForm("Anything else you want us to know? (optional)",true);}else{next.innerHTML=g;}}' +
+'next.innerHTML=g;feedbackForm("Anything else you want us to know? (optional)",true);}' +
 'function feedbackForm(prompt,append){var html="<div class=card><b>"+esc(prompt)+"</b><textarea id=fb></textarea><button class=btn id=sb>Send to Triple R Dump</button></div>";if(append){next.innerHTML+=html;}else{next.innerHTML=html;}' +
 'document.getElementById("sb").addEventListener("click",async function(){var fb=document.getElementById("fb").value;this.disabled=true;' +
 'try{await fetch("/api/review/feedback",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({token:TOKEN,feedback:fb})});}catch(e){}' +

@@ -87,21 +87,31 @@ export function renderPanel(S, bookings, lowReviews, saved) {
     '<label>Public base URL <span class="muted">(for review links in texts)</span></label><input name="base_url" value="' + esc(S.publicBaseUrl) + '">';
 
   body += '<h2>Booking</h2><label><input type="checkbox" name="require_payment" style="width:auto"' + (S.requirePayment ? " checked" : "") + '> Require online payment (turn ON once Stripe is live)</label>' +
-    '<label>Owner phone (for alerts)</label><input name="owner_phone" value="' + esc(S.ownerPhone) + '">';
+    '<label>Stripe mode <span class="muted">(dev)</span></label><select name="stripe_mode"><option value="sandbox"' + (S.stripeMode !== "live" ? " selected" : "") + '>Sandbox (test cards)</option><option value="live"' + (S.stripeMode === "live" ? " selected" : "") + '>Live (real payments)</option></select>' +
+    '<label>Owner phone (for alerts)</label><input name="owner_phone" value="' + esc(S.ownerPhone) + '">' +
+    '<label><input type="checkbox" name="notify_owner_bookings" style="width:auto"' + (S.notifyOwnerBookings !== false ? " checked" : "") + '> Text owner on new bookings</label>' +
+    '<label><input type="checkbox" name="notify_owner_reminders" style="width:auto"' + (S.notifyOwnerReminders !== false ? " checked" : "") + '> Text owner on delivery reminders</label>';
 
-  body += '<h2>SMS templates <span class="muted">tokens: {bin} {tier} {date} {pickup} {id} {name} {address} {total} {account} {phone} {link}</span></h2>' +
+  body += '<h2>SMS templates</h2>' +
+    '<p class="muted" style="margin:-6px 0 12px">Shared tokens: {name} {customer_phone} {id} {item} {length} {bin} {tier} {date} {pickup} {address} {total} {account} {note}. <b>{item}</b> = what they booked (20yd bin / dump trailer / junk removal / bin switch) &mdash; prefer it over {bin}yd, which is blank for non-dumpster services. {length} = rental length. {total} = amount charged incl. any refundable deposit. {phone} = your business number, {customer_phone} = the customer\'s. {note} = the customer\'s "Anything else?" message. <b>Link tokens differ by audience:</b> owner texts use {admin_link} (the /admin booking page); the review request uses {review_link} (the customer review page).</p>' +
+    '<h3 style="margin:14px 0 6px;font-size:14px;color:#334155">To the customer</h3>' +
     '<label>Booking confirmation</label><textarea name="tpl_confirmation">' + esc(t.confirmation) + '</textarea>' +
-    '<label>Owner alert</label><textarea name="tpl_owner">' + esc(t.owner) + '</textarea>' +
-    '<label>Review request</label><textarea name="tpl_review">' + esc(t.review) + '</textarea>';
+    '<label>Delivery reminder <span class="muted">(day before)</span></label><textarea name="tpl_reminder_sms">' + esc(t.reminder_sms) + '</textarea>' +
+    '<label>Review request <span class="muted">(after pickup &mdash; use {review_link})</span></label><textarea name="tpl_review">' + esc(t.review) + '</textarea>' +
+    '<h3 style="margin:18px 0 6px;font-size:14px;color:#334155">To the owner</h3>' +
+    '<label>New booking <span class="muted">(use {admin_link})</span></label><textarea name="tpl_owner">' + esc(t.owner) + '</textarea>' +
+    '<label>Delivery reminder <span class="muted">(use {admin_link})</span></label><textarea name="tpl_owner_reminder">' + esc(t.owner_reminder) + '</textarea>' +
+    '<label>Commercial quote request <span class="muted">(adds {company} {interest} {timeframe} {email} {details})</span></label><textarea name="tpl_commercial">' + esc(t.commercial) + '</textarea>' +
+    '<label>Low rating alert <span class="muted">(adds {rating} {feedback}; use {admin_link})</span></label><textarea name="tpl_low_rating">' + esc(t.low_rating) + '</textarea>';
 
   body += '<div style="margin-top:16px"><button>Save all</button></div></div></form>';
 
-  body += '<div class="card"><h2>Recent bookings</h2><table><tr><th>Ref</th><th>Status</th><th>Size</th><th>Drop</th><th>Customer</th><th>Total</th></tr>';
+  body += '<div class="card"><div class="top"><h2 style="border:0;margin:0">Recent bookings</h2><a href="/admin/bookings" style="color:#116DFF;font-weight:600;text-decoration:none">Manage all &rarr;</a></div><table><tr><th>Ref</th><th>Status</th><th>Size</th><th>Drop</th><th>Customer</th><th>Total</th></tr>';
   for (const b of (bookings || [])) body += '<tr><td>' + esc(b.id) + '</td><td>' + esc(b.status) + '</td><td>' + esc(b.bin_size) + 'yd</td><td>' + esc(b.delivery_date) + '</td><td>' + esc(b.customer_name) + '</td><td>$' + ((b.amount_cents || 0) / 100).toFixed(2) + '</td></tr>';
   if (!bookings || !bookings.length) body += '<tr><td colspan="6" class="muted">No bookings yet.</td></tr>';
   body += '</table></div>';
 
-  body += '<div class="card"><h2>Low ratings &amp; feedback</h2><table><tr><th>When</th><th>Stars</th><th>Booking</th><th>Feedback</th></tr>';
+  body += '<div class="card"><h2>Ratings &amp; feedback</h2><table><tr><th>When</th><th>Stars</th><th>Booking</th><th>Feedback</th></tr>';
   for (const r of (lowReviews || [])) body += '<tr><td>' + esc((r.created_at || "").slice(0, 10)) + '</td><td>' + esc(r.rating) + '</td><td>' + esc(r.booking_id) + '</td><td>' + esc(r.feedback) + '</td></tr>';
   if (!lowReviews || !lowReviews.length) body += '<tr><td colspan="4" class="muted">None.</td></tr>';
   body += '</table></div>';
@@ -126,6 +136,47 @@ export async function saveSettings(env, form) {
   await saveSetting(env, "review_threshold", parseInt(form.threshold, 10) || 4);
   await saveSetting(env, "public_base_url", String(form.base_url || ""));
   await saveSetting(env, "require_payment", form.require_payment === "on" || form.require_payment === "true");
+  await saveSetting(env, "stripe_mode", form.stripe_mode === "live" ? "live" : "sandbox");
+  await saveSetting(env, "notify_owner_bookings", form.notify_owner_bookings === "on" || form.notify_owner_bookings === "true");
+  await saveSetting(env, "notify_owner_reminders", form.notify_owner_reminders === "on" || form.notify_owner_reminders === "true");
   await saveSetting(env, "owner_phone", String(form.owner_phone || ""));
-  await saveSetting(env, "sms_templates", { confirmation: String(form.tpl_confirmation || ""), owner: String(form.tpl_owner || ""), review: String(form.tpl_review || "") });
+  await saveSetting(env, "sms_templates", { confirmation: String(form.tpl_confirmation || ""), reminder_sms: String(form.tpl_reminder_sms || ""), review: String(form.tpl_review || ""), owner: String(form.tpl_owner || ""), owner_reminder: String(form.tpl_owner_reminder || ""), commercial: String(form.tpl_commercial || ""), low_rating: String(form.tpl_low_rating || "") });
+}
+
+// ----- Bookings management (own routes; auth-gated in index.js) -----
+
+export function renderBookingsList(S, rows, q) {
+  let body = '<div class="top"><h1>Bookings</h1><a href="/admin" style="color:#64748b;text-decoration:none">&larr; Settings</a></div>';
+  body += '<form method="GET" action="/admin/bookings" class="card"><label>Search by ref, name, or phone</label><div class="row"><div><input name="q" value="' + esc(q || "") + '" placeholder="TRD-… / name / phone" autofocus></div><div style="flex:0 0 auto"><button>Search</button></div></div></form>';
+  body += '<div class="card"><table><tr><th>Ref</th><th>Status</th><th>Service</th><th>Delivery</th><th>Customer</th><th>Total</th></tr>';
+  for (const b of (rows || [])) {
+    const svc = esc(b.service_type || "dumpster") + (b.bin_size ? " " + esc(b.bin_size) + "yd" : "");
+    body += '<tr><td><a href="/admin/booking/' + esc(b.id) + '" style="color:#116DFF;font-weight:600">' + esc(b.id) + '</a></td><td>' + esc(b.status) + '</td><td>' + svc + '</td><td>' + esc(b.delivery_date) + '</td><td>' + esc(b.customer_name) + '</td><td>$' + ((b.amount_cents || 0) / 100).toFixed(2) + '</td></tr>';
+  }
+  if (!rows || !rows.length) body += '<tr><td colspan="6" class="muted">No bookings' + (q ? ' match "' + esc(q) + '"' : ' yet') + '.</td></tr>';
+  body += '</table></div>';
+  return page(body);
+}
+
+export function renderBookingDetail(S, b) {
+  if (!b) return page('<div class="top"><h1>Booking</h1><a href="/admin/bookings" style="color:#64748b;text-decoration:none">&larr; Bookings</a></div><div class="card"><p class="muted">Not found.</p></div>');
+  const addr = b.address || "";
+  const gmap = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(addr);
+  const amap = "https://maps.apple.com/?q=" + encodeURIComponent(addr);
+  const money = (c) => "$" + ((c || 0) / 100).toFixed(2);
+  const r = (k, v) => '<div style="display:flex;border-bottom:1px solid #eef2f7;padding:5px 0"><div style="flex:0 0 42%;color:#5a6b7d">' + esc(k) + '</div><div style="flex:1"><b>' + esc(v == null || v === "" ? "—" : v) + '</b></div></div>';
+  let body = '<div class="top"><h1>' + esc(b.id) + '</h1><a href="/admin/bookings" style="color:#64748b;text-decoration:none">&larr; Bookings</a></div>';
+  body += '<div class="card">';
+  body += r("Status", b.status) + r("Account", b.account_type) + r("Service", b.service_type) + r("Bin size", b.bin_size ? b.bin_size + "yd" : "") + r("Rental", b.rental_tier ? b.rental_tier + " day" : (b.rental_days ? b.rental_days + " days" : "")) + r("Customer", b.customer_name) + r("Phone", b.phone) + r("Email", b.email) + r("Company", b.company);
+  body += r("Delivery", b.delivery_date + (b.delivery_time ? " " + b.delivery_time : "")) + r("Pickup", b.pickup_date) + r("Address", b.address) + r("Ground", b.ground_condition) + r("Customer note", b.message);
+  body += r("Subtotal", money(b.subtotal_cents)) + r("Tax", money(b.tax_cents)) + r("Total", money(b.amount_cents)) + (b.deposit_cents ? r("Deposit", money(b.deposit_cents)) : "") + r("Payment", b.payment_type) + r("Paid at", b.paid_at) + r("Stripe session", b.stripe_session_id);
+  body += '<div style="margin-top:12px"><a href="' + gmap + '" target="_blank" rel="noopener" style="color:#116DFF;font-weight:600;text-decoration:none">Open in Google Maps</a> &nbsp;·&nbsp; <a href="' + amap + '" target="_blank" rel="noopener" style="color:#116DFF;font-weight:600;text-decoration:none">Apple Maps</a></div>';
+  body += '</div>';
+  body += '<div class="card"><h2>Notes</h2><form method="POST" action="/admin/booking/' + esc(b.id) + '/notes"><textarea name="notes" placeholder="Internal notes — pickup details, gate code, etc.">' + esc(b.notes || "") + '</textarea><div style="margin-top:8px"><button>Save notes</button></div></form></div>';
+  body += '<div class="card"><h2>Actions</h2>';
+  body += '<form method="POST" action="/admin/booking/' + esc(b.id) + '/status" style="display:inline-block;margin:0 6px 6px 0"><input type="hidden" name="status" value="completed"><button>Mark picked up / completed</button></form>';
+  body += '<form method="POST" action="/admin/booking/' + esc(b.id) + '/delete" style="display:inline-block" onsubmit="return confirm(\'Delete booking ' + esc(b.id) + '? This cannot be undone.\')"><button style="background:#c0392b">Delete (dev)</button></form>';
+  body += '<p class="muted" style="margin-top:8px">Refunds are handled in the Stripe dashboard.</p>';
+  body += '</div>';
+  return page(body);
 }
