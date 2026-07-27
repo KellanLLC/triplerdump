@@ -17,10 +17,19 @@ const html = (b, s = 200, extra = {}) => new Response(b, { status: s, headers: {
 const redirect = (loc, cookie) => new Response(null, { status: 302, headers: cookie ? { location: loc, "set-cookie": cookie } : { location: loc } });
 const formObj = async (req) => Object.fromEntries((await req.formData()).entries());
 
-// Cloudflare Turnstile server-side verification. No-op when no secret is configured
-// (site keeps working before/without Turnstile). Missing token -> reject (bot / not
-// solved). Network/infra error talking to siteverify -> fail OPEN so a CF hiccup can't
-// block real customers; an explicit failure (bad/used token) -> reject.
+// Honeypot: the booking form renders an off-screen "trd_hp" input that no real
+// customer can see or tab into. Anything non-empty is a bot filling every field.
+// Deliberately NOT named website/url/company -- those get autofilled by password
+// managers, and a false positive here costs Joseph a real job.
+const isBotSubmission = (body) => typeof (body && body.trd_hp) === "string" && body.trd_hp.trim() !== "";
+
+// Cloudflare Turnstile server-side verification. The client widget was REMOVED
+// 2026-07-27 (sitekey never rendered on workers.dev -- error 400020) and replaced
+// by the honeypot above. This stays so Turnstile can be switched back on after the
+// domain cutover by re-adding the widget and setting TURNSTILE_SECRET.
+// No-op when no secret is configured (the case today). Missing token -> reject (bot
+// / not solved). Network/infra error talking to siteverify -> fail OPEN so a CF
+// hiccup can't block real customers; an explicit failure (bad/used token) -> reject.
 async function verifyTurnstile(env, token, ip) {
   if (!env.TURNSTILE_SECRET) return true;
   if (!token) return false;
@@ -121,6 +130,13 @@ export default {
       if (p === "/api/book" && m === "POST") {
         const S = await loadSettings(env);
         const body = await request.json().catch(() => ({}));
+        // Honeypot tripped. Book nothing, but fail LOUDLY rather than faking success:
+        // if this ever misfires on a real person, they must be told to call, not
+        // handed a fake confirmation for a job that was never scheduled.
+        if (isBotSubmission(body)) {
+          console.warn("[honeypot] dropped submission");
+          return json({ ok: false, errors: ["We couldn't process that submission. Please call " + (S.business?.phone || "801-564-3164") + " and we'll book it for you."] }, 400);
+        }
         if (!(await verifyTurnstile(env, body["cf-turnstile-response"], request.headers.get("cf-connecting-ip")))) {
           return json({ ok: false, errors: ["Could not verify you're human. Please complete the check and try again."] }, 400);
         }

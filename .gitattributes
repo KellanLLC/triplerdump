@@ -1,0 +1,17 @@
+# core.autocrlf is true in this repo. Git's binary auto-detection normally
+# protects images, but be explicit: these must NEVER get line-ending rewrites,
+# because they are the source assets the live site is built from.
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.webp  binary
+*.ico   binary
+*.mp4   binary
+*.woff  binary
+*.woff2 binary
+
+# Keep the site sources at LF so the built output is byte-stable.
+*.html  text eol=lf
+*.css   text eol=lf
+*.js    text eol=lf
+*.py    text eol=lf

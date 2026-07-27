@@ -22,3 +22,13 @@ Thumbs.db
 *.swp
 .idea/
 .vscode/
+
+# --- Build artifacts / tooling (regenerable; do not track) ---
+deploy/
+worker/.wrangler/
+worker/*.log
+.agents/
+.hallmark/
+skills-lock.json
+_archive/
+_review/

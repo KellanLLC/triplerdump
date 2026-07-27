@@ -75,7 +75,6 @@ export function renderBookingPage(S, service) {
 '<meta name="theme-color" content="#116DFF">' +
 '<link rel="icon" href="/favicon.ico" sizes="any">' +
 '<link rel="icon" href="/assets/favicon-32x32.png" type="image/png" sizes="32x32">' +
-'<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>' +
 '<style>' +
 // --- clean light base: system font, no textures ---
 ':root{--blue:#116DFF;--blue-deep:#0b54cc;--blue-soft:#eef4ff;--blue-line:#cfe0ff;' +
@@ -313,7 +312,10 @@ export function renderBookingPage(S, service) {
 '<label class="f">Details<textarea name="details" placeholder="What you are clearing, size of job, any access notes..."></textarea></label>' +
 '<label class="terms"><input type="checkbox" name="agreed_terms_c"> <span>I agree to the <a href="/terms" target="_blank" rel="noopener">terms</a> and to be contacted about my request, including by text. Reply STOP to opt out.</span></label>' +
 '</div>' +
-'<div class="cf-turnstile" data-sitekey="0x4AAAAADrLvT9zIQddMdOb" data-action="book" style="margin:0 0 14px"></div>' +
+// Honeypot: off-screen, not tabbable, hidden from AT. Real customers never fill
+// it; scripted spam fills every input it finds. Server rejects when non-empty.
+'<div aria-hidden="true" style="position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden">' +
+'<label>Leave this field empty<input type="text" name="trd_hp" tabindex="-1" autocomplete="off"></label></div>' +
 '<button type="submit" id="submitBtn">Book it</button></form>' +
 '<div id="out" class="out hidden" role="alert"></div>' +
 '<div id="confirm" class="hidden"></div>' +
@@ -323,8 +325,6 @@ export function renderBookingPage(S, service) {
 'var f=document.getElementById("f"),out=document.getElementById("out"),confirmEl=document.getElementById("confirm"),btn=document.getElementById("submitBtn");' +
 'var resi=document.getElementById("resi"),comm=document.getElementById("comm");' +
 'function money(c){return "$"+(c/100).toFixed(2);}' +
-'function tsToken(){var v="";try{if(window.turnstile&&turnstile.getResponse)v=turnstile.getResponse()||"";}catch(e){}if(!v){var el=f.querySelector("[name=cf-turnstile-response]");v=el?el.value:"";}return v;}' +
-'function tsReset(){try{if(window.turnstile&&turnstile.reset)turnstile.reset();}catch(e){}}' +
 'function esc(s){return String(s==null?"":s).replace(/[&<>"\']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",\'"\':"&quot;","\'":"&#39;"}[c];});}' +
 'function sel(n){var el=f.querySelector("input[name=\\""+n+"\\"]:checked");return el?el.value:"";}' +
 'function curSvc(){var el=f.querySelector("input[name=service_type]");return (el&&el.value)||"dumpster";}' +
@@ -489,23 +489,22 @@ export function renderBookingPage(S, service) {
 'if(acctType()==="commercial"){return submitLead();}' +
 'var svc=curSvc();' +
 'if(svc==="junk"&&!isWeekendISO(hidDate.value)){out.className="out err";out.classList.remove("hidden");out.textContent="Junk removal is weekends only - pick a Saturday or Sunday.";return;}' +
-'var _ts=tsToken();if(document.querySelector(".cf-turnstile iframe")&&!_ts){out.className="out err";out.classList.remove("hidden");out.textContent="Please complete the verification, then try again.";return;}' +
 'btn.disabled=true;out.className="out";out.classList.remove("hidden");out.textContent="Checking availability...";' +
-'var data=Object.fromEntries(new FormData(f).entries());data.service_type=svc;data.account_type="residential";data.agreed_terms=f.agreed_terms.checked;data.sms_consent=f.agreed_terms.checked;data["cf-turnstile-response"]=_ts;' +
+'var data=Object.fromEntries(new FormData(f).entries());data.service_type=svc;data.account_type="residential";data.agreed_terms=f.agreed_terms.checked;data.sms_consent=f.agreed_terms.checked;' +
 'if(svc==="dumpster"&&document.getElementById("samepick").checked){data.pickup_address=data.address;}' +
 'try{var r=await fetch("/api/book",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(data)});var j=await r.json();' +
-'if(!j.ok){out.className="out err";out.innerHTML="<b>Could not book:</b><br>"+((j.errors||[j.error])||[]).map(esc).join("<br>");btn.disabled=false;tsReset();return;}' +
+'if(!j.ok){out.className="out err";out.innerHTML="<b>Could not book:</b><br>"+((j.errors||[j.error])||[]).map(esc).join("<br>");btn.disabled=false;return;}' +
 'if(j.checkout_url){window.location=j.checkout_url;return;}' +
 'showConfirm(j);}' +
-'catch(err){out.className="out err";out.textContent="Network error - try again.";btn.disabled=false;tsReset();}});' +
+'catch(err){out.className="out err";out.textContent="Network error - try again.";btn.disabled=false;}});' +
 // ---- commercial lead submit ----
-'async function submitLead(){var _ts=tsToken();if(document.querySelector(".cf-turnstile iframe")&&!_ts){out.className="out err";out.classList.remove("hidden");out.textContent="Please complete the verification, then try again.";return;}' +
+'async function submitLead(){' +
 'btn.disabled=true;out.className="out";out.classList.remove("hidden");out.textContent="Sending your request...";' +
-'var fd=new FormData(f);var data={account_type:"commercial",company:fd.get("company_c")||"",customer_name:fd.get("contact_name")||"",phone:fd.get("phone_c")||"",email:fd.get("email_c")||"",address:fd.get("address_c")||"",service_interest:fd.get("service_interest")||"",timeframe:fd.get("timeframe")||"",message:fd.get("details")||"",details:fd.get("details")||"","cf-turnstile-response":_ts,agreed_terms:f.agreed_terms_c.checked,sms_consent:f.agreed_terms_c.checked};' +
+'var fd=new FormData(f);var data={account_type:"commercial",company:fd.get("company_c")||"",customer_name:fd.get("contact_name")||"",phone:fd.get("phone_c")||"",email:fd.get("email_c")||"",address:fd.get("address_c")||"",service_interest:fd.get("service_interest")||"",timeframe:fd.get("timeframe")||"",message:fd.get("details")||"",details:fd.get("details")||"",trd_hp:fd.get("trd_hp")||"",agreed_terms:f.agreed_terms_c.checked,sms_consent:f.agreed_terms_c.checked};' +
 'try{var r=await fetch("/api/book",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(data)});var j=await r.json();' +
-'if(!j.ok){out.className="out err";out.innerHTML="<b>Could not send request:</b><br>"+((j.errors||[j.error])||[]).map(esc).join("<br>");btn.disabled=false;tsReset();return;}' +
+'if(!j.ok){out.className="out err";out.innerHTML="<b>Could not send request:</b><br>"+((j.errors||[j.error])||[]).map(esc).join("<br>");btn.disabled=false;return;}' +
 'showLeadConfirm(j);}' +
-'catch(err){out.className="out err";out.textContent="Network error - try again.";btn.disabled=false;tsReset();}}' +
+'catch(err){out.className="out err";out.textContent="Network error - try again.";btn.disabled=false;}}' +
 // ---- boot ----
 'switchAcct(acctType());switchSvc(curSvc());})();' +
 '</script></body></html>';
