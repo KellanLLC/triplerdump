@@ -56,16 +56,24 @@ function setLine(form, i, { unit, qty, productId, name }) {
   else form.set(`line_items[${i}][price_data][product_data][name]`, name);
 }
 
-export async function createCheckout(env, S, booking) {
-  // CMS stripe_mode picks which key/catalog to use ("sandbox" default, "live" for
-  // real payments) — lets dev flip test<->live without a redeploy.
+// Picks the Stripe key for the CMS's current mode. `isLive` is derived from the KEY
+// PREFIX, not the CMS toggle, so a mode flip with a missing key can never make us bind
+// live-catalog product ids under a test key. Shared with invoice.js so the two money
+// flows cannot drift apart.
+export function stripeKey(env, S) {
   const liveMode = !!(S && S.stripeMode === "live");
-  const key = liveMode ? env.STRIPE_SECRET_KEY_LIVE : env.STRIPE_SECRET_KEY;
+  const key = (liveMode ? env.STRIPE_SECRET_KEY_LIVE : env.STRIPE_SECRET_KEY) || "";
+  return { key, isLive: key.startsWith("sk_live") || key.startsWith("rk_live") };
+}
+
+export async function createCheckout(env, S, booking) {
+  // CMS stripe_mode picks which key/catalog to use ("sandbox" default, "live" for real
+  // payments) — lets dev flip test<->live without a redeploy. Real product ids bind ONLY
+  // under a genuine live key; test/sandbox keys use inline product names so the flow
+  // works against an empty sandbox catalog.
+  const { key, isLive } = stripeKey(env, S);
   if (!key) return { stubbed: true, url: null };
 
-  // Bind to real product ids ONLY under a genuine live key; test/sandbox keys
-  // use inline product names so the flow works against an empty sandbox catalog.
-  const isLive = key.startsWith("sk_live") || key.startsWith("rk_live");
   const origin = env.SITE_ORIGIN || "";
 
   const form = new URLSearchParams();

@@ -73,3 +73,27 @@ CREATE TABLE IF NOT EXISTS settings (
   value      TEXT,               -- JSON-encoded (parsed by loadSettings)
   updated_at TEXT
 );
+
+-- Invoices (added 2026-07-27). Joseph bills a customer with his OWN line items, his
+-- OWN due date, and late-fee terms printed at the bottom. Separate from bookings on
+-- purpose: commercial jobs never go through the booking form, so booking_id is
+-- nullable. `terms` is SNAPSHOTTED per invoice -- editing the CMS terms later must
+-- not retroactively change what a customer already agreed to.
+CREATE TABLE IF NOT EXISTS invoices (
+  id TEXT PRIMARY KEY,             -- TRD-INV-XXXXXX
+  created_at TEXT NOT NULL,
+  booking_id TEXT,                 -- optional link to bookings.id
+  customer_name TEXT NOT NULL,
+  phone TEXT, email TEXT, company TEXT,
+  line_items TEXT,                 -- JSON [{description, qty, unit_cents}]
+  subtotal_cents INTEGER, tax_cents INTEGER, total_cents INTEGER,
+  due_date TEXT,                   -- YYYY-MM-DD
+  status TEXT,                     -- draft|sent|paid|void
+  terms TEXT,                      -- footer text exactly as sent
+  stripe_invoice_id TEXT, stripe_customer_id TEXT,
+  number TEXT,                     -- Stripe's human invoice no.
+  hosted_url TEXT, pdf_url TEXT,
+  sent_at TEXT, paid_at TEXT, notes TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_invoices_booking ON invoices(booking_id);
+CREATE INDEX IF NOT EXISTS idx_invoices_status  ON invoices(status);

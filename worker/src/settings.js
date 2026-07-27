@@ -27,7 +27,18 @@ const DEFAULT_TEMPLATES = {
   owner_reminder: "Deliver {item} to {name} on {date} at {address} (ref {id}). Details: {admin_link}",
   commercial: "New commercial quote ({id}): {company} {name}. Interest: {interest}. Timeframe: {timeframe}. Call {customer_phone} {email}. Site: {address}. {details}",
   low_rating: "{rating}★ from {name} ({id}): \"{feedback}\". {customer_phone}. Details: {admin_link}",
+  // Invoice-only tokens: {number} (Stripe invoice no.) {total} {due} {invoice_link}
+  invoice: "Triple R Dump invoice {number} for {total} is ready. Due {due}. Pay here: {invoice_link}",
 };
+
+// Printed at the bottom of every invoice (Stripe `footer`). PLACEHOLDER WORDING —
+// Joseph still owes us the real late-fee percentage / grace period, so this stays
+// deliberately generic and is CMS-editable (no deploy needed to reword it).
+const DEFAULT_INVOICE_TERMS =
+  "Payment is due by the due date shown above. Balances not paid by the due date may be " +
+  "subject to a late fee. Returned payments, collection costs, and any weight overages, " +
+  "trip fees, or prohibited-material fines identified after service remain the customer's " +
+  "responsibility. Questions about this invoice? Call 801-564-3164.";
 const DEFAULT_REVIEW_LINK = "https://search.google.com/local/writereview?placeid=ChIJc1Zhse8j7AcRxMoS_Ri7SA8";
 
 export function defaultSettings(env = {}) {
@@ -53,6 +64,9 @@ export function defaultSettings(env = {}) {
     ownerPhone: env.OWNER_PHONE || "",
     publicBaseUrl: env.SITE_ORIGIN || "",
     reminderLeadDays: 1,
+    invoiceTerms: DEFAULT_INVOICE_TERMS,
+    invoiceDueDays: 14,
+    invoiceTaxDefault: true,
     templates: { ...DEFAULT_TEMPLATES },
   };
 }
@@ -82,6 +96,9 @@ export async function loadSettings(env) {
   if (o.owner_phone !== undefined) s.ownerPhone = o.owner_phone;
   if (o.public_base_url) s.publicBaseUrl = o.public_base_url;
   if (o.reminder_lead_days !== undefined) s.reminderLeadDays = num(o.reminder_lead_days, s.reminderLeadDays);
+  if (o.invoice_terms !== undefined) s.invoiceTerms = o.invoice_terms;
+  if (o.invoice_due_days !== undefined) s.invoiceDueDays = num(o.invoice_due_days, s.invoiceDueDays);
+  if (o.invoice_tax_default !== undefined) s.invoiceTaxDefault = o.invoice_tax_default === true;
   if (o.sms_templates) s.templates = { ...s.templates, ...o.sms_templates };
   return s;
 }

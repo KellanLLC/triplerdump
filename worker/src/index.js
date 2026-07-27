@@ -1,5 +1,5 @@
 // Triple R Dump - one worker: static site (via assets) + booking + CMS + review.
-import { loadSettings } from "./settings.js";
+import { loadSettings, itemLabel } from "./settings.js";
 import { createBooking, getAvailability, expireStaleHolds } from "./booking.js";
 import { handleStripeWebhook, confirmPaidByRedirect } from "./stripe.js";
 import { renderBookedPage } from "./booked.js";
@@ -9,7 +9,8 @@ import { runReminderSweep } from "./reminders.js";
 import { renderBookingPage } from "./page.js";
 import { renderTermsPage } from "./terms.js";
 import { renderReviewLanding, handleReviewRate, handleReviewFeedback } from "./reviewpage.js";
-import { isAuthed, loginCookie, clearCookie, renderLogin, renderPanel, saveSettings, renderBookingsList, renderBookingDetail } from "./admin.js";
+import { isAuthed, loginCookie, clearCookie, renderLogin, renderPanel, saveSettings, renderBookingsList, renderBookingDetail, renderInvoiceList, renderInvoiceNew, renderInvoiceDetail } from "./admin.js";
+import { createInvoice, refreshInvoiceStatus, voidInvoice, resendInvoice, parseLineItems } from "./invoice.js";
 
 const cors = () => ({ "access-control-allow-origin": "*", "access-control-allow-methods": "GET,POST,OPTIONS", "access-control-allow-headers": "content-type" });
 const json = (d, s = 200) => new Response(JSON.stringify(d), { status: s, headers: { "content-type": "application/json; charset=utf-8", ...cors() } });
@@ -117,6 +118,97 @@ export default {
           const notes = String((await formObj(request)).notes || "").slice(0, 4000);
           await env.DB.prepare("UPDATE bookings SET notes=?1 WHERE id=?2").bind(notes, bnotes[1]).run();
           return redirect("/admin/booking/" + encodeURIComponent(bnotes[1]));
+        }
+      }
+
+      // ----- Invoices (admin) -----
+      if (p === "/admin/invoices" && m === "GET") {
+        if (!(await isAuthed(request, env))) return html(renderLogin());
+        const S = await loadSettings(env);
+        const q = (url.searchParams.get("q") || "").trim();
+        const rows = q
+          ? (await env.DB.prepare("SELECT * FROM invoices WHERE id LIKE ?1 OR number LIKE ?1 OR customer_name LIKE ?1 OR booking_id LIKE ?1 ORDER BY created_at DESC LIMIT 100").bind("%" + q + "%").all()).results
+          : (await env.DB.prepare("SELECT * FROM invoices ORDER BY created_at DESC LIMIT 100").all()).results;
+        return html(renderInvoiceList(S, rows || [], q));
+      }
+      if (p === "/admin/invoice/new" && m === "GET") {
+        if (!(await isAuthed(request, env))) return html(renderLogin());
+        const S = await loadSettings(env);
+        // ?booking=REF prefills the customer and seeds a line item from the booking.
+        let prefill = {};
+        const ref = url.searchParams.get("booking");
+        if (ref) {
+          const b = await env.DB.prepare("SELECT * FROM bookings WHERE id=?1").bind(ref).first();
+          if (b) {
+            prefill = {
+              booking_id: b.id, customer_name: b.customer_name, email: b.email,
+              phone: b.phone, company: b.company,
+              items: [{ description: itemLabel(b) + (b.delivery_date ? " — " + b.delivery_date : ""), qty: 1, unit_cents: b.subtotal_cents || 0 }],
+            };
+          }
+        }
+        return html(renderInvoiceNew(S, prefill, url.searchParams.get("error")));
+      }
+      if (p === "/admin/invoice/create" && m === "POST") {
+        if (!(await isAuthed(request, env))) return json({ ok: false, error: "unauthorized" }, 401);
+        const S = await loadSettings(env);
+        // Read formData directly: line items are REPEATED fields, and formObj()'s
+        // Object.fromEntries would keep only the last of each.
+        const fd = await request.formData();
+        const items = parseLineItems(fd.getAll("li_desc"), fd.getAll("li_qty"), fd.getAll("li_price"));
+        const r = await createInvoice(env, S, {
+          customer_name: String(fd.get("customer_name") || "").trim(),
+          email: String(fd.get("email") || "").trim(),
+          phone: String(fd.get("phone") || "").trim(),
+          company: String(fd.get("company") || "").trim(),
+          booking_id: String(fd.get("booking_id") || "").trim() || null,
+          items,
+          due_date: String(fd.get("due_date") || "").trim(),
+          taxable: fd.get("taxable") === "on",
+          terms: String(fd.get("terms") || ""),
+          notes: String(fd.get("notes") || ""),
+        });
+        if (!r.ok) {
+          const back = "/admin/invoice/new?error=" + encodeURIComponent(r.error || "Could not create the invoice.");
+          return redirect(back + (fd.get("booking_id") ? "&booking=" + encodeURIComponent(String(fd.get("booking_id"))) : ""));
+        }
+        return redirect("/admin/invoice/" + encodeURIComponent(r.id) + "?flash=" + encodeURIComponent("Invoice " + (r.number || r.id) + " sent."));
+      }
+      {
+        const iv = p.match(/^\/admin\/invoice\/([^/]+)$/);
+        if (iv && m === "GET") {
+          if (!(await isAuthed(request, env))) return html(renderLogin());
+          const S = await loadSettings(env);
+          // Webhook-free reconcile: ask Stripe on every view (same idea as /booked).
+          const inv = await refreshInvoiceStatus(env, S, iv[1]);
+          return html(renderInvoiceDetail(S, inv, url.searchParams.get("flash")));
+        }
+        const ivr = p.match(/^\/admin\/invoice\/([^/]+)\/resend$/);
+        if (ivr && m === "POST") {
+          if (!(await isAuthed(request, env))) return json({ ok: false, error: "unauthorized" }, 401);
+          const S = await loadSettings(env);
+          const r = await resendInvoice(env, S, ivr[1]);
+          return redirect("/admin/invoice/" + encodeURIComponent(ivr[1]) + "?flash=" + encodeURIComponent(r.ok ? "Pay link re-sent." : (r.error || "Could not resend.")));
+        }
+        const ivv = p.match(/^\/admin\/invoice\/([^/]+)\/void$/);
+        if (ivv && m === "POST") {
+          if (!(await isAuthed(request, env))) return json({ ok: false, error: "unauthorized" }, 401);
+          const S = await loadSettings(env);
+          const r = await voidInvoice(env, S, ivv[1]);
+          return redirect("/admin/invoice/" + encodeURIComponent(ivv[1]) + "?flash=" + encodeURIComponent(r.ok ? "Invoice voided." : (r.error || "Could not void.")));
+        }
+      }
+      // Public short link for the texted pay URL. No auth: the id IS the secret, and
+      // it only ever redirects to Stripe's own hosted page.
+      {
+        const short = p.match(/^\/inv\/([^/]+)$/);
+        if (short && m === "GET") {
+          const row = await env.DB.prepare("SELECT hosted_url FROM invoices WHERE id=?1").bind(short[1]).first();
+          if (row && row.hosted_url) return Response.redirect(row.hosted_url, 302);
+          return html('<!DOCTYPE html><meta charset="utf-8"><title>Invoice not found</title>' +
+            '<div style="font:16px/1.6 system-ui;max-width:34em;margin:12vh auto;padding:0 5vw">' +
+            "<h1>We couldn't find that invoice</h1><p>The link may be old or mistyped. " +
+            'Give us a call at <a href="tel:8015643164">801-564-3164</a> and we\'ll sort it out.</p></div>', 404);
         }
       }
 

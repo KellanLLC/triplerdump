@@ -102,11 +102,19 @@ export function renderPanel(S, bookings, lowReviews, saved) {
     '<label>New booking <span class="muted">(use {admin_link})</span></label><textarea name="tpl_owner">' + esc(t.owner) + '</textarea>' +
     '<label>Delivery reminder <span class="muted">(use {admin_link})</span></label><textarea name="tpl_owner_reminder">' + esc(t.owner_reminder) + '</textarea>' +
     '<label>Commercial quote request <span class="muted">(adds {company} {interest} {timeframe} {email} {details})</span></label><textarea name="tpl_commercial">' + esc(t.commercial) + '</textarea>' +
-    '<label>Low rating alert <span class="muted">(adds {rating} {feedback}; use {admin_link})</span></label><textarea name="tpl_low_rating">' + esc(t.low_rating) + '</textarea>';
+    '<label>Low rating alert <span class="muted">(adds {rating} {feedback}; use {admin_link})</span></label><textarea name="tpl_low_rating">' + esc(t.low_rating) + '</textarea>' +
+    '<h3 style="margin:18px 0 6px;font-size:14px;color:#334155">Invoices</h3>' +
+    '<label>Invoice text <span class="muted">(adds {number} {total} {due}; use {invoice_link})</span></label><textarea name="tpl_invoice">' + esc(t.invoice) + '</textarea>';
+
+  body += '<h2>Invoices</h2>' +
+    '<div class="row"><div><label>Default due in (days)</label><input name="invoice_due_days" value="' + esc(S.invoiceDueDays) + '"></div>' +
+    '<div><label>Sales tax line</label><label style="font-weight:400;margin-top:9px"><input type="checkbox" name="invoice_tax_default" style="width:auto"' + (S.invoiceTaxDefault !== false ? " checked" : "") + '> Add tax by default</label></div></div>' +
+    '<label>Terms printed at the bottom of every invoice</label><textarea name="invoice_terms" style="min-height:110px">' + esc(S.invoiceTerms) + '</textarea>' +
+    '<p class="muted">This is the late-fee / payment-terms block Stripe prints under the line items. Edit it here &mdash; no deploy needed. <b>The shipped wording is a placeholder</b>: put Joseph\'s real late-fee amount and grace period in before sending real invoices.</p>';
 
   body += '<div style="margin-top:16px"><button>Save all</button></div></div></form>';
 
-  body += '<div class="card"><div class="top"><h2 style="border:0;margin:0">Recent bookings</h2><a href="/admin/bookings" style="color:#116DFF;font-weight:600;text-decoration:none">Manage all &rarr;</a></div><table><tr><th>Ref</th><th>Status</th><th>Size</th><th>Drop</th><th>Customer</th><th>Total</th></tr>';
+  body += '<div class="card"><div class="top"><h2 style="border:0;margin:0">Recent bookings</h2><span><a href="/admin/invoices" style="color:#116DFF;font-weight:600;text-decoration:none">Invoices</a> &nbsp;&middot;&nbsp; <a href="/admin/bookings" style="color:#116DFF;font-weight:600;text-decoration:none">Manage all &rarr;</a></span></div><table><tr><th>Ref</th><th>Status</th><th>Size</th><th>Drop</th><th>Customer</th><th>Total</th></tr>';
   for (const b of (bookings || [])) body += '<tr><td>' + esc(b.id) + '</td><td>' + esc(b.status) + '</td><td>' + esc(b.bin_size) + 'yd</td><td>' + esc(b.delivery_date) + '</td><td>' + esc(b.customer_name) + '</td><td>$' + ((b.amount_cents || 0) / 100).toFixed(2) + '</td></tr>';
   if (!bookings || !bookings.length) body += '<tr><td colspan="6" class="muted">No bookings yet.</td></tr>';
   body += '</table></div>';
@@ -140,7 +148,10 @@ export async function saveSettings(env, form) {
   await saveSetting(env, "notify_owner_bookings", form.notify_owner_bookings === "on" || form.notify_owner_bookings === "true");
   await saveSetting(env, "notify_owner_reminders", form.notify_owner_reminders === "on" || form.notify_owner_reminders === "true");
   await saveSetting(env, "owner_phone", String(form.owner_phone || ""));
-  await saveSetting(env, "sms_templates", { confirmation: String(form.tpl_confirmation || ""), reminder_sms: String(form.tpl_reminder_sms || ""), review: String(form.tpl_review || ""), owner: String(form.tpl_owner || ""), owner_reminder: String(form.tpl_owner_reminder || ""), commercial: String(form.tpl_commercial || ""), low_rating: String(form.tpl_low_rating || "") });
+  await saveSetting(env, "invoice_terms", String(form.invoice_terms || ""));
+  await saveSetting(env, "invoice_due_days", parseInt(form.invoice_due_days, 10) || 14);
+  await saveSetting(env, "invoice_tax_default", form.invoice_tax_default === "on" || form.invoice_tax_default === "true");
+  await saveSetting(env, "sms_templates", { confirmation: String(form.tpl_confirmation || ""), reminder_sms: String(form.tpl_reminder_sms || ""), review: String(form.tpl_review || ""), owner: String(form.tpl_owner || ""), owner_reminder: String(form.tpl_owner_reminder || ""), commercial: String(form.tpl_commercial || ""), low_rating: String(form.tpl_low_rating || ""), invoice: String(form.tpl_invoice || "") });
 }
 
 // ----- Bookings management (own routes; auth-gated in index.js) -----
@@ -176,7 +187,111 @@ export function renderBookingDetail(S, b) {
   body += '<div class="card"><h2>Actions</h2>';
   body += '<form method="POST" action="/admin/booking/' + esc(b.id) + '/status" style="display:inline-block;margin:0 6px 6px 0"><input type="hidden" name="status" value="completed"><button>Mark picked up / completed</button></form>';
   body += '<form method="POST" action="/admin/booking/' + esc(b.id) + '/delete" style="display:inline-block" onsubmit="return confirm(\'Delete booking ' + esc(b.id) + '? This cannot be undone.\')"><button style="background:#c0392b">Delete (dev)</button></form>';
+  body += '<div style="margin-top:10px"><a href="/admin/invoice/new?booking=' + encodeURIComponent(b.id) + '" style="color:#116DFF;font-weight:600;text-decoration:none">Create an invoice for this booking &rarr;</a></div>';
   body += '<p class="muted" style="margin-top:8px">Refunds are handled in the Stripe dashboard.</p>';
   body += '</div>';
+  return page(body);
+}
+
+// ----- Invoices (auth-gated in index.js) -------------------------------------
+
+const invMoney = (c) => "$" + ((c || 0) / 100).toFixed(2);
+const STATUS_COLOR = { paid: "#16a34a", sent: "#b45309", void: "#64748b", draft: "#64748b" };
+const statusPill = (s) =>
+  '<b style="color:' + (STATUS_COLOR[s] || "#0b1b2b") + '">' + esc(s || "—") + '</b>';
+
+export function renderInvoiceList(S, rows, q) {
+  let body = '<div class="top"><h1>Invoices</h1><a href="/admin" style="color:#64748b;text-decoration:none">&larr; Settings</a></div>';
+  body += '<div style="margin-bottom:12px"><a href="/admin/invoice/new" style="display:inline-block;background:#116DFF;color:#fff;padding:11px 16px;border-radius:9px;font-weight:700;text-decoration:none">+ New invoice</a></div>';
+  body += '<form method="GET" action="/admin/invoices" class="card"><label>Search by invoice no., customer, or booking ref</label><div class="row"><div><input name="q" value="' + esc(q || "") + '" placeholder="TRD-INV-… / name / TRD-…"></div><div style="flex:0 0 auto"><button>Search</button></div></div></form>';
+  body += '<div class="card"><table><tr><th>Invoice</th><th>Status</th><th>Customer</th><th>Due</th><th>Total</th></tr>';
+  for (const r of (rows || [])) {
+    body += '<tr><td><a href="/admin/invoice/' + esc(r.id) + '" style="color:#116DFF;font-weight:600">' + esc(r.number || r.id) + '</a></td>' +
+      '<td>' + statusPill(r.status) + '</td><td>' + esc(r.customer_name) + '</td><td>' + esc(r.due_date || "—") + '</td><td>' + invMoney(r.total_cents) + '</td></tr>';
+  }
+  if (!rows || !rows.length) body += '<tr><td colspan="5" class="muted">No invoices' + (q ? ' match "' + esc(q) + '"' : ' yet') + '.</td></tr>';
+  body += '</table></div>';
+  return page(body);
+}
+
+// `prefill` may carry a booking to bill (customer details + a starting line item).
+export function renderInvoiceNew(S, prefill, error) {
+  const p = prefill || {};
+  const due = new Date(Date.now() + (Number(S.invoiceDueDays) || 14) * 864e5).toISOString().slice(0, 10);
+  // Blank spare rows are fine — parseLineItems() in invoice.js drops any row with no
+  // description or no price, so Joseph can use as few or as many as he needs.
+  const rowHtml = (i, d, q, amt) =>
+    '<div class="row" style="margin-bottom:6px"><div style="flex:3"><input name="li_desc" value="' + esc(d || "") + '" placeholder="Description"></div>' +
+    '<div style="flex:0 0 72px"><input name="li_qty" value="' + esc(q || "") + '" placeholder="Qty"></div>' +
+    '<div style="flex:0 0 110px"><input name="li_price" value="' + esc(amt || "") + '" placeholder="$ each"></div></div>';
+
+  let body = '<div class="top"><h1>New invoice</h1><a href="/admin/invoices" style="color:#64748b;text-decoration:none">&larr; Invoices</a></div>';
+  if (error) body += '<div class="card" style="border-color:#f0a3a3;background:#fdf2f2"><b style="color:#c0392b">' + esc(error) + '</b></div>';
+  body += '<form method="POST" action="/admin/invoice/create"><div class="card">';
+  if (p.booking_id) body += '<input type="hidden" name="booking_id" value="' + esc(p.booking_id) + '"><p class="muted">Attached to booking <b>' + esc(p.booking_id) + '</b></p>';
+  body += '<h2>Customer</h2>' +
+    '<label>Name</label><input name="customer_name" value="' + esc(p.customer_name || "") + '" required>' +
+    '<div class="row"><div><label>Email <span class="muted">(required — Stripe emails the invoice)</span></label><input name="email" type="email" value="' + esc(p.email || "") + '" required></div>' +
+    '<div><label>Phone <span class="muted">(for the pay-link text)</span></label><input name="phone" value="' + esc(p.phone || "") + '"></div></div>' +
+    '<label>Company <span class="muted">(optional)</span></label><input name="company" value="' + esc(p.company || "") + '">';
+
+  body += '<h2>Line items</h2>';
+  const seed = p.items || [];
+  for (let i = 0; i < Math.max(seed.length + 3, 5); i++) {
+    const it = seed[i];
+    body += rowHtml(i, it && it.description, it && it.qty, it ? (it.unit_cents / 100).toFixed(2) : "");
+  }
+  body += '<div id="more"></div><button type="button" id="addRow" style="background:#64748b;padding:8px 12px;font-size:13px">+ Add another line</button>';
+
+  body += '<h2>Terms</h2>' +
+    '<div class="row"><div><label>Due date</label><input type="date" name="due_date" value="' + esc(due) + '"></div>' +
+    '<div><label>Sales tax</label><label style="font-weight:400;margin-top:9px"><input type="checkbox" name="taxable" style="width:auto"' + (S.invoiceTaxDefault !== false ? " checked" : "") + '> Add ' + esc(((S.taxRate || 0) * 100).toFixed(3).replace(/\.?0+$/, "")) + '% sales tax</label></div></div>' +
+    '<label>Terms printed at the bottom <span class="muted">(from settings; edit for this one invoice if needed)</span></label>' +
+    '<textarea name="terms" style="min-height:110px">' + esc(S.invoiceTerms || "") + '</textarea>' +
+    '<label>Internal note <span class="muted">(not shown to the customer)</span></label><input name="notes" value="">';
+
+  body += '<div style="margin-top:16px"><button>Create &amp; send invoice</button></div>' +
+    '<p class="muted">Sends immediately: Stripe emails the invoice + PDF, and the customer gets a text with the pay link.</p>';
+  body += '</div></form>';
+  body += '<script>document.getElementById("addRow").addEventListener("click",function(){' +
+    'var d=document.createElement("div");d.className="row";d.style.marginBottom="6px";' +
+    'd.innerHTML=\'<div style="flex:3"><input name="li_desc" placeholder="Description"></div><div style="flex:0 0 72px"><input name="li_qty" placeholder="Qty"></div><div style="flex:0 0 110px"><input name="li_price" placeholder="$ each"></div>\';' +
+    'document.getElementById("more").appendChild(d);});</script>';
+  return page(body);
+}
+
+export function renderInvoiceDetail(S, inv, flash) {
+  if (!inv) return page('<div class="top"><h1>Invoice</h1><a href="/admin/invoices" style="color:#64748b;text-decoration:none">&larr; Invoices</a></div><div class="card"><p class="muted">Not found.</p></div>');
+  let items = [];
+  try { items = JSON.parse(inv.line_items || "[]"); } catch { items = []; }
+  const r = (k, v) => '<div style="display:flex;border-bottom:1px solid #eef2f7;padding:5px 0"><div style="flex:0 0 42%;color:#5a6b7d">' + esc(k) + '</div><div style="flex:1"><b>' + esc(v == null || v === "" ? "—" : v) + '</b></div></div>';
+
+  let body = '<div class="top"><h1>' + esc(inv.number || inv.id) + '</h1><a href="/admin/invoices" style="color:#64748b;text-decoration:none">&larr; Invoices</a></div>';
+  if (flash) body += '<div class="ok">' + esc(flash) + '</div>';
+  body += '<div class="card">';
+  body += '<div style="display:flex;border-bottom:1px solid #eef2f7;padding:5px 0"><div style="flex:0 0 42%;color:#5a6b7d">Status</div><div style="flex:1">' + statusPill(inv.status) + '</div></div>';
+  body += r("Customer", inv.customer_name) + r("Email", inv.email) + r("Phone", inv.phone) + r("Company", inv.company) +
+    (inv.booking_id ? '<div style="display:flex;border-bottom:1px solid #eef2f7;padding:5px 0"><div style="flex:0 0 42%;color:#5a6b7d">Booking</div><div style="flex:1"><a href="/admin/booking/' + esc(inv.booking_id) + '" style="color:#116DFF;font-weight:600">' + esc(inv.booking_id) + '</a></div></div>' : "") +
+    r("Due", inv.due_date) + r("Sent", (inv.sent_at || "").slice(0, 10)) + r("Paid at", inv.paid_at);
+  body += '</div>';
+
+  body += '<div class="card"><h2>Line items</h2><table><tr><th>Description</th><th>Qty</th><th>Each</th><th>Amount</th></tr>';
+  for (const it of items) body += '<tr><td>' + esc(it.description) + '</td><td>' + esc(it.qty) + '</td><td>' + invMoney(it.unit_cents) + '</td><td>' + invMoney(it.unit_cents * it.qty) + '</td></tr>';
+  body += '</table><div style="margin-top:10px">' + r("Subtotal", invMoney(inv.subtotal_cents)) + (inv.tax_cents ? r("Tax", invMoney(inv.tax_cents)) : "") + r("Total", invMoney(inv.total_cents)) + '</div></div>';
+
+  body += '<div class="card"><h2>Actions</h2>';
+  if (inv.hosted_url) body += '<p><a href="' + esc(inv.hosted_url) + '" target="_blank" rel="noopener" style="color:#116DFF;font-weight:600;text-decoration:none">Open the customer\'s pay page &rarr;</a>' +
+    (inv.pdf_url ? ' &nbsp;·&nbsp; <a href="' + esc(inv.pdf_url) + '" target="_blank" rel="noopener" style="color:#116DFF;font-weight:600;text-decoration:none">PDF</a>' : "") + '</p>';
+  if (inv.status !== "void" && inv.status !== "paid") {
+    body += '<form method="POST" action="/admin/invoice/' + esc(inv.id) + '/resend" style="display:inline-block;margin:0 6px 6px 0"><button>Re-text the pay link</button></form>';
+    body += '<form method="POST" action="/admin/invoice/' + esc(inv.id) + '/void" style="display:inline-block" onsubmit="return confirm(\'Void this invoice? The customer will no longer be able to pay it.\')"><button style="background:#c0392b">Void</button></form>';
+  } else if (inv.status === "paid") {
+    body += '<p class="muted">Paid. Refunds are handled in the Stripe dashboard.</p>';
+  } else {
+    body += '<p class="muted">This invoice was voided.</p>';
+  }
+  body += '</div>';
+
+  if (inv.terms) body += '<div class="card"><h2>Terms as sent</h2><p class="muted" style="white-space:pre-wrap">' + esc(inv.terms) + '</p></div>';
   return page(body);
 }

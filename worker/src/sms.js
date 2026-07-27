@@ -24,6 +24,12 @@ async function sendSms(S, number, message) {
   return post(S.ghlSmsUrl, { number: to, message });
 }
 
+// Invoice pay-link text. The message is fully composed by invoice.js (it owns the
+// {invoice_link} token), so this is just the primitive under a named entry point.
+export async function sendInvoiceSms(S, number, message) {
+  return sendSms(S, number, message);
+}
+
 // Token values for owner-facing templates.
 function ownerVals(S, b) {
   const adminLink = (S.publicBaseUrl || "").replace(/\/+$/, "") + "/admin/booking/" + b.id;
