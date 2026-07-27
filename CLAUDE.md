@@ -2,7 +2,18 @@
 
 > Read this at the START of every session. Update it before you finish.
 
-Last updated: 2026-07-07 (worker v 78168539 — full-build review + fix pass). STRIPE IS LIVE
+Last updated: 2026-07-27 (worker v 96f1f01d — deploy-readiness pass). DOMAIN CUTOVER IS
+DELIBERATELY HELD until after the 8th (owner's call: don't miss job bookings mid-switch).
+NEW this pass: (1) FOOTER LOGO FIXED — build_deploy.py never scanned `srcset=`, so
+assets/triple-r-dump-foot.webp was never copied into deploy/ and 404'd live; <picture>
+cannot fall back to the PNG on a 404, so the footer rendered as a broken image. Scanner
+fixed + asset shipped. (2) TURNSTILE REMOVED from /book (dead widget, error 400020),
+REPLACED by an off-screen honeypot field `trd_hp`; verifyTurnstile() kept server-side for
+re-enable after cutover. Honeypot fails LOUDLY (tells the customer to call) — never a fake
+confirmation. (3) Repo hygiene: .gitattributes pins binaries (core.autocrlf=true),
+.gitignore covers deploy/ + .wrangler + logs, and the live-but-uncommitted index.html
+/book links are finally committed. STILL BLOCKED ON JOSEPH: his real phone for owner_phone.
+Prior pass below (2026-07-07, worker v 78168539 — full-build review + fix pass). STRIPE IS LIVE
 (CMS mode=Live, require_payment ON, cards saved for off-session damage charges). NEW this
 pass: (1) expireStaleHolds now ASKS STRIPE before cancelling a stale hold — the
 charged-but-cancelled gap is closed (paid -> markPaid, confirmation fires); (2) Checkout
@@ -147,16 +158,18 @@ domain/DNS until the final cutover (the last step in the whole project).
   STRIPE_SECRET_KEY_LIVE (`rk_live_`, set + VERIFIED 2026-06-26; came from .env `new-stripe-token`).
   TURNSTILE_SECRET was set then DELETED 2026-06-26 (Turnstile OFF). NOT set: STRIPE_WEBHOOK_SECRET[_LIVE]
   (whsec optional — confirmation is via the /booked redirect). worker/.dev.vars holds local copies.
-- Turnstile (bot protection on /book): code in place but CURRENTLY OFF and unresolved. TWO
-  sitekeys tried (`0x4AAAAAAAAADrLvT9zIQddMdOb` then `0x4AAAAADrLvT9zIQddMdOb`, latter now in
-  page.js) — BOTH error 400020 in the browser (widget never renders an iframe) on the
-  workers.dev domain. Disabled safely: TURNSTILE_SECRET deleted (verifyTurnstile no-ops) +
-  client guard resilient (only blocks if a Turnstile iframe actually rendered, so the broken
-  widget can't block bookings). DECISION PENDING: (a) retry Turnstile AFTER domain cutover
-  (workers.dev is a public-suffix domain — may be the cause), or (b) DROP Turnstile + add a
-  honeypot field instead (recommended — quote-form spam is the only real risk). The dead
-  widget+script still load on /book (invisible, console 400020) — remove if going honeypot.
-  verifyTurnstile() in index.js gates /api/book.
+- Turnstile: RESOLVED 2026-07-27 — went the honeypot route. The widget + script are GONE
+  from page.js (two sitekeys were tried, `0x4AAAAAAAAADrLvT9zIQddMdOb` then
+  `0x4AAAAADrLvT9zIQddMdOb`; BOTH error 400020 on workers.dev, likely because it is a
+  public-suffix domain). Replaced by an off-screen honeypot input `trd_hp` on both the
+  residential and commercial forms; isBotSubmission() in index.js rejects any non-empty
+  value on /api/book. verifyTurnstile() is INTENTIONALLY KEPT (no-ops with no secret) so
+  Turnstile can be switched back on after the domain cutover by re-adding the widget +
+  setting TURNSTILE_SECRET — worth retrying then, since a real domain may fix 400020.
+  GOTCHA: the honeypot field is deliberately NOT named website/url/company — password
+  managers autofill those, and a false positive costs a real job. It also fails LOUDLY
+  ("please call us") rather than faking success, so a misfire can't silently eat a booking.
+  Still NO rate limiting on /api/book or /admin/login.
 - GHL SMS webhook (LIVE in D1 settings as of 2026-06-25): trigger id ends ...b0039c7f...
   (older ids ...0b90a794... and ...e05f015d... are STALE). Configurable in the CMS.
 - owner_phone in D1 = Kellan's TEST number 3852004532 - SWAP to Joseph's number at go-live.
@@ -220,14 +233,29 @@ domain/DNS until the final cutover (the last step in the whole project).
 - PICKUP reminder (client + owner): only a DELIVERY reminder exists. Needs a
   `pickup_reminder_sent_at` col + reminders.js logic + templates.
 - SMS COPY pass: review/tighten all template wording (proposed copy is in the chat plan).
-- GO LIVE (remaining): [DONE: live key set+verified, CMS=Live, saved cards]. STILL TO DO ->
-  (1) swap owner_phone in CMS to Joseph's real number (currently test number 3852004532, or no
-  owner texts); (2) roll the OLD exposed rk_live key in Stripe (new one is what's set); (3)
-  decide Turnstile (drop+honeypot, or fix after domain); (4) domain cutover off Wix: when the
-  domain is chosen, update SITE_ORIGIN (wrangler var -> needs redeploy) AND the CMS "Public base
-  URL" so Stripe redirects + admin/review links use the real domain (FINAL step).
-- (2026-07-07) D1 bookings table verified EMPTY — TRD-B3Q5ZW and all other test rows gone;
-  the review-fix smoke booking TRD-5ZRGZU was deleted after verification.
+- INVOICING (NEW ask from Joseph, 2026-07-27, via text): he wants to send INVOICES with a
+  pay link, choose the due date, add his own line items, and have terms w/ late-fee
+  penalties at the bottom. NOTHING like this exists — today it is prepaid Checkout
+  (residential) or quote-request only (commercial); no invoice object, no due dates, no
+  line items, no late fees. This is a real build (Stripe Invoicing API + an admin compose
+  screen + a terms/late-fee block); it is NOT a config toggle. He called it "the main thing
+  I need". Not started — scope it before promising a date.
+- GO LIVE (remaining): [DONE: live key set+verified, CMS=Live, saved cards, Turnstile
+  decided (honeypot), footer logo fixed]. STILL TO DO ->
+  (1) swap owner_phone in CMS to Joseph's real number (STILL the test number 3852004532 =>
+  Joseph gets NO texts on bookings/reminders/low-rating alerts; this is the #1 blocker and
+  is blocked on him giving us the number — the public business line 801-564-3164 was NOT
+  assumed, since it may not be the phone that receives SMS); (2) roll the OLD exposed
+  rk_live key in Stripe (new one is what's set) — must be done in the Stripe dashboard by
+  Kellan, not from here; (3) domain cutover off Wix, HELD BY OWNER UNTIL AFTER THE 8th so no
+  job bookings are missed mid-switch: update SITE_ORIGIN (wrangler var -> needs redeploy)
+  AND the CMS "Public base URL" together, or Stripe redirects + admin/review links break.
+- (2026-07-27) D1 bookings table verified EMPTY again — deleted the 7/10 junk row
+  TRD-DN86AB (someone poked the live form: gibberish name, cancelled, never paid) and this
+  pass's smoke booking TRD-U2QAAG. Both had paid_at NULL; no real customer money involved.
+- MEDIA NOT COMMITTED: ~144MB of photos/video sit uncommitted (61MB of modified tracked
+  photos swapped to full-res originals + 83MB untracked, incl. a large .mp4). Deliberately
+  left out of the 2026-07-27 commit — decide Git LFS vs keeping them out of the repo.
 - GHL workflows (Joseph's side): SMS workflow relays {{message}}->{{number}} (CONFIRMED
   working). Still needs branches/handling per text if he wants different routing.
 - Branded email (separate GHL email webhook + SPF/DKIM) - deferred to the domain.
@@ -243,6 +271,18 @@ domain/DNS until the final cutover (the last step in the whole project).
   deploy/.assetsignore must list `.git` + `.assetsignore` so the nested git repo isn't
   uploaded; build_deploy.py wipes it (recreate). It FAILS on deploy/.git (read-only); move
   it aside to rebuild. Excludes absolute hrefs like `/book` in its ref regex - keep that.
+- BUILD_DEPLOY REF SCANNING (bit us 2026-07-27): the script only copies assets it can FIND
+  by regex in index.html. It scans `src=`, `href=`, `url('...')` and — since this pass —
+  `srcset=`. A file referenced ONLY via an attribute the regex misses is silently skipped
+  (no error, no warning) and 404s live. That is exactly how the footer logo broke: it was
+  srcset-only, while the nav/icon webps survived only because they ALSO have
+  `<link rel=preload href=...>` tags. If you add a new way of referencing an asset
+  (`data-src`, `<video src>`, CSS `image-set()`, double-quoted `url("...")`), TEACH THE
+  SCANNER, then verify every ref resolves inside deploy/ BEFORE deploying.
+- EDGE CACHES 404s: after shipping a previously-missing asset the plain URL can keep
+  returning the cached 404. Re-test with `?cb=<random>` or `Cache-Control: no-cache` before
+  concluding the deploy failed. Also, `wrangler deploy` printing "No files to upload" is NOT
+  a failure — asset blobs are content-addressed, so an existing hash is simply not re-sent.
 - WRANGLER AUTH: the .env CLOUDFLARE_TOKEN is account-scoped; `wrangler whoami` and
   `wrangler d1 execute --remote` fail (code 10000). FIX: also export
   CLOUDFLARE_ACCOUNT_ID=5354e954dbd0016154db6b16b257160a -> `wrangler deploy` + `secret put`
