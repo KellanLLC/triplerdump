@@ -242,10 +242,11 @@ domain/DNS until the final cutover (the last step in the whole project).
   I need". Not started — scope it before promising a date.
 - GO LIVE (remaining): [DONE: live key set+verified, CMS=Live, saved cards, Turnstile
   decided (honeypot), footer logo fixed]. STILL TO DO ->
-  (1) swap owner_phone in CMS to Joseph's real number (STILL the test number 3852004532 =>
-  Joseph gets NO texts on bookings/reminders/low-rating alerts; this is the #1 blocker and
-  is blocked on him giving us the number — the public business line 801-564-3164 was NOT
-  assumed, since it may not be the phone that receives SMS); (2) roll the OLD exposed
+  (1) [DONE 2026-07-27] owner_phone swapped off the test number 3852004532 to 8015643164.
+  CONFIRMED by Kellan: 801-564-3164 is Joseph's PERSONAL CELL (not merely the public
+  business line), so it does receive SMS and is the right target for booking / reminder /
+  low-rating alerts. NOT yet proven end-to-end — no test text has actually been relayed
+  through GHL to that number, so do that before trusting it; (2) roll the OLD exposed
   rk_live key in Stripe (new one is what's set) — must be done in the Stripe dashboard by
   Kellan, not from here; (3) domain cutover off Wix, HELD BY OWNER UNTIL AFTER THE 8th so no
   job bookings are missed mid-switch: update SITE_ORIGIN (wrangler var -> needs redeploy)
