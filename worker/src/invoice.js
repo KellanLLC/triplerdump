@@ -125,22 +125,29 @@ export async function createInvoice(env, S, data) {
   if (data.terms) invParams.set("footer", data.terms);
   if (data.booking_id) invParams.set("metadata[booking_id]", data.booking_id);
   invParams.set("payment_settings[payment_method_types][0]", "card");
-  // Keep the card for later off-session charges (overages, trip fees, damage) as
-  // Checkout does. NOTE: this is NOT the same parameter Checkout uses, so the saved
-  // card must be verified against a real Customer before anyone relies on it.
-  invParams.set("payment_settings[payment_method_options][card][setup_future_usage]", "off_session");
+  // NO setup_future_usage here. Checkout saves a card via
+  // payment_intent_data[setup_future_usage] (stripe.js), but that is CHECKOUT-ONLY:
+  // Stripe rejects payment_settings[payment_method_options][card][setup_future_usage]
+  // on an invoice with "Received unknown parameter" (verified against the live API
+  // 2026-07-27 — sending it made EVERY invoice fail). So an INVOICED job does not
+  // reliably leave a card on file the way a booked-and-prepaid job does. Do not
+  // re-add this without testing a real paid invoice first.
 
   const inv = await stripeCall(key, "invoices", invParams);
   if (!inv.ok) return { ok: false, error: inv.message };
   const stripeInvoiceId = inv.data.id;
 
   // 3. Line items, bound to the draft.
+  // NOTE: invoiceitems does NOT accept `unit_amount` on this API version ("Received
+  // unknown parameter: unit_amount. Did you mean unit_amount_decimal?", verified
+  // 2026-07-27). Use unit_amount_decimal WITH quantity so the invoice shows a real
+  // "2 x $75.00" line; a flat `amount` would collapse qty into one lump sum.
   for (const it of items) {
     const r = await stripeCall(key, "invoiceitems", {
       customer: customerId,
       invoice: stripeInvoiceId,
       currency: "usd",
-      unit_amount: String(it.unit_cents),
+      unit_amount_decimal: String(it.unit_cents),
       quantity: String(it.qty),
       description: it.description,
     });
@@ -152,7 +159,7 @@ export async function createInvoice(env, S, data) {
       customer: customerId,
       invoice: stripeInvoiceId,
       currency: "usd",
-      unit_amount: String(tax_cents),
+      unit_amount_decimal: String(tax_cents),
       quantity: "1",
       description: "Utah sales tax (" + pct + "%)",
     });
