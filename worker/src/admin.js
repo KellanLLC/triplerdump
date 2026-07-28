@@ -71,6 +71,14 @@ const page = (body) => '<!DOCTYPE html><html lang="en"><head><meta charset="utf-
 'details.adv summary{cursor:pointer;font-weight:700;color:#5a6b7d}' +
 // Save stays reachable without hunting for the end of a long form.
 '.savebar{position:sticky;bottom:0;background:#eef2f7;padding:12px 0;margin-top:8px;border-top:1px solid #dde5ef}' +
+// Tabs: one job per screen instead of one very long page. type="button" on each so
+// they can never submit the form. Without JS every panel simply stays visible, so
+// the page degrades to the old long-scroll version rather than showing nothing.
+'.tabs{display:flex;gap:4px;overflow-x:auto;margin:20px 0 0;padding:0 0 1px}' +
+'.tabs button{background:#fff;color:#334155;border:1px solid #dde5ef;border-radius:10px;padding:11px 15px;font-size:15px;font-weight:600;white-space:nowrap;cursor:pointer}' +
+'.tabs button[aria-selected="true"]{background:#116DFF;color:#fff;border-color:#116DFF}' +
+'.tabs button:hover{border-color:#116DFF}' +
+'.panel>.card:first-child{margin-top:14px}' +
 '@media(max-width:520px){.row>div{min-width:100%}}' +
 '</style></head><body><main class="wrap">' + body + '</main></body></html>';
 
@@ -96,20 +104,23 @@ function cashField(name, label, cents, hint) {
 export function renderPanel(S, bookings, lowReviews, saved) {
   const t = S.templates || {};
   const f = S.fees || {};
-  let body = '<div class="top"><h1>Triple R Dump</h1><form method="POST" action="/admin/logout"><button style="background:#64748b">Log out</button></form></div>';
-  body += '<p class="what" style="margin-top:6px">Change anything here and press Save. It goes live right away.</p>';
-  if (saved) body += '<div class="ok"><b>Saved.</b> Your changes are live on the website now.</div>';
-  body += '<form method="POST" action="/admin/save">';
+  // One panel per job. Collected first, then rendered as tabs, so the owner sees a
+  // single short screen instead of scrolling past six sections he didn't come for.
+  const panels = [];
+  const sec = (id, label, html, readonly) => panels.push({ id, label, html, readonly });
 
-  body += '<div class="card"><h2>What you charge</h2>' +
+  let body = '<div class="top"><h1>Triple R Dump</h1><form method="POST" action="/admin/logout"><button style="background:#64748b">Log out</button></form></div>';
+  if (saved) body += '<div class="ok" style="margin-top:12px"><b>Saved.</b> Your changes are live on the website now.</div>';
+
+  sec("prices", "Prices", '<div class="card"><h2>What you charge</h2>' +
     '<p class="what">Your bin prices. First box is a 1&ndash;3 day rental, second is 4&ndash;7 days.</p>' +
     '<div class="row">' + priceField(S, "15", "1-3") + priceField(S, "15", "4-7") + '</div>' +
     '<div class="row">' + priceField(S, "20", "1-3") + priceField(S, "20", "4-7") + '</div>' +
     '<div class="row">' + priceField(S, "25", "1-3") + priceField(S, "25", "4-7") + '</div>' +
     '<label>Sales tax<span class="hint">Percent added at checkout. Utah is 7.5.</span></label>' +
-    '<input name="tax" inputmode="decimal" value="' + esc((S.taxRate * 100).toFixed(3).replace(/\.?0+$/, "")) + '"></div>';
+    '<input name="tax" inputmode="decimal" value="' + esc((S.taxRate * 100).toFixed(3).replace(/\.?0+$/, "")) + '"></div>');
 
-  body += '<div class="card"><h2>Extra fees</h2>' +
+  sec("fees", "Extra fees", '<div class="card"><h2>Extra fees</h2>' +
     '<p class="what">Charges on top of the rental. <b>These write your Terms page automatically</b> &mdash; change a number here and the website wording updates to match.</p>' +
     '<div class="row">' +
       cashField("fee_dry_run", "Wasted trip", f.dryRun, "Driver shows up but can't do the job: blocked, locked gate, bin too full.") +
@@ -132,30 +143,30 @@ export function renderPanel(S, bookings, lowReviews, saved) {
     '<div class="row"><div><label>15 yard</label><input name="tons_15" inputmode="decimal" value="' + esc(f.tons15) + '"></div>' +
       '<div><label>20 yard</label><input name="tons_20" inputmode="decimal" value="' + esc(f.tons20) + '"></div>' +
       '<div><label>25 yard</label><input name="tons_25" inputmode="decimal" value="' + esc(f.tons25) + '"></div></div>' +
-    '<p class="muted" style="margin-top:14px"><a href="/terms" target="_blank" rel="noopener" style="color:#116DFF;font-weight:600;text-decoration:none">See your Terms page &rarr;</a></p></div>';
+    '<p class="muted" style="margin-top:14px"><a href="/terms" target="_blank" rel="noopener" style="color:#116DFF;font-weight:600;text-decoration:none">See your Terms page &rarr;</a></p></div>');
 
-  body += '<div class="card"><h2>How many bins you have</h2>' +
+  sec("bins", "Bins", '<div class="card"><h2>How many bins you have</h2>' +
     '<p class="what">Stops the website from booking a bin you don\'t have free that day.</p>' +
     '<div class="row"><div><label>15 yard</label><input name="inv_15" inputmode="numeric" value="' + esc(S.bins["15"].inventory) + '"></div>' +
     '<div><label>20 yard</label><input name="inv_20" inputmode="numeric" value="' + esc(S.bins["20"].inventory) + '"></div>' +
     '<div><label>25 yard</label><input name="inv_25" inputmode="numeric" value="' + esc(S.bins["25"].inventory) + '"></div>' +
-    '<div><label>Most out at once<span class="hint">All sizes combined.</span></label><input name="cap" inputmode="numeric" value="' + esc(S.totalCap) + '"></div></div></div>';
+    '<div><label>Most out at once<span class="hint">All sizes combined.</span></label><input name="cap" inputmode="numeric" value="' + esc(S.totalCap) + '"></div></div></div>');
 
-  body += '<div class="card"><h2>Your alerts</h2>' +
+  sec("alerts", "Alerts", '<div class="card"><h2>Your alerts</h2>' +
     '<p class="what">Where the website texts you when something happens.</p>' +
     '<label>Your mobile number</label><input name="owner_phone" inputmode="tel" value="' + esc(S.ownerPhone) + '">' +
     '<label style="font-weight:400;margin-top:14px"><input type="checkbox" name="notify_owner_bookings" style="width:auto"' + (S.notifyOwnerBookings !== false ? " checked" : "") + '> Text me when someone books</label>' +
     '<label style="font-weight:400;margin-top:8px"><input type="checkbox" name="notify_owner_reminders" style="width:auto"' + (S.notifyOwnerReminders !== false ? " checked" : "") + '> Text me the day before a delivery</label>' +
-    '<label style="font-weight:400;margin-top:8px"><input type="checkbox" name="require_payment" style="width:auto"' + (S.requirePayment ? " checked" : "") + '> Customers must pay online to book</label></div>';
+    '<label style="font-weight:400;margin-top:8px"><input type="checkbox" name="require_payment" style="width:auto"' + (S.requirePayment ? " checked" : "") + '> Customers must pay online to book</label></div>');
 
-  body += '<div class="card"><h2>Reviews</h2>' +
+  sec("reviews", "Reviews", '<div class="card"><h2>Reviews</h2>' +
     '<p class="what">After you mark a job complete, the customer gets a text asking how it went.</p>' +
     '<label>Your Google review link</label><input name="review_link" value="' + esc(S.reviewLink) + '">' +
     '<div class="row"><div><label>Who gets sent to Google<span class="hint">Gated sends only happy customers; unhappy ones reach you privately instead.</span></label>' +
     '<select name="review_mode"><option value="gated"' + (S.reviewMode === "gated" ? " selected" : "") + '>Only happy customers</option><option value="open"' + (S.reviewMode === "open" ? " selected" : "") + '>Everyone</option></select></div>' +
-    '<div><label>Stars needed<span class="hint">This many or more counts as happy.</span></label><input name="threshold" inputmode="numeric" value="' + esc(S.reviewThreshold) + '"></div></div></div>';
+    '<div><label>Stars needed<span class="hint">This many or more counts as happy.</span></label><input name="threshold" inputmode="numeric" value="' + esc(S.reviewThreshold) + '"></div></div></div>');
 
-  body += '<div class="card"><h2>Text messages</h2>' +
+  sec("texts", "Texts", '<div class="card"><h2>Text messages</h2>' +
     '<p class="what">The wording of every text the website sends. Anything in {curly braces} gets swapped for the real detail, so leave those as they are.</p>' +
     '<details class="adv" style="margin:0 0 4px"><summary>What each {token} means</summary>' +
     '<p class="muted" style="margin:8px 0 0">Shared tokens: {name} {customer_phone} {id} {item} {length} {bin} {tier} {date} {pickup} {address} {total} {account} {note}. <b>{item}</b> = what they booked (20yd bin / dump trailer / junk removal / bin switch) &mdash; prefer it over {bin}yd, which is blank for non-dumpster services. {length} = rental length. {total} = amount charged incl. any refundable deposit. {phone} = your business number, {customer_phone} = the customer\'s. {note} = the customer\'s "Anything else?" message. <b>Link tokens differ by audience:</b> owner texts use {admin_link} (the /admin booking page); the review request uses {review_link} (the customer review page).</p></details>' +
@@ -170,36 +181,73 @@ export function renderPanel(S, bookings, lowReviews, saved) {
     '<label>Low rating alert <span class="muted">(adds {rating} {feedback}; use {admin_link})</span></label><textarea name="tpl_low_rating">' + esc(t.low_rating) + '</textarea>' +
     '<h3>Invoices</h3>' +
     '<label>Invoice text <span class="muted">(adds {number} {total} {due}; use {invoice_link})</span></label><textarea name="tpl_invoice">' + esc(t.invoice) + '</textarea>' +
-    '</div>';
+    '</div>');
 
   // Everything that breaks the site if guessed at, kept out of the way but reachable.
-  body += '<details class="adv"><summary>Technical settings &mdash; leave these alone</summary>' +
-    '<p class="muted" style="margin:10px 0 0">Set up by your web guy. Changing these can stop bookings, texts or payments from working.</p>' +
+  // Its own tab now, so no collapsed <details> — clicking the tab would have shown
+  // nothing but a grey strip. Kept visually cool and clearly labelled as hands-off.
+  sec("advanced", "Advanced", '<div class="card" style="border-color:#e3b7b7;background:#fffaf9">' +
+    '<h2>Technical settings</h2>' +
+    '<p class="what"><b>Leave these alone.</b> Your web guy set them up. Changing them can stop bookings, texts or payments from working.</p>' +
     '<label>Text-message service webhook</label><input name="sms_url" value="' + esc(S.ghlSmsUrl) + '">' +
     '<label>Review webhook <span class="muted">(blank = use the one above)</span></label><input name="review_url" value="' + esc(S.ghlReviewUrl) + '">' +
     '<label>Website address used in links</label><input name="base_url" value="' + esc(S.publicBaseUrl) + '">' +
     '<label>Card payments mode</label><select name="stripe_mode"><option value="sandbox"' + (S.stripeMode !== "live" ? " selected" : "") + '>Test cards only</option><option value="live"' + (S.stripeMode === "live" ? " selected" : "") + '>Live &mdash; real payments</option></select>' +
-    '</details>';
+    '</div>');
 
-  body += '<div class="card"><h2>Invoices</h2>' +
+  sec("invoices", "Invoices", '<div class="card"><h2>Invoices</h2>' +
     '<p class="what">Defaults for every invoice you send. You can still change them on each one.</p>' +
     '<div class="row"><div><label>Due in<span class="hint">Days from when you send it.</span></label><input name="invoice_due_days" inputmode="numeric" value="' + esc(S.invoiceDueDays) + '"></div>' +
     '<div><label>Sales tax</label><label style="font-weight:400;margin-top:10px"><input type="checkbox" name="invoice_tax_default" style="width:auto"' + (S.invoiceTaxDefault !== false ? " checked" : "") + '> Add tax automatically</label></div></div>' +
     '<label>Wording at the bottom of every invoice<span class="hint">Your payment terms and late fee. This prints under the line items.</span></label>' +
     '<textarea name="invoice_terms" style="min-height:120px">' + esc(S.invoiceTerms) + '</textarea>' +
-    '<p class="muted">If you change the late charge above, update this wording to match.</p></div>';
+    '<p class="muted">If you change the late charge above, update this wording to match.</p></div>');
 
-  body += '<div class="savebar"><button>Save changes</button></div></form>';
+  // Read-only tab: the save bar is hidden here, since there is nothing to save.
+  let activity = '<div class="card"><div class="top"><h2 style="border:0;margin:0">Recent bookings</h2><span><a href="/admin/invoices" style="color:#116DFF;font-weight:600;text-decoration:none">Invoices</a> &nbsp;&middot;&nbsp; <a href="/admin/bookings" style="color:#116DFF;font-weight:600;text-decoration:none">Manage all &rarr;</a></span></div><table><tr><th>Ref</th><th>Status</th><th>Size</th><th>Drop</th><th>Customer</th><th>Total</th></tr>';
+  for (const b of (bookings || [])) activity += '<tr><td>' + esc(b.id) + '</td><td>' + esc(b.status) + '</td><td>' + esc(b.bin_size) + 'yd</td><td>' + esc(b.delivery_date) + '</td><td>' + esc(b.customer_name) + '</td><td>$' + ((b.amount_cents || 0) / 100).toFixed(2) + '</td></tr>';
+  if (!bookings || !bookings.length) activity += '<tr><td colspan="6" class="muted">No bookings yet.</td></tr>';
+  activity += '</table></div>';
 
-  body += '<div class="card"><div class="top"><h2 style="border:0;margin:0">Recent bookings</h2><span><a href="/admin/invoices" style="color:#116DFF;font-weight:600;text-decoration:none">Invoices</a> &nbsp;&middot;&nbsp; <a href="/admin/bookings" style="color:#116DFF;font-weight:600;text-decoration:none">Manage all &rarr;</a></span></div><table><tr><th>Ref</th><th>Status</th><th>Size</th><th>Drop</th><th>Customer</th><th>Total</th></tr>';
-  for (const b of (bookings || [])) body += '<tr><td>' + esc(b.id) + '</td><td>' + esc(b.status) + '</td><td>' + esc(b.bin_size) + 'yd</td><td>' + esc(b.delivery_date) + '</td><td>' + esc(b.customer_name) + '</td><td>$' + ((b.amount_cents || 0) / 100).toFixed(2) + '</td></tr>';
-  if (!bookings || !bookings.length) body += '<tr><td colspan="6" class="muted">No bookings yet.</td></tr>';
-  body += '</table></div>';
+  activity += '<div class="card"><h2>Ratings &amp; feedback</h2><table><tr><th>When</th><th>Stars</th><th>Booking</th><th>Feedback</th></tr>';
+  for (const r of (lowReviews || [])) activity += '<tr><td>' + esc((r.created_at || "").slice(0, 10)) + '</td><td>' + esc(r.rating) + '</td><td>' + esc(r.booking_id) + '</td><td>' + esc(r.feedback) + '</td></tr>';
+  if (!lowReviews || !lowReviews.length) activity += '<tr><td colspan="4" class="muted">None.</td></tr>';
+  activity += '</table></div>';
+  sec("activity", "Bookings", activity, true);
 
-  body += '<div class="card"><h2>Ratings &amp; feedback</h2><table><tr><th>When</th><th>Stars</th><th>Booking</th><th>Feedback</th></tr>';
-  for (const r of (lowReviews || [])) body += '<tr><td>' + esc((r.created_at || "").slice(0, 10)) + '</td><td>' + esc(r.rating) + '</td><td>' + esc(r.booking_id) + '</td><td>' + esc(r.feedback) + '</td></tr>';
-  if (!lowReviews || !lowReviews.length) body += '<tr><td colspan="4" class="muted">None.</td></tr>';
-  body += '</table></div>';
+  // Tab order is what he reaches for most, first. "Advanced" is deliberately last.
+  const ORDER = ["prices", "fees", "bins", "invoices", "alerts", "reviews", "texts", "activity", "advanced"];
+  panels.sort((a, b) => ORDER.indexOf(a.id) - ORDER.indexOf(b.id));
+
+  // Tab bar, then every panel. The panels all live inside ONE form, so Save writes
+  // every setting at once — a per-tab form would blank out the tabs not submitted.
+  body += '<div class="tabs" role="tablist">';
+  for (const p of panels) {
+    body += '<button type="button" role="tab" id="t-' + p.id + '" aria-controls="p-' + p.id + '" aria-selected="false" data-p="' + p.id + '">' + esc(p.label) + '</button>';
+  }
+  body += '</div>';
+
+  body += '<form method="POST" action="/admin/save">';
+  for (const p of panels) {
+    body += '<section class="panel" id="p-' + p.id + '" role="tabpanel" aria-labelledby="t-' + p.id + '"' + (p.readonly ? ' data-readonly="1"' : "") + '>' + p.html + '</section>';
+  }
+  body += '<div class="savebar" id="savebar"><button>Save changes</button></div></form>';
+
+  // Progressive enhancement: panels are visible by default, so with no JS this is
+  // simply the old long page. JS only ever HIDES, never reveals, so a script failure
+  // can never leave the owner staring at an empty screen.
+  body += '<script>(function(){' +
+    'var tabs=[].slice.call(document.querySelectorAll(".tabs button"));' +
+    'var bar=document.getElementById("savebar");if(!tabs.length)return;' +
+    'function show(id){' +
+      'tabs.forEach(function(t){var on=t.dataset.p===id;t.setAttribute("aria-selected",on?"true":"false");' +
+        'var p=document.getElementById("p-"+t.dataset.p);if(p)p.hidden=!on;' +
+        'if(on&&bar)bar.style.display=p&&p.dataset.readonly?"none":"";});' +
+      'try{localStorage.setItem("trdTab",id);}catch(e){}}' +
+    'tabs.forEach(function(t){t.addEventListener("click",function(){show(t.dataset.p);});});' +
+    'var start=tabs[0].dataset.p;try{var s=localStorage.getItem("trdTab");' +
+      'if(s&&document.getElementById("p-"+s))start=s;}catch(e){}' +
+    'show(start);})();</script>';
 
   return page(body);
 }
