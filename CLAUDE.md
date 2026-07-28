@@ -226,6 +226,38 @@ domain/DNS until the final cutover (the last step in the whole project).
   rate limiting on /admin/login or /api/book (ties into the Turnstile-vs-honeypot decision);
   /terms conflicting $ amounts still need Joseph; CMS empty-template = silently disabled SMS.
 
+## Invoicing (built 2026-07-27/28) — VERIFIED END TO END
+- src/invoice.js: Stripe Invoices over REST. Draft first -> invoiceitems bound to it
+  (pending_invoice_items_behavior=exclude) -> /send finalizes + emails. Confirmation is
+  webhook-free: refreshInvoiceStatus() re-reads from Stripe on admin view (same idea as
+  confirmPaidByRedirect). Admin: /admin/invoices, /admin/invoice/new (?booking=REF
+  prefills), /admin/invoice/<id> (+ /resend, /void). Public /inv/<id> -> hosted pay page.
+- TWO STRIPE PARAMS THAT DO NOT WORK ON INVOICES (each made EVERY invoice fail; found
+  only by hitting the real API, not from docs):
+  (1) `unit_amount` on invoiceitems -> "Did you mean unit_amount_decimal?". Use
+      unit_amount_decimal WITH quantity so a line reads "2 x $75.00"; a flat `amount`
+      collapses qty into one lump sum.
+  (2) payment_settings[payment_method_options][card][setup_future_usage] -> "Received
+      unknown parameter".
+- **NO CARD ON FILE FOR INVOICED JOBS** (verified in sandbox 2026-07-28). A finalized
+  send_invoice invoice has NO PaymentIntent until the customer goes to pay, so
+  setup_future_usage cannot be set after the fact either. Checkout keeps a card
+  (stripe.js), invoices do NOT. Joseph bills overages/damage on an invoiced job by
+  sending a SECOND invoice, or takes a deposit up front. Do not tell him otherwise.
+- Stripe KEY PERMISSIONS: invoicing needs Customers + Invoices + Billable Items = Write.
+  Checkout never needed them because customer_creation=always makes the Customer for you.
+  LIVE key "TRD Worker live" (...nWYn) HAS them. The restricted TEST key (...9jaJ) does
+  NOT — worker/.dev.vars now holds a plain `sk_test_` secret key instead (full access,
+  test mode only). That key was pasted in chat, so roll it when convenient.
+- Fees/terms: every $ amount on /terms renders from S.fees (CMS-editable). Joseph's
+  original text quoted TWO prices for the same four fees; reconciled to dry run $150,
+  overweight $75/ton, extension $50/day, cancellation $150, plus a NEW late fee of
+  1.5%/month after 15 days. Editing a fee rewrites every place it appears.
+- Admin CMS is TABBED (9 tabs) as of 2026-07-28, all inside ONE form — a form per tab
+  would blank every setting not submitted, since saveSettings writes each key
+  unconditionally. Panels are visible in the HTML and JS only ever HIDES them, so no-JS
+  degrades to the old long page instead of a blank screen.
+
 ## Not done / blocked (next session)
 - Review FOLLOW-UPS: initial + 3 at +24h/+24h/+48h then abandon. Needs a `review_followups`
   col + the review cron rewritten to advance the cadence (and cron freq -> hourly; it's daily

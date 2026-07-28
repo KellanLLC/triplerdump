@@ -125,13 +125,15 @@ export async function createInvoice(env, S, data) {
   if (data.terms) invParams.set("footer", data.terms);
   if (data.booking_id) invParams.set("metadata[booking_id]", data.booking_id);
   invParams.set("payment_settings[payment_method_types][0]", "card");
-  // NO setup_future_usage here. Checkout saves a card via
-  // payment_intent_data[setup_future_usage] (stripe.js), but that is CHECKOUT-ONLY:
-  // Stripe rejects payment_settings[payment_method_options][card][setup_future_usage]
-  // on an invoice with "Received unknown parameter" (verified against the live API
-  // 2026-07-27 — sending it made EVERY invoice fail). So an INVOICED job does not
-  // reliably leave a card on file the way a booked-and-prepaid job does. Do not
-  // re-add this without testing a real paid invoice first.
+  // NO setup_future_usage here, and it CANNOT be added. Verified in sandbox 2026-07-28:
+  //   1. payment_settings[payment_method_options][card][setup_future_usage] on an
+  //      invoice -> "Received unknown parameter" (sending it made EVERY invoice fail).
+  //   2. A finalized send_invoice invoice has NO PaymentIntent yet — Stripe creates it
+  //      when the customer goes to pay — so there is nothing to set it on afterwards.
+  // CONSEQUENCE, a real operational difference: an INVOICED job leaves NO reusable card
+  // on file. Checkout does (stripe.js payment_intent_data); invoices do not. Joseph
+  // cannot auto-charge overages/damage on an invoiced job — he bills those by sending a
+  // SECOND invoice. Take a deposit up front when that matters for a job.
 
   const inv = await stripeCall(key, "invoices", invParams);
   if (!inv.ok) return { ok: false, error: inv.message };
