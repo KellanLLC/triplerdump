@@ -31,14 +31,42 @@ const DEFAULT_TEMPLATES = {
   invoice: "Triple R Dump invoice {number} for {total} is ready. Due {due}. Pay here: {invoice_link}",
 };
 
-// Printed at the bottom of every invoice (Stripe `footer`). PLACEHOLDER WORDING —
-// Joseph still owes us the real late-fee percentage / grace period, so this stays
-// deliberately generic and is CMS-editable (no deploy needed to reword it).
+// Fee schedule. Joseph's supplied policy text quoted TWO different prices for the
+// same four fees; reconciled 2026-07-27 to one number each, chosen as follows:
+//   dryRun 150      - stated $150 in two of three places ($200 only in the tarping
+//                     bullet, for the same overfilled-bin trigger).
+//   overweightTon 75- stated $75/ton vs $150/ton; $50-100/ton is the going rate.
+//   extensionDay 50 - stated $50/day vs $150/day. His own tiers imply ~$8/day
+//                     marginal (15yd: $300 for 1-3 days, $325 for 4-7), so $150/day
+//                     was punitive and hard to defend in a dispute.
+//   cancelAfterDispatch 150 - was $150 "after dispatch" AND $100 "within 3 hours",
+//                     two rules that overlap in practice. Unified at $150, matching
+//                     dryRun, since both are the same real cost: a wasted truck roll.
+// latePct/lateGraceDays are NEW (no late fee existed anywhere). 1.5%/month after a
+// 15-day grace is the common contractor standard. ALL of these are CMS-editable.
+const DEFAULT_FEES = {
+  dryRun: 15000,              // wasted trip: blocked, locked, unprepared, overfilled
+  overweightTon: 7500,        // per ton over the included allowance
+  extensionDay: 5000,         // per day kept beyond the booked period
+  prohibitedItem: 20000,      // per prohibited item found in the load
+  cancelAfterDispatch: 15000, // cancelled once the truck is rolling
+  refundCutoffHours: 48,      // cancel earlier than this = full refund
+  latePct: 1.5,               // % per month on a past-due invoice balance
+  lateGraceDays: 15,          // days after the due date before it applies
+  tons15: 3, tons20: 4, tons25: 5, // weight included with each bin size
+};
+
+// Printed at the bottom of every invoice (Stripe `footer`). Uses the same fee numbers
+// as /terms so an invoice can never quote a late fee the policy page contradicts.
+// CMS-editable: reword it in /admin, no deploy needed.
 const DEFAULT_INVOICE_TERMS =
-  "Payment is due by the due date shown above. Balances not paid by the due date may be " +
-  "subject to a late fee. Returned payments, collection costs, and any weight overages, " +
-  "trip fees, or prohibited-material fines identified after service remain the customer's " +
-  "responsibility. Questions about this invoice? Call 801-564-3164.";
+  "Payment is due by the due date shown above. Balances unpaid more than " +
+  DEFAULT_FEES.lateGraceDays + " days past the due date accrue a late charge of " +
+  DEFAULT_FEES.latePct + "% per month on the outstanding amount. Weight overages ($" +
+  (DEFAULT_FEES.overweightTon / 100) + " per ton), trip fees ($" + (DEFAULT_FEES.dryRun / 100) +
+  "), and prohibited-material fines ($" + (DEFAULT_FEES.prohibitedItem / 100) +
+  " per item) identified after service remain the customer's responsibility. " +
+  "Questions about this invoice? Call 801-564-3164.";
 const DEFAULT_REVIEW_LINK = "https://search.google.com/local/writereview?placeid=ChIJc1Zhse8j7AcRxMoS_Ri7SA8";
 
 export function defaultSettings(env = {}) {
@@ -64,6 +92,11 @@ export function defaultSettings(env = {}) {
     ownerPhone: env.OWNER_PHONE || "",
     publicBaseUrl: env.SITE_ORIGIN || "",
     reminderLeadDays: 1,
+    // Every dollar amount a customer can be charged BEYOND the rental itself. These
+    // drive the /terms page, so editing one here rewrites the policy wording. That is
+    // the point: each fee now has exactly ONE source of truth, which is why the page
+    // could previously quote two different prices for the same fee.
+    fees: { ...DEFAULT_FEES },
     invoiceTerms: DEFAULT_INVOICE_TERMS,
     invoiceDueDays: 14,
     invoiceTaxDefault: true,
@@ -96,6 +129,7 @@ export async function loadSettings(env) {
   if (o.owner_phone !== undefined) s.ownerPhone = o.owner_phone;
   if (o.public_base_url) s.publicBaseUrl = o.public_base_url;
   if (o.reminder_lead_days !== undefined) s.reminderLeadDays = num(o.reminder_lead_days, s.reminderLeadDays);
+  if (o.fees) s.fees = { ...s.fees, ...o.fees };
   if (o.invoice_terms !== undefined) s.invoiceTerms = o.invoice_terms;
   if (o.invoice_due_days !== undefined) s.invoiceDueDays = num(o.invoice_due_days, s.invoiceDueDays);
   if (o.invoice_tax_default !== undefined) s.invoiceTaxDefault = o.invoice_tax_default === true;

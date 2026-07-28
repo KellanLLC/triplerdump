@@ -1,9 +1,28 @@
 // Terms / policies page at /terms. Linked from the booking form's agreement checkbox.
-// Content provided by the owner (Joseph) 2026-06-26 — transcribed verbatim.
+// Content provided by the owner (Joseph) 2026-06-26.
+//
+// 2026-07-27: every DOLLAR AMOUNT now comes from S.fees (CMS-editable) instead of
+// being typed into the prose. The original transcription quoted two different prices
+// for the same four fees — dry run $150 vs $200, overweight $75 vs $150/ton,
+// extension $50 vs $150/day, cancellation $150 vs $100 — because the same rule was
+// restated in the Terms and in the Return Policy with different numbers. A customer
+// disputing a charge could simply point at the cheaper clause. Each fee now renders
+// from ONE value, so the two sections cannot drift apart again. Edit in /admin.
 export function renderTermsPage(S) {
   const biz = (S && S.business) || {};
   const phone = biz.phone || "801-564-3164";
   const email = biz.email || "Joseph.Rodrigues@triplerdump.com";
+  const f = (S && S.fees) || {};
+  const d = (c, fallback) => "$" + Math.round((c == null ? fallback : c) / 100);
+  const dryRun = d(f.dryRun, 15000);
+  const overweight = d(f.overweightTon, 7500);
+  const extension = d(f.extensionDay, 5000);
+  const prohibited = d(f.prohibitedItem, 20000);
+  const cancelFee = d(f.cancelAfterDispatch, 15000);
+  const cutoff = f.refundCutoffHours == null ? 48 : f.refundCutoffHours;
+  const latePct = f.latePct == null ? 1.5 : f.latePct;
+  const lateDays = f.lateGraceDays == null ? 15 : f.lateGraceDays;
+  const t15 = f.tons15 == null ? 3 : f.tons15, t20 = f.tons20 == null ? 4 : f.tons20, t25 = f.tons25 == null ? 5 : f.tons25;
   return '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">' +
     '<meta name="viewport" content="width=device-width,initial-scale=1">' +
     '<title>Terms &amp; Policies - Triple R Dump</title>' +
@@ -25,14 +44,15 @@ export function renderTermsPage(S) {
     '<h2>Terms and Conditions</h2>' +
     '<h3>1. Rental Period and Fees</h3><ul>' +
     '<li><b>Standard Rental:</b> Typical rental periods last 7 days.</li>' +
-    '<li><b>Extensions:</b> Additional days beyond the agreed period are generally billed at a daily rate of $50 per day.</li>' +
-    '<li><b>Trip Fees:</b> A "Dry Run" or "Trip Fee" of $150 applies if the driver cannot deliver or pick up the dumpster due to obstructions (e.g., parked cars, locked gates, or overfilled containers).</li></ul>' +
+    '<li><b>Extensions:</b> Additional days beyond the agreed period are billed at ' + extension + ' per day.</li>' +
+    '<li><b>Trip Fees:</b> A "Dry Run" or "Trip Fee" of ' + dryRun + ' applies if the driver cannot deliver or pick up the dumpster due to obstructions (e.g., parked cars, locked gates, or overfilled containers).</li>' +
+    '<li><b>Late Payment:</b> Invoiced balances unpaid more than ' + lateDays + ' days past the due date accrue a late charge of ' + latePct + '% per month on the outstanding amount.</li></ul>' +
     '<h3>2. Loading Requirements</h3><ul>' +
     '<li><b>Fill Line:</b> Debris must be level with the top rim of the dumpster. Loading items above the "Top Off" line is illegal for transport and may result in an immediate refusal to haul or an overfilling fee.</li>' +
-    '<li><b>Weight Limits:</b> Each dumpster size includes a set weight allowance (e.g., 3 tons for a 15-yard bin, 4 tons for a 20-yard bin, 5 tons for a 25-yard bin). Overages are typically billed at $75 per ton.</li>' +
+    '<li><b>Weight Limits:</b> Each dumpster size includes a set weight allowance (' + t15 + ' tons for a 15-yard bin, ' + t20 + ' tons for a 20-yard bin, ' + t25 + ' tons for a 25-yard bin). Overages are billed at ' + overweight + ' per ton.</li>' +
     '<li><b>Distribution:</b> Weight must be evenly distributed within the container to ensure safe transport.</li></ul>' +
     '<h3>3. Prohibited Materials</h3>' +
-    '<p>Placement of the following hazardous or restricted items is strictly prohibited and will result in additional fines ($200 per item):</p><ul>' +
+    '<p>Placement of the following hazardous or restricted items is strictly prohibited and will result in additional fines (' + prohibited + ' per item):</p><ul>' +
     '<li><b>Hazardous Waste:</b> Chemicals, asbestos, pesticides, herbicides, and radioactive material.</li>' +
     '<li><b>Liquids:</b> Wet paint, motor oil, fuels, and antifreeze.</li>' +
     '<li><b>Electronics:</b> TVs, monitors, computers, and batteries (especially lithium-ion).</li>' +
@@ -47,17 +67,17 @@ export function renderTermsPage(S) {
 
     '<h2>Return Policy</h2>' +
     '<h3>1. Cancellation &amp; Refund Policy</h3><ul>' +
-    '<li><b>Before Dispatch:</b> Cancellations made at least 48 hours before the scheduled delivery date are eligible for a full refund.</li>' +
-    '<li><b>After Dispatch:</b> Cancellations made after the truck has left our facility but before delivery are subject to a $150 cancellation fee.</li>' +
+    '<li><b>Before Dispatch:</b> Cancellations made at least ' + cutoff + ' hours before the scheduled delivery date are eligible for a full refund.</li>' +
+    '<li><b>After Dispatch:</b> Cancellations made after the truck has left our facility but before delivery are subject to a ' + cancelFee + ' cancellation fee.</li>' +
     '<li><b>After Delivery:</b> No refunds will be issued once the dumpster has been delivered to the site.</li></ul>' +
     '<h3>2. Rental Duration &amp; Extension</h3>' +
-    '<p>Our standard rental period is 1-30 days (depending on how many days you ordered). If you need to keep the dumpster longer, please contact us at least 24 hours before the scheduled pickup to avoid automatic daily fee charges of $150 per day.</p>' +
+    '<p>Our standard rental period is 1-30 days (depending on how many days you ordered). If you need to keep the dumpster longer, please contact us at least 24 hours before the scheduled pickup to avoid automatic daily charges of ' + extension + ' per day.</p>' +
     '<h3>3. Dump &amp; Return (Swap) Services</h3>' +
     '<p>If you fill your dumpster before your project is finished, you may request a swap. A swap involves picking up the full container and returning an empty one. This service is treated as a new rental, and the full original rental price will apply.</p>' +
     '<h3>4. Overloading &amp; Proper Loading</h3><ul>' +
     '<li><b>Fill Level:</b> Waste must be loaded level with the top rim of the dumpster. Do not exceed the top rail.</li>' +
-    '<li><b>Tarping:</b> For safety, we cannot transport dumpsters that are overfilled. Drivers will not pick up overfilled containers, resulting in a Dry Run Fee of $200.</li>' +
-    '<li><b>Weight Limits:</b> Exceeding the allowed weight capacity will result in overweight charges of $150 per ton.</li>' +
+    '<li><b>Tarping:</b> For safety, we cannot transport dumpsters that are overfilled. Drivers will not pick up overfilled containers, resulting in a Dry Run Fee of ' + dryRun + '.</li>' +
+    '<li><b>Weight Limits:</b> Exceeding the allowed weight capacity will result in overweight charges of ' + overweight + ' per ton.</li>' +
     '<li><b>Heavy Materials:</b> Concrete, dirt, brick, or sand must be in a small, designated container (e.g., 10-yard) to avoid exceeding weight limits.</li></ul>' +
     '<h3>5. Prohibited Items (No-Returns)</h3>' +
     '<p>The following items are prohibited and cannot be returned with the container. If found, these items will be removed at your expense, or additional penalties will apply:</p><ul>' +
@@ -68,11 +88,16 @@ export function renderTermsPage(S) {
     '<li>We will make every effort to place the dumpster exactly where you want it. Our drivers are not responsible for damage to driveways, lawns, or sidewalks due to the weight of the truck/container.</li>' +
     '<li><b>Unauthorized Movement:</b> Do not attempt to move the dumpster after it is placed. Doing so may cause damage to the container or property, incurring additional fees.</li></ul>' +
     '<h3>7. Dry Run / Trip Fees</h3>' +
-    '<p>A Dry Run Fee of $150 will be charged if the driver arrives for delivery or pickup but cannot complete the service due to: the container being blocked (e.g., by cars); the container being overfilled/incorrectly loaded; or the site not being prepared.</p>' +
+    '<p>A Dry Run Fee of ' + dryRun + ' will be charged if the driver arrives for delivery or pickup but cannot complete the service due to: the container being blocked (e.g., by cars); the container being overfilled/incorrectly loaded; or the site not being prepared.</p>' +
 
     '<h2>Cancellation Policy</h2>' +
     '<h3>Late Cancellation Fee</h3>' +
-    '<p>Orders cancelled within 3 hours of the scheduled drop-off time will be charged a $100 cancellation fee. To avoid this fee, please cancel at least 3 hours before your scheduled delivery.</p>' +
+    // Previously a SECOND, conflicting rule ($100 within 3 hours) that overlapped the
+    // "after dispatch" fee above — a truck is usually rolling inside that same window,
+    // so one cancellation could match both. Now one rule, one number.
+    '<p>Cancellations made at least ' + cutoff + ' hours before your scheduled delivery are refunded in full. ' +
+    'Once the truck has been dispatched for your delivery, a ' + cancelFee + ' cancellation fee applies, ' +
+    'because the trip has already been made.</p>' +
     '<p>For cancellations or changes, contact us at ' + email + ' or ' + phone + '.</p>' +
 
     '<div class="contact"><h2 style="margin-top:0">Contact Us</h2>' +

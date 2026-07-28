@@ -1,6 +1,6 @@
 // CMS / admin panel. Auth = HMAC-signed cookie (ADMIN_SECRET) gated by
 // ADMIN_PASSWORD. All editable config lives in D1 `settings`.
-import { saveSetting } from "./settings.js";
+import { saveSetting, loadSettings } from "./settings.js";
 
 const COOKIE = "trd_admin";
 const enc = new TextEncoder();
@@ -42,13 +42,37 @@ export function clearCookie() { return COOKIE + "=; HttpOnly; Secure; SameSite=L
 
 const esc = (s) => String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const page = (body) => '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Triple R Dump - Admin</title><style>' +
-'body{margin:0;font:15px/1.5 system-ui,Segoe UI,Roboto,sans-serif;color:#0b1b2b;background:#eef2f7}.wrap{max-width:760px;margin:0 auto;padding:24px 16px 70px}' +
-'h1{font-size:24px}h2{font-size:16px;margin:26px 0 8px;border-bottom:1px solid #dde5ef;padding-bottom:4px}' +
-'label{display:block;font-weight:600;margin:10px 0 2px}input,select,textarea{width:100%;padding:9px 11px;border:1px solid #cdd7e3;border-radius:8px;font:inherit;box-sizing:border-box}' +
-'.row{display:flex;gap:12px}.row>div{flex:1}textarea{min-height:54px}.muted{color:#5a6b7d;font-size:13px}' +
-'button{background:#116DFF;color:#fff;border:0;border-radius:9px;padding:12px 18px;font-size:15px;font-weight:700;cursor:pointer}' +
-'.card{background:#fff;border:1px solid #dde5ef;border-radius:12px;padding:18px;margin-top:14px}table{width:100%;border-collapse:collapse;font-size:13px}td,th{text-align:left;padding:5px 6px;border-bottom:1px solid #eef2f7}' +
-'.ok{background:#e9f9ee;border:1px solid #9be0b3;padding:8px 12px;border-radius:8px;margin-bottom:12px}.top{display:flex;justify-content:space-between;align-items:center}</style></head><body><main class="wrap">' + body + '</main></body></html>';
+// Type is deliberately larger than a typical dashboard (16px base, 17px inputs):
+// this gets used on a phone, outdoors, by one person who is not a software user.
+'body{margin:0;font:16px/1.55 system-ui,Segoe UI,Roboto,sans-serif;color:#0b1b2b;background:#eef2f7}' +
+'.wrap{max-width:780px;margin:0 auto;padding:24px 16px 40px}' +
+'h1{font-size:25px;margin:0}h2{font-size:19px;margin:0 0 3px}' +
+'h3{font-size:15px;margin:22px 0 6px;color:#334155}' +
+// Every section leads with a plain-English sentence saying what it is for.
+'.what{color:#5a6b7d;font-size:14px;margin:0 0 14px}' +
+'label{display:block;font-weight:600;margin:14px 0 3px}' +
+'input,select,textarea{width:100%;padding:11px 12px;border:1px solid #cdd7e3;border-radius:8px;font-size:17px;font-family:inherit;box-sizing:border-box;background:#fff}' +
+'input:focus,select:focus,textarea:focus{outline:2px solid #116DFF;outline-offset:-1px;border-color:#116DFF}' +
+'.row{display:flex;gap:12px;flex-wrap:wrap}.row>div{flex:1;min-width:132px}' +
+'textarea{min-height:58px;font-size:15px}.muted{color:#5a6b7d;font-size:14px}' +
+// Money fields show a real $ inside the box so an amount is never ambiguous.
+'.cash{position:relative}.cash span{position:absolute;left:12px;top:34px;color:#5a6b7d;font-weight:600}' +
+'.cash input{padding-left:26px}' +
+'.hint{display:block;font-weight:400;color:#5a6b7d;font-size:13.5px;margin-top:3px}' +
+'button{background:#116DFF;color:#fff;border:0;border-radius:9px;padding:13px 20px;font-size:16px;font-weight:700;cursor:pointer}' +
+'button:hover{background:#0b54cc}' +
+'.card{background:#fff;border:1px solid #dde5ef;border-radius:12px;padding:20px;margin-top:16px}' +
+'table{width:100%;border-collapse:collapse;font-size:14px}td,th{text-align:left;padding:7px 6px;border-bottom:1px solid #eef2f7}' +
+'.ok{background:#e9f9ee;border:1px solid #9be0b3;padding:10px 14px;border-radius:8px;margin-bottom:12px}' +
+'.top{display:flex;justify-content:space-between;align-items:center;gap:12px}' +
+// Advanced settings are demoted and collapsed: they are the ones that break the
+// site if guessed at, and they are not what he opens this page to do.
+'details.adv{margin-top:16px;background:#f7f9fc;border:1px dashed #cdd7e3;border-radius:12px;padding:14px 18px}' +
+'details.adv summary{cursor:pointer;font-weight:700;color:#5a6b7d}' +
+// Save stays reachable without hunting for the end of a long form.
+'.savebar{position:sticky;bottom:0;background:#eef2f7;padding:12px 0;margin-top:8px;border-top:1px solid #dde5ef}' +
+'@media(max-width:520px){.row>div{min-width:100%}}' +
+'</style></head><body><main class="wrap">' + body + '</main></body></html>';
 
 export function renderLogin(error) {
   return page('<h1>Triple R Dump - Admin</h1><div class="card"><form method="POST" action="/admin/login">' +
@@ -62,57 +86,110 @@ function priceField(S, size, tier) {
   return '<div><label>' + size + 'yd ' + tier + ' day ($)</label><input name="p_' + size + '_' + tier.replace("-", "") + '" value="' + esc(v) + '"></div>';
 }
 
+// $ field. `hint` is written for someone who has never used an admin panel:
+// it says WHEN the money is charged, not what the variable is called.
+function cashField(name, label, cents, hint) {
+  return '<div class="cash"><label>' + esc(label) + (hint ? '<span class="hint">' + esc(hint) + '</span>' : "") + '</label>' +
+    '<span>$</span><input name="' + name + '" inputmode="decimal" value="' + esc(cents == null ? "" : Math.round(cents / 100)) + '"></div>';
+}
+
 export function renderPanel(S, bookings, lowReviews, saved) {
   const t = S.templates || {};
-  let body = '<div class="top"><h1>Admin</h1><form method="POST" action="/admin/logout"><button style="background:#64748b">Log out</button></form></div>';
-  if (saved) body += '<div class="ok">Saved.</div>';
-  body += '<form method="POST" action="/admin/save"><div class="card">';
+  const f = S.fees || {};
+  let body = '<div class="top"><h1>Triple R Dump</h1><form method="POST" action="/admin/logout"><button style="background:#64748b">Log out</button></form></div>';
+  body += '<p class="what" style="margin-top:6px">Change anything here and press Save. It goes live right away.</p>';
+  if (saved) body += '<div class="ok"><b>Saved.</b> Your changes are live on the website now.</div>';
+  body += '<form method="POST" action="/admin/save">';
 
-  body += '<h2>Pricing &amp; tax</h2><div class="row">' + priceField(S, "15", "1-3") + priceField(S, "15", "4-7") + '</div>';
-  body += '<div class="row">' + priceField(S, "20", "1-3") + priceField(S, "20", "4-7") + '</div>';
-  body += '<div class="row">' + priceField(S, "25", "1-3") + priceField(S, "25", "4-7") + '</div>';
-  body += '<label>Sales tax (%)</label><input name="tax" value="' + esc((S.taxRate * 100).toFixed(3).replace(/\.?0+$/, "")) + '">';
+  body += '<div class="card"><h2>What you charge</h2>' +
+    '<p class="what">Your bin prices. First box is a 1&ndash;3 day rental, second is 4&ndash;7 days.</p>' +
+    '<div class="row">' + priceField(S, "15", "1-3") + priceField(S, "15", "4-7") + '</div>' +
+    '<div class="row">' + priceField(S, "20", "1-3") + priceField(S, "20", "4-7") + '</div>' +
+    '<div class="row">' + priceField(S, "25", "1-3") + priceField(S, "25", "4-7") + '</div>' +
+    '<label>Sales tax<span class="hint">Percent added at checkout. Utah is 7.5.</span></label>' +
+    '<input name="tax" inputmode="decimal" value="' + esc((S.taxRate * 100).toFixed(3).replace(/\.?0+$/, "")) + '"></div>';
 
-  body += '<h2>Capacity</h2><div class="row"><div><label>15yd qty</label><input name="inv_15" value="' + esc(S.bins["15"].inventory) + '"></div>' +
-    '<div><label>20yd qty</label><input name="inv_20" value="' + esc(S.bins["20"].inventory) + '"></div>' +
-    '<div><label>25yd qty</label><input name="inv_25" value="' + esc(S.bins["25"].inventory) + '"></div>' +
-    '<div><label>Total cap</label><input name="cap" value="' + esc(S.totalCap) + '"></div></div>';
+  body += '<div class="card"><h2>Extra fees</h2>' +
+    '<p class="what">Charges on top of the rental. <b>These write your Terms page automatically</b> &mdash; change a number here and the website wording updates to match.</p>' +
+    '<div class="row">' +
+      cashField("fee_dry_run", "Wasted trip", f.dryRun, "Driver shows up but can't do the job: blocked, locked gate, bin too full.") +
+      cashField("fee_overweight_ton", "Overweight, per ton", f.overweightTon, "Charged for each ton over what the bin includes.") +
+    '</div><div class="row">' +
+      cashField("fee_extension_day", "Extra day", f.extensionDay, "Per day they keep the bin past the booked dates.") +
+      cashField("fee_prohibited_item", "Banned item", f.prohibitedItem, "Per item: paint, tires, batteries, chemicals.") +
+    '</div><div class="row">' +
+      cashField("fee_cancel_dispatch", "Late cancellation", f.cancelAfterDispatch, "Only once the truck has already left for the drop-off.") +
+      '<div><label>Free cancellation window<span class="hint">Hours before delivery they can still cancel free.</span></label>' +
+      '<input name="fee_refund_hours" inputmode="numeric" value="' + esc(f.refundCutoffHours) + '"></div>' +
+    '</div>' +
+    '<h3>Late payment on invoices</h3>' +
+    '<div class="row"><div><label>Late charge<span class="hint">Percent per month on what is still owed.</span></label>' +
+      '<input name="fee_late_pct" inputmode="decimal" value="' + esc(f.latePct) + '"></div>' +
+      '<div><label>Grace period<span class="hint">Days after the due date before it kicks in.</span></label>' +
+      '<input name="fee_late_days" inputmode="numeric" value="' + esc(f.lateGraceDays) + '"></div></div>' +
+    '<h3>Weight included with each bin</h3>' +
+    '<p class="what" style="margin:-2px 0 4px">Tons included before the overweight fee starts.</p>' +
+    '<div class="row"><div><label>15 yard</label><input name="tons_15" inputmode="decimal" value="' + esc(f.tons15) + '"></div>' +
+      '<div><label>20 yard</label><input name="tons_20" inputmode="decimal" value="' + esc(f.tons20) + '"></div>' +
+      '<div><label>25 yard</label><input name="tons_25" inputmode="decimal" value="' + esc(f.tons25) + '"></div></div>' +
+    '<p class="muted" style="margin-top:14px"><a href="/terms" target="_blank" rel="noopener" style="color:#116DFF;font-weight:600;text-decoration:none">See your Terms page &rarr;</a></p></div>';
 
-  body += '<h2>Webhooks (GoHighLevel)</h2><label>SMS / confirmation webhook URL</label><input name="sms_url" value="' + esc(S.ghlSmsUrl) + '">' +
-    '<label>Review webhook URL <span class="muted">(blank = use the SMS one)</span></label><input name="review_url" value="' + esc(S.ghlReviewUrl) + '">';
+  body += '<div class="card"><h2>How many bins you have</h2>' +
+    '<p class="what">Stops the website from booking a bin you don\'t have free that day.</p>' +
+    '<div class="row"><div><label>15 yard</label><input name="inv_15" inputmode="numeric" value="' + esc(S.bins["15"].inventory) + '"></div>' +
+    '<div><label>20 yard</label><input name="inv_20" inputmode="numeric" value="' + esc(S.bins["20"].inventory) + '"></div>' +
+    '<div><label>25 yard</label><input name="inv_25" inputmode="numeric" value="' + esc(S.bins["25"].inventory) + '"></div>' +
+    '<div><label>Most out at once<span class="hint">All sizes combined.</span></label><input name="cap" inputmode="numeric" value="' + esc(S.totalCap) + '"></div></div></div>';
 
-  body += '<h2>Review funnel</h2><label>Google review link</label><input name="review_link" value="' + esc(S.reviewLink) + '">' +
-    '<div class="row"><div><label>Mode</label><select name="review_mode"><option value="gated"' + (S.reviewMode === "gated" ? " selected" : "") + '>Gated (filter low ratings)</option><option value="open"' + (S.reviewMode === "open" ? " selected" : "") + '>Open (everyone)</option></select></div>' +
-    '<div><label>Min stars to Google</label><input name="threshold" value="' + esc(S.reviewThreshold) + '"></div></div>' +
-    '<label>Public base URL <span class="muted">(for review links in texts)</span></label><input name="base_url" value="' + esc(S.publicBaseUrl) + '">';
+  body += '<div class="card"><h2>Your alerts</h2>' +
+    '<p class="what">Where the website texts you when something happens.</p>' +
+    '<label>Your mobile number</label><input name="owner_phone" inputmode="tel" value="' + esc(S.ownerPhone) + '">' +
+    '<label style="font-weight:400;margin-top:14px"><input type="checkbox" name="notify_owner_bookings" style="width:auto"' + (S.notifyOwnerBookings !== false ? " checked" : "") + '> Text me when someone books</label>' +
+    '<label style="font-weight:400;margin-top:8px"><input type="checkbox" name="notify_owner_reminders" style="width:auto"' + (S.notifyOwnerReminders !== false ? " checked" : "") + '> Text me the day before a delivery</label>' +
+    '<label style="font-weight:400;margin-top:8px"><input type="checkbox" name="require_payment" style="width:auto"' + (S.requirePayment ? " checked" : "") + '> Customers must pay online to book</label></div>';
 
-  body += '<h2>Booking</h2><label><input type="checkbox" name="require_payment" style="width:auto"' + (S.requirePayment ? " checked" : "") + '> Require online payment (turn ON once Stripe is live)</label>' +
-    '<label>Stripe mode <span class="muted">(dev)</span></label><select name="stripe_mode"><option value="sandbox"' + (S.stripeMode !== "live" ? " selected" : "") + '>Sandbox (test cards)</option><option value="live"' + (S.stripeMode === "live" ? " selected" : "") + '>Live (real payments)</option></select>' +
-    '<label>Owner phone (for alerts)</label><input name="owner_phone" value="' + esc(S.ownerPhone) + '">' +
-    '<label><input type="checkbox" name="notify_owner_bookings" style="width:auto"' + (S.notifyOwnerBookings !== false ? " checked" : "") + '> Text owner on new bookings</label>' +
-    '<label><input type="checkbox" name="notify_owner_reminders" style="width:auto"' + (S.notifyOwnerReminders !== false ? " checked" : "") + '> Text owner on delivery reminders</label>';
+  body += '<div class="card"><h2>Reviews</h2>' +
+    '<p class="what">After you mark a job complete, the customer gets a text asking how it went.</p>' +
+    '<label>Your Google review link</label><input name="review_link" value="' + esc(S.reviewLink) + '">' +
+    '<div class="row"><div><label>Who gets sent to Google<span class="hint">Gated sends only happy customers; unhappy ones reach you privately instead.</span></label>' +
+    '<select name="review_mode"><option value="gated"' + (S.reviewMode === "gated" ? " selected" : "") + '>Only happy customers</option><option value="open"' + (S.reviewMode === "open" ? " selected" : "") + '>Everyone</option></select></div>' +
+    '<div><label>Stars needed<span class="hint">This many or more counts as happy.</span></label><input name="threshold" inputmode="numeric" value="' + esc(S.reviewThreshold) + '"></div></div></div>';
 
-  body += '<h2>SMS templates</h2>' +
-    '<p class="muted" style="margin:-6px 0 12px">Shared tokens: {name} {customer_phone} {id} {item} {length} {bin} {tier} {date} {pickup} {address} {total} {account} {note}. <b>{item}</b> = what they booked (20yd bin / dump trailer / junk removal / bin switch) &mdash; prefer it over {bin}yd, which is blank for non-dumpster services. {length} = rental length. {total} = amount charged incl. any refundable deposit. {phone} = your business number, {customer_phone} = the customer\'s. {note} = the customer\'s "Anything else?" message. <b>Link tokens differ by audience:</b> owner texts use {admin_link} (the /admin booking page); the review request uses {review_link} (the customer review page).</p>' +
-    '<h3 style="margin:14px 0 6px;font-size:14px;color:#334155">To the customer</h3>' +
+  body += '<div class="card"><h2>Text messages</h2>' +
+    '<p class="what">The wording of every text the website sends. Anything in {curly braces} gets swapped for the real detail, so leave those as they are.</p>' +
+    '<details class="adv" style="margin:0 0 4px"><summary>What each {token} means</summary>' +
+    '<p class="muted" style="margin:8px 0 0">Shared tokens: {name} {customer_phone} {id} {item} {length} {bin} {tier} {date} {pickup} {address} {total} {account} {note}. <b>{item}</b> = what they booked (20yd bin / dump trailer / junk removal / bin switch) &mdash; prefer it over {bin}yd, which is blank for non-dumpster services. {length} = rental length. {total} = amount charged incl. any refundable deposit. {phone} = your business number, {customer_phone} = the customer\'s. {note} = the customer\'s "Anything else?" message. <b>Link tokens differ by audience:</b> owner texts use {admin_link} (the /admin booking page); the review request uses {review_link} (the customer review page).</p></details>' +
+    '<h3>To the customer</h3>' +
     '<label>Booking confirmation</label><textarea name="tpl_confirmation">' + esc(t.confirmation) + '</textarea>' +
     '<label>Delivery reminder <span class="muted">(day before)</span></label><textarea name="tpl_reminder_sms">' + esc(t.reminder_sms) + '</textarea>' +
     '<label>Review request <span class="muted">(after pickup &mdash; use {review_link})</span></label><textarea name="tpl_review">' + esc(t.review) + '</textarea>' +
-    '<h3 style="margin:18px 0 6px;font-size:14px;color:#334155">To the owner</h3>' +
+    '<h3>To you</h3>' +
     '<label>New booking <span class="muted">(use {admin_link})</span></label><textarea name="tpl_owner">' + esc(t.owner) + '</textarea>' +
     '<label>Delivery reminder <span class="muted">(use {admin_link})</span></label><textarea name="tpl_owner_reminder">' + esc(t.owner_reminder) + '</textarea>' +
     '<label>Commercial quote request <span class="muted">(adds {company} {interest} {timeframe} {email} {details})</span></label><textarea name="tpl_commercial">' + esc(t.commercial) + '</textarea>' +
     '<label>Low rating alert <span class="muted">(adds {rating} {feedback}; use {admin_link})</span></label><textarea name="tpl_low_rating">' + esc(t.low_rating) + '</textarea>' +
-    '<h3 style="margin:18px 0 6px;font-size:14px;color:#334155">Invoices</h3>' +
-    '<label>Invoice text <span class="muted">(adds {number} {total} {due}; use {invoice_link})</span></label><textarea name="tpl_invoice">' + esc(t.invoice) + '</textarea>';
+    '<h3>Invoices</h3>' +
+    '<label>Invoice text <span class="muted">(adds {number} {total} {due}; use {invoice_link})</span></label><textarea name="tpl_invoice">' + esc(t.invoice) + '</textarea>' +
+    '</div>';
 
-  body += '<h2>Invoices</h2>' +
-    '<div class="row"><div><label>Default due in (days)</label><input name="invoice_due_days" value="' + esc(S.invoiceDueDays) + '"></div>' +
-    '<div><label>Sales tax line</label><label style="font-weight:400;margin-top:9px"><input type="checkbox" name="invoice_tax_default" style="width:auto"' + (S.invoiceTaxDefault !== false ? " checked" : "") + '> Add tax by default</label></div></div>' +
-    '<label>Terms printed at the bottom of every invoice</label><textarea name="invoice_terms" style="min-height:110px">' + esc(S.invoiceTerms) + '</textarea>' +
-    '<p class="muted">This is the late-fee / payment-terms block Stripe prints under the line items. Edit it here &mdash; no deploy needed. <b>The shipped wording is a placeholder</b>: put Joseph\'s real late-fee amount and grace period in before sending real invoices.</p>';
+  // Everything that breaks the site if guessed at, kept out of the way but reachable.
+  body += '<details class="adv"><summary>Technical settings &mdash; leave these alone</summary>' +
+    '<p class="muted" style="margin:10px 0 0">Set up by your web guy. Changing these can stop bookings, texts or payments from working.</p>' +
+    '<label>Text-message service webhook</label><input name="sms_url" value="' + esc(S.ghlSmsUrl) + '">' +
+    '<label>Review webhook <span class="muted">(blank = use the one above)</span></label><input name="review_url" value="' + esc(S.ghlReviewUrl) + '">' +
+    '<label>Website address used in links</label><input name="base_url" value="' + esc(S.publicBaseUrl) + '">' +
+    '<label>Card payments mode</label><select name="stripe_mode"><option value="sandbox"' + (S.stripeMode !== "live" ? " selected" : "") + '>Test cards only</option><option value="live"' + (S.stripeMode === "live" ? " selected" : "") + '>Live &mdash; real payments</option></select>' +
+    '</details>';
 
-  body += '<div style="margin-top:16px"><button>Save all</button></div></div></form>';
+  body += '<div class="card"><h2>Invoices</h2>' +
+    '<p class="what">Defaults for every invoice you send. You can still change them on each one.</p>' +
+    '<div class="row"><div><label>Due in<span class="hint">Days from when you send it.</span></label><input name="invoice_due_days" inputmode="numeric" value="' + esc(S.invoiceDueDays) + '"></div>' +
+    '<div><label>Sales tax</label><label style="font-weight:400;margin-top:10px"><input type="checkbox" name="invoice_tax_default" style="width:auto"' + (S.invoiceTaxDefault !== false ? " checked" : "") + '> Add tax automatically</label></div></div>' +
+    '<label>Wording at the bottom of every invoice<span class="hint">Your payment terms and late fee. This prints under the line items.</span></label>' +
+    '<textarea name="invoice_terms" style="min-height:120px">' + esc(S.invoiceTerms) + '</textarea>' +
+    '<p class="muted">If you change the late charge above, update this wording to match.</p></div>';
+
+  body += '<div class="savebar"><button>Save changes</button></div></form>';
 
   body += '<div class="card"><div class="top"><h2 style="border:0;margin:0">Recent bookings</h2><span><a href="/admin/invoices" style="color:#116DFF;font-weight:600;text-decoration:none">Invoices</a> &nbsp;&middot;&nbsp; <a href="/admin/bookings" style="color:#116DFF;font-weight:600;text-decoration:none">Manage all &rarr;</a></span></div><table><tr><th>Ref</th><th>Status</th><th>Size</th><th>Drop</th><th>Customer</th><th>Total</th></tr>';
   for (const b of (bookings || [])) body += '<tr><td>' + esc(b.id) + '</td><td>' + esc(b.status) + '</td><td>' + esc(b.bin_size) + 'yd</td><td>' + esc(b.delivery_date) + '</td><td>' + esc(b.customer_name) + '</td><td>$' + ((b.amount_cents || 0) / 100).toFixed(2) + '</td></tr>';
@@ -148,6 +225,25 @@ export async function saveSettings(env, form) {
   await saveSetting(env, "notify_owner_bookings", form.notify_owner_bookings === "on" || form.notify_owner_bookings === "true");
   await saveSetting(env, "notify_owner_reminders", form.notify_owner_reminders === "on" || form.notify_owner_reminders === "true");
   await saveSetting(env, "owner_phone", String(form.owner_phone || ""));
+  // Fees are entered in whole dollars and stored in cents. A blank box must NOT
+  // silently become $0 (that would quietly zero out a real charge on the Terms
+  // page), so each falls back to the value already in settings.
+  const cents = (v, current) => { const x = parseFloat(v); return Number.isNaN(x) ? current : Math.round(x * 100); };
+  const numOr = (v, current) => { const x = parseFloat(v); return Number.isNaN(x) ? current : x; };
+  const cur = (await loadSettings(env)).fees || {};
+  await saveSetting(env, "fees", {
+    dryRun: cents(form.fee_dry_run, cur.dryRun),
+    overweightTon: cents(form.fee_overweight_ton, cur.overweightTon),
+    extensionDay: cents(form.fee_extension_day, cur.extensionDay),
+    prohibitedItem: cents(form.fee_prohibited_item, cur.prohibitedItem),
+    cancelAfterDispatch: cents(form.fee_cancel_dispatch, cur.cancelAfterDispatch),
+    refundCutoffHours: numOr(form.fee_refund_hours, cur.refundCutoffHours),
+    latePct: numOr(form.fee_late_pct, cur.latePct),
+    lateGraceDays: numOr(form.fee_late_days, cur.lateGraceDays),
+    tons15: numOr(form.tons_15, cur.tons15),
+    tons20: numOr(form.tons_20, cur.tons20),
+    tons25: numOr(form.tons_25, cur.tons25),
+  });
   await saveSetting(env, "invoice_terms", String(form.invoice_terms || ""));
   await saveSetting(env, "invoice_due_days", parseInt(form.invoice_due_days, 10) || 14);
   await saveSetting(env, "invoice_tax_default", form.invoice_tax_default === "on" || form.invoice_tax_default === "true");
