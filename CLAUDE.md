@@ -2,6 +2,31 @@
 
 > Read this at the START of every session. Update it before you finish.
 
+FINAL PRE-CUTOVER VERIFICATION 2026-07-29 (worker v 941f0436, live). Re-ran EVERYTHING
+against the deployed build after the pickup-reminder deploy. ALL GREEN:
+• MONEY, live Stripe, all 4 services, exact amounts: dumpster 20yd 1-3 $376.25, trailer
+  3d $645.00 + $300 deposit, junk $591.25, binswitch $215.00 — each returned a real
+  cs_live_ session. All 5 test rows deleted after; bookings table = 0, paid rows = 0.
+• REFUSALS all correct: weekday junk, honeypot (loud "call us"), Vegas 386 mi, past date,
+  missing terms agreement.
+• CAPACITY GATE proven live: 4 synthetic overlapping 20yd rows -> size_out 4/4,
+  available:false, 5th booking refused; 15yd + far dates unaffected; rows removed.
+• PICKUP SWEEP SQL run against LIVE schema (both new columns) — valid; extension UPDATE
+  shape valid. 19/19 offline sweep asserts pass. Cron 0 16 UTC = 10:00 AM America/Denver.
+• AUTH: all 6 admin POST routes 401 unauthed (incl. new /pickupdate); all admin GETs show
+  the login form, never data; bad password 401.
+• ASSETS: all 26 homepage refs + /book refs 200 cache-busted. deploy/index.html identical
+  to root. /terms fees render 150/75-per-ton/50-per-day/200/48h/1.5%/15d.
+• TEMPLATES in D1: 7 saved keys, NONE empty, no legacy {link}; the 2 new pickup keys are
+  absent from D1 so they correctly fall back to code defaults (per-key merge).
+• DOMAIN DEPENDENCY IS TINY: index.html uses RELATIVE links (/book), so the site works on
+  any domain instantly. The ONLY hardcoded host is wrangler.toml SITE_ORIGIN (used for
+  Stripe success_url/cancel_url + publicBaseUrl default; D1 public_base_url overrides the
+  latter). workers.dev KEEPS serving after a custom domain is added, so a forgotten
+  SITE_ORIGIN update is COSMETIC (links land on a working old-domain page), not breakage.
+• Still true: no real card has ever been charged in live mode (sessions verified only),
+  and no SMS has been relayed to Joseph's real phone end-to-end. 5 old June test rows sit
+  in `reviews` (cosmetic, visible in admin; dedup reads bookings.review_rating).
 Last updated: 2026-07-28 late (worker v 941f0436 — pickup reminders + admin polish).
 NEW this pass: (1) PICKUP REMINDERS BUILT: customer text the day BEFORE pickup ("call
 {phone} to extend, ${extension_day}/day") + owner text the MORNING OF each pickup, both
