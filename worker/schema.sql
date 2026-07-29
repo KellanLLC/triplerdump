@@ -39,6 +39,8 @@ CREATE TABLE IF NOT EXISTS bookings (
   confirmation_sms_sent_at TEXT,
   review_sms_sent_at TEXT,
   reminder_sent_at TEXT,               -- set by the nightly reminder sweep
+  pickup_reminder_sent_at TEXT,        -- customer text, day before pickup
+  owner_pickup_reminder_sent_at TEXT,  -- owner text, morning of pickup day
   review_token TEXT,                   -- minted by the review sweep; powers /r/<token>
   review_rating INTEGER,               -- 1-5, captured on the review landing
   notes TEXT

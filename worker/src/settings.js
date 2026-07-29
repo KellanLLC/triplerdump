@@ -22,6 +22,9 @@ const DEFAULT_TEMPLATES = {
   owner: "New booking: {name} — {item}, {date}. Full details: {admin_link}",
   review: "Thanks for choosing Triple R Dump, {name}! How did we do? {review_link}",
   reminder_sms: "Reminder from Triple R Dump: your {item} is scheduled for {date}. Questions? {phone}",
+  // Pickup-reminder-only token: {extension_day} = the per-day extension fee in dollars.
+  pickup_reminder: "Triple R Dump: we pick up your {item} tomorrow ({pickup}). Need it longer? Call {phone} today to extend (${extension_day}/day).",
+  owner_pickup_reminder: "Pick up {item} from {name} today at {address} (ref {id}). Details: {admin_link}",
   reminder_email_subject: "Your Triple R Dump delivery is coming up ({date})",
   reminder_email_body: "Hi {name}, a reminder that your {item} is scheduled for {date} at {address} (ref {id}). Reply or call {phone} with any changes.",
   owner_reminder: "Deliver {item} to {name} on {date} at {address} (ref {id}). Details: {admin_link}",

@@ -2,7 +2,42 @@
 
 > Read this at the START of every session. Update it before you finish.
 
-Last updated: 2026-07-27 (worker v 96f1f01d — deploy-readiness pass). DOMAIN CUTOVER IS
+Last updated: 2026-07-28 late (worker v 941f0436 — pickup reminders + admin polish).
+NEW this pass: (1) PICKUP REMINDERS BUILT: customer text the day BEFORE pickup ("call
+{phone} to extend, ${extension_day}/day") + owner text the MORNING OF each pickup, both
+CMS-editable templates (pickup_reminder / owner_pickup_reminder — sms_templates is now
+10 keys), dumpster+trailer only (junk/binswitch are same-day), flags
+pickup_reminder_sent_at / owner_pickup_reminder_sent_at (migration 0003 APPLIED to live
+D1). Same daily 16:00 UTC cron. 19-assert offline suite passed (mocked DB+fetch, zero
+real SMS). (2) EXTENSION CONTROL: /admin/booking/<ref> has "Update pickup date"
+(dumpster/trailer, confirmed/paid) -> POST /pickupdate updates pickup_date+rental_days,
+NULLs both pickup flags (reminders re-arm for the new date), appends an audit line to
+notes. Capacity stays honest (overlap uses delivery..pickup). Extra days are billed
+off-session from Stripe (saved card). (3) ADMIN BUG FIX: `.cash span` CSS caught the
+label's hint span too and pinned hints ON TOP of the money inputs (Extra fees tab was
+unreadable) — cashField now wraps ONLY $+input in .cash with a `>` child selector.
+(4) ADMIN MOBILE-FIRST pass: tabs WRAP (no more hidden tabs/scrollbar), one 520px
+breakpoint stacks rows + full-width Save, cards scroll wide tables internally, row
+cells bottom-anchor inputs so paired fields align even when one hint wraps. Verified by
+rendering renderPanel() offline + headless screenshots (renderPanel is pure — no admin
+login needed; NOTE headless Edge window-size ≠ CSS px on this machine (125% DPI), so
+"overflow" in screenshots is an ARTIFACT — trust a JS probe of scrollWidth, not pixels).
+Prior pass (same day, worker v 57819b23 — pre-cutover QC, read-only). VERIFIED
+LIVE, all green: deployed bundle = committed source (service-area gate rejected Vegas at
+386 mi; honeypot rejects loudly; reconciled fees on /terms), all 26 index.html assets 200
+(cache-busted), D1 settings correct (mode=live, require_payment on, owner_phone
+8015643164, GHL webhook ...b0039c7f), bookings table EMPTY, full money path smoke-tested
+(POST /api/book -> pending row + cs_live session, $376.25 exact, Stripe page 200; row
+TRD-YXZMF3 deleted after; NO SMS — pending sends none), /booked not-found truthful, admin
+401 on bad password, secrets all 6 present, /book has zero horizontal overflow at 375px
+(measured scrollWidth). D1 REST API queries WORK with the .env token (POST
+/accounts/<acct>/d1/database/<db>/query) — the "MCP only" note below is outdated.
+CUTOVER PREREQ FOUND: the triplerdump.com ZONE IS NOT IN THE CLOUDFLARE ACCOUNT yet —
+Workers custom domains require the zone on CF, so: add zone -> flip nameservers at the
+registrar (Wix) -> attach custom domain to worker -> update SITE_ORIGIN + CMS base URL
+together -> redeploy -> live booking test on the new domain. 5 June test reviews still sit
+in `reviews` (harmless — dedup reads bookings.review_rating — but they show in admin).
+Prior pass (2026-07-27, worker v 96f1f01d — deploy-readiness). DOMAIN CUTOVER WAS
 DELIBERATELY HELD until after the 8th (owner's call: don't miss job bookings mid-switch).
 NEW this pass: (1) FOOTER LOGO FIXED — build_deploy.py never scanned `srcset=`, so
 assets/triple-r-dump-foot.webp was never copied into deploy/ and 404'd live; <picture>
@@ -269,8 +304,7 @@ domain/DNS until the final cutover (the last step in the whole project).
 - Review FOLLOW-UPS: initial + 3 at +24h/+24h/+48h then abandon. Needs a `review_followups`
   col + the review cron rewritten to advance the cadence (and cron freq -> hourly; it's daily
   16:00 now). Stop on rating or after 3.
-- PICKUP reminder (client + owner): only a DELIVERY reminder exists. Needs a
-  `pickup_reminder_sent_at` col + reminders.js logic + templates.
+- [DONE 2026-07-28] PICKUP reminder (client + owner) — built + deployed, see header.
 - SMS COPY pass: review/tighten all template wording (proposed copy is in the chat plan).
 - INVOICING (NEW ask from Joseph, 2026-07-27, via text): he wants to send INVOICES with a
   pay link, choose the due date, add his own line items, and have terms w/ late-fee

@@ -53,15 +53,25 @@ const page = (body) => '<!DOCTYPE html><html lang="en"><head><meta charset="utf-
 'label{display:block;font-weight:600;margin:14px 0 3px}' +
 'input,select,textarea{width:100%;padding:11px 12px;border:1px solid #cdd7e3;border-radius:8px;font-size:17px;font-family:inherit;box-sizing:border-box;background:#fff}' +
 'input:focus,select:focus,textarea:focus{outline:2px solid #116DFF;outline-offset:-1px;border-color:#116DFF}' +
-'.row{display:flex;gap:12px;flex-wrap:wrap}.row>div{flex:1;min-width:132px}' +
+// Each row cell is a column with its input anchored to the bottom, so paired
+// fields keep their boxes on one line even when one hint wraps and the other
+// doesn't - ragged side-by-side inputs read as broken.
+'.row{display:flex;gap:12px;flex-wrap:wrap}.row>div{flex:1;min-width:132px;display:flex;flex-direction:column}' +
+'.row>div>input,.row>div>select,.row>div>textarea,.row>div>.cash{margin-top:auto}' +
 'textarea{min-height:58px;font-size:15px}.muted{color:#5a6b7d;font-size:14px}' +
 // Money fields show a real $ inside the box so an amount is never ambiguous.
-'.cash{position:relative}.cash span{position:absolute;left:12px;top:34px;color:#5a6b7d;font-weight:600}' +
-'.cash input{padding-left:26px}' +
+// The $ lives in its own .cash wrapper around ONLY the input (label + hint stay in
+// normal flow above), centered on the input's own height - so a hint of any length
+// can never collide with it. A bare ".cash span" selector once caught the hint span
+// inside the label too and pinned it over the input; keep the ">" child selector.
+'.cash{position:relative}.cash>span{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#5a6b7d;font-weight:600}' +
+'.cash input{padding-left:27px}' +
 '.hint{display:block;font-weight:400;color:#5a6b7d;font-size:13.5px;margin-top:3px}' +
 'button{background:#116DFF;color:#fff;border:0;border-radius:9px;padding:13px 20px;font-size:16px;font-weight:700;cursor:pointer}' +
 'button:hover{background:#0b54cc}' +
-'.card{background:#fff;border:1px solid #dde5ef;border-radius:12px;padding:20px;margin-top:16px}' +
+// overflow-x keeps wide tables (bookings, invoices) scrolling inside their own card
+// on a phone instead of stretching the whole page sideways.
+'.card{background:#fff;border:1px solid #dde5ef;border-radius:12px;padding:20px;margin-top:16px;overflow-x:auto}' +
 'table{width:100%;border-collapse:collapse;font-size:14px}td,th{text-align:left;padding:7px 6px;border-bottom:1px solid #eef2f7}' +
 '.ok{background:#e9f9ee;border:1px solid #9be0b3;padding:10px 14px;border-radius:8px;margin-bottom:12px}' +
 '.top{display:flex;justify-content:space-between;align-items:center;gap:12px}' +
@@ -74,12 +84,25 @@ const page = (body) => '<!DOCTYPE html><html lang="en"><head><meta charset="utf-
 // Tabs: one job per screen instead of one very long page. type="button" on each so
 // they can never submit the form. Without JS every panel simply stays visible, so
 // the page degrades to the old long-scroll version rather than showing nothing.
-'.tabs{display:flex;gap:4px;overflow-x:auto;margin:20px 0 0;padding:0 0 1px}' +
+// Tabs WRAP instead of scrolling sideways: on a phone every tab stays visible and
+// tappable (a scrolled strip hides half of them, and on desktop it grew a scrollbar).
+'.tabs{display:flex;flex-wrap:wrap;gap:6px;margin:20px 0 0}' +
 '.tabs button{background:#fff;color:#334155;border:1px solid #dde5ef;border-radius:10px;padding:11px 15px;font-size:15px;font-weight:600;white-space:nowrap;cursor:pointer}' +
 '.tabs button[aria-selected="true"]{background:#116DFF;color:#fff;border-color:#116DFF}' +
 '.tabs button:hover{border-color:#116DFF}' +
 '.panel>.card:first-child{margin-top:14px}' +
 '@media(max-width:520px){.row>div{min-width:100%}}' +
+// Mobile first: Joseph runs this from his phone, outdoors. Under 480px the paired
+// columns stack full-width (hints read on one or two lines instead of a squeezed
+// ribbon), the save button becomes a full-width thumb target, and the page gutter
+// tightens so fields get the room instead.
+'@media(max-width:520px){' +
+  '.wrap{padding:14px 10px 40px}' +
+  '.row{display:block}.row>div{min-width:0}' +
+  '.card{padding:16px 14px}' +
+  '.savebar button{width:100%}' +
+  'h1{font-size:22px}' +
+'}' +
 '</style></head><body><main class="wrap">' + body + '</main></body></html>';
 
 export function renderLogin(error) {
@@ -97,8 +120,8 @@ function priceField(S, size, tier) {
 // $ field. `hint` is written for someone who has never used an admin panel:
 // it says WHEN the money is charged, not what the variable is called.
 function cashField(name, label, cents, hint) {
-  return '<div class="cash"><label>' + esc(label) + (hint ? '<span class="hint">' + esc(hint) + '</span>' : "") + '</label>' +
-    '<span>$</span><input name="' + name + '" inputmode="decimal" value="' + esc(cents == null ? "" : Math.round(cents / 100)) + '"></div>';
+  return '<div><label>' + esc(label) + (hint ? '<span class="hint">' + esc(hint) + '</span>' : "") + '</label>' +
+    '<div class="cash"><span>$</span><input name="' + name + '" inputmode="decimal" value="' + esc(cents == null ? "" : Math.round(cents / 100)) + '"></div></div>';
 }
 
 export function renderPanel(S, bookings, lowReviews, saved) {
@@ -159,7 +182,7 @@ export function renderPanel(S, bookings, lowReviews, saved) {
     '<p class="what">Where the website texts you when something happens.</p>' +
     '<label>Your mobile number</label><input name="owner_phone" inputmode="tel" value="' + esc(S.ownerPhone) + '">' +
     '<label style="font-weight:400;margin-top:14px"><input type="checkbox" name="notify_owner_bookings" style="width:auto"' + (S.notifyOwnerBookings !== false ? " checked" : "") + '> Text me when someone books</label>' +
-    '<label style="font-weight:400;margin-top:8px"><input type="checkbox" name="notify_owner_reminders" style="width:auto"' + (S.notifyOwnerReminders !== false ? " checked" : "") + '> Text me the day before a delivery</label>' +
+    '<label style="font-weight:400;margin-top:8px"><input type="checkbox" name="notify_owner_reminders" style="width:auto"' + (S.notifyOwnerReminders !== false ? " checked" : "") + '> Text me the day before a delivery + the morning of each pickup</label>' +
     '<label style="font-weight:400;margin-top:8px"><input type="checkbox" name="require_payment" style="width:auto"' + (S.requirePayment ? " checked" : "") + '> Customers must pay online to book</label></div>');
 
   sec("reviews", "Reviews", '<div class="card"><h2>Reviews</h2>' +
@@ -176,10 +199,12 @@ export function renderPanel(S, bookings, lowReviews, saved) {
     '<h3>To the customer</h3>' +
     '<label>Booking confirmation</label><textarea name="tpl_confirmation">' + esc(t.confirmation) + '</textarea>' +
     '<label>Delivery reminder <span class="muted">(day before)</span></label><textarea name="tpl_reminder_sms">' + esc(t.reminder_sms) + '</textarea>' +
+    '<label>Pickup reminder <span class="muted">(day before pickup, so they can call to extend; {extension_day} = your per-day extension fee)</span></label><textarea name="tpl_pickup_reminder">' + esc(t.pickup_reminder) + '</textarea>' +
     '<label>Review request <span class="muted">(after pickup &mdash; use {review_link})</span></label><textarea name="tpl_review">' + esc(t.review) + '</textarea>' +
     '<h3>To you</h3>' +
     '<label>New booking <span class="muted">(use {admin_link})</span></label><textarea name="tpl_owner">' + esc(t.owner) + '</textarea>' +
     '<label>Delivery reminder <span class="muted">(use {admin_link})</span></label><textarea name="tpl_owner_reminder">' + esc(t.owner_reminder) + '</textarea>' +
+    '<label>Pickup day <span class="muted">(sent the morning a bin is due back; use {admin_link})</span></label><textarea name="tpl_owner_pickup_reminder">' + esc(t.owner_pickup_reminder) + '</textarea>' +
     '<label>Commercial quote request <span class="muted">(adds {company} {interest} {timeframe} {email} {details})</span></label><textarea name="tpl_commercial">' + esc(t.commercial) + '</textarea>' +
     '<label>Low rating alert <span class="muted">(adds {rating} {feedback}; use {admin_link})</span></label><textarea name="tpl_low_rating">' + esc(t.low_rating) + '</textarea>' +
     '<h3>Invoices</h3>' +
@@ -302,7 +327,7 @@ export async function saveSettings(env, form) {
   await saveSetting(env, "invoice_terms", String(form.invoice_terms || ""));
   await saveSetting(env, "invoice_due_days", parseInt(form.invoice_due_days, 10) || 14);
   await saveSetting(env, "invoice_tax_default", form.invoice_tax_default === "on" || form.invoice_tax_default === "true");
-  await saveSetting(env, "sms_templates", { confirmation: String(form.tpl_confirmation || ""), reminder_sms: String(form.tpl_reminder_sms || ""), review: String(form.tpl_review || ""), owner: String(form.tpl_owner || ""), owner_reminder: String(form.tpl_owner_reminder || ""), commercial: String(form.tpl_commercial || ""), low_rating: String(form.tpl_low_rating || ""), invoice: String(form.tpl_invoice || "") });
+  await saveSetting(env, "sms_templates", { confirmation: String(form.tpl_confirmation || ""), reminder_sms: String(form.tpl_reminder_sms || ""), pickup_reminder: String(form.tpl_pickup_reminder || ""), review: String(form.tpl_review || ""), owner: String(form.tpl_owner || ""), owner_reminder: String(form.tpl_owner_reminder || ""), owner_pickup_reminder: String(form.tpl_owner_pickup_reminder || ""), commercial: String(form.tpl_commercial || ""), low_rating: String(form.tpl_low_rating || ""), invoice: String(form.tpl_invoice || "") });
 }
 
 // ----- Bookings management (own routes; auth-gated in index.js) -----
@@ -335,6 +360,17 @@ export function renderBookingDetail(S, b) {
   body += '<div style="margin-top:12px"><a href="' + gmap + '" target="_blank" rel="noopener" style="color:#116DFF;font-weight:600;text-decoration:none">Open in Google Maps</a> &nbsp;·&nbsp; <a href="' + amap + '" target="_blank" rel="noopener" style="color:#116DFF;font-weight:600;text-decoration:none">Apple Maps</a></div>';
   body += '</div>';
   body += '<div class="card"><h2>Notes</h2><form method="POST" action="/admin/booking/' + esc(b.id) + '/notes"><textarea name="notes" placeholder="Internal notes — pickup details, gate code, etc.">' + esc(b.notes || "") + '</textarea><div style="margin-top:8px"><button>Save notes</button></div></form></div>';
+  // Extension flow: customer calls to keep the bin/trailer longer -> set the new date
+  // here. This keeps capacity honest (the slot stays occupied through the new date)
+  // and re-arms both pickup reminder texts for the new date. Only services with a
+  // later pickup get this; junk + bin switch are same-day.
+  if ((b.service_type === "dumpster" || b.service_type === "trailer") && ["confirmed", "paid"].includes(b.status)) {
+    const extDollars = (((S.fees && S.fees.extensionDay) || 0) / 100);
+    body += '<div class="card"><h2>Pickup date</h2>' +
+      '<p class="what">Customer needs more time? Set the new pickup date — the pickup reminder texts re-arm for it automatically. Bill the extra days ($' + esc(extDollars) + '/day) from their saved card in the Stripe dashboard.</p>' +
+      '<form method="POST" action="/admin/booking/' + esc(b.id) + '/pickupdate"><div class="row"><div><input type="date" name="pickup_date" value="' + esc(b.pickup_date) + '" min="' + esc(b.delivery_date) + '" required></div>' +
+      '<div style="flex:0 0 auto"><button>Update pickup date</button></div></div></form></div>';
+  }
   body += '<div class="card"><h2>Actions</h2>';
   body += '<form method="POST" action="/admin/booking/' + esc(b.id) + '/status" style="display:inline-block;margin:0 6px 6px 0"><input type="hidden" name="status" value="completed"><button>Mark picked up / completed</button></form>';
   body += '<form method="POST" action="/admin/booking/' + esc(b.id) + '/delete" style="display:inline-block" onsubmit="return confirm(\'Delete booking ' + esc(b.id) + '? This cannot be undone.\')"><button style="background:#c0392b">Delete (dev)</button></form>';

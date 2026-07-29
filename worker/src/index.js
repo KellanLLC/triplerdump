@@ -119,6 +119,26 @@ export default {
           await env.DB.prepare("UPDATE bookings SET notes=?1 WHERE id=?2").bind(notes, bnotes[1]).run();
           return redirect("/admin/booking/" + encodeURIComponent(bnotes[1]));
         }
+        // Extension: move the pickup date. Clears both pickup-reminder flags so the
+        // customer day-before and owner pickup-day texts re-fire for the new date,
+        // and stamps the change into notes as an audit trail. rental_days follows so
+        // the trailer's {length} label stays truthful; historical amounts are kept -
+        // extension days are billed off-session from the Stripe dashboard.
+        const bpd = p.match(/^\/admin\/booking\/([^/]+)\/pickupdate$/);
+        if (bpd && m === "POST") {
+          if (!(await isAuthed(request, env))) return json({ ok: false, error: "unauthorized" }, 401);
+          const nd = String((await formObj(request)).pickup_date || "").trim();
+          const b = await env.DB.prepare("SELECT * FROM bookings WHERE id=?1").bind(bpd[1]).first();
+          if (b && /^\d{4}-\d{2}-\d{2}$/.test(nd) && nd >= b.delivery_date && nd !== b.pickup_date) {
+            const days = Math.max(1, Math.round((Date.parse(nd) - Date.parse(b.delivery_date)) / 864e5));
+            const stamp = "Pickup moved " + b.pickup_date + " to " + nd + " (" + new Date().toISOString().slice(0, 10) + ")";
+            await env.DB.prepare(
+              "UPDATE bookings SET pickup_date=?1, rental_days=?2, pickup_reminder_sent_at=NULL, owner_pickup_reminder_sent_at=NULL, " +
+              "notes=CASE WHEN notes IS NULL OR notes='' THEN ?3 ELSE notes || char(10) || ?3 END WHERE id=?4"
+            ).bind(nd, days, stamp, bpd[1]).run();
+          }
+          return redirect("/admin/booking/" + encodeURIComponent(bpd[1]));
+        }
       }
 
       // ----- Invoices (admin) -----

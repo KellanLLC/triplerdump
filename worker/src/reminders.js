@@ -1,7 +1,26 @@
-// Daily cron: remind customers ahead of delivery. Default lead = 1 day before.
+// Daily cron sweeps, three passes over bookings:
+//   1. Delivery reminder, the day before delivery (customer + owner copy).
+//   2. Pickup reminder to the CUSTOMER, the day before pickup - in time to call
+//      and extend (terms require 24h notice; {extension_day} quotes the daily fee).
+//   3. Pickup-day text to the OWNER, the morning of the pickup itself.
+// Junk + bin-switch are single-day services with nothing to pick up later, so only
+// dumpster + trailer get the pickup passes. Extending a booking in admin clears the
+// pickup flags, so both pickup reminders re-arm for the new date automatically.
 import { todayISO, addDays } from "./util.js";
 import { fillTemplate, itemLabel, lengthLabel, chargedCents } from "./settings.js";
 import { sendReminderSms, sendReminderEmail, sendOwnerReminder } from "./sms.js";
+
+// Customer-facing texts/emails: NO admin-link token (the old shared {link} was a
+// footgun). {extension_day} = the per-day extension fee in dollars, from S.fees.
+function tokenVals(S, b) {
+  return {
+    bin: b.bin_size, tier: b.rental_tier, item: itemLabel(b), length: lengthLabel(b),
+    date: b.delivery_date, pickup: b.pickup_date,
+    id: b.id, name: b.customer_name, address: b.address, phone: S.business.phone, customer_phone: b.phone || "",
+    total: (chargedCents(b) / 100).toFixed(2), note: b.message || "",
+    extension_day: String((((S.fees && S.fees.extensionDay) || 0) / 100)),
+  };
+}
 
 export async function runReminderSweep(env, S) {
   const today = todayISO(S.business.timezone);
@@ -15,11 +34,7 @@ export async function runReminderSweep(env, S) {
   for (const b of results) {
     try {
       const adminLink = (S.publicBaseUrl || "").replace(/\/+$/, "") + "/admin/booking/" + b.id;
-      // Customer-facing texts/emails: NO admin-link token (the old shared {link} was a footgun).
-      const vals = { bin: b.bin_size, tier: b.rental_tier, item: itemLabel(b), length: lengthLabel(b),
-        date: b.delivery_date, pickup: b.pickup_date,
-        id: b.id, name: b.customer_name, address: b.address, phone: S.business.phone, customer_phone: b.phone || "",
-        total: (chargedCents(b) / 100).toFixed(2), note: b.message || "" };
+      const vals = tokenVals(S, b);
       await sendReminderSms(S, b, fillTemplate(S.templates.reminder_sms, vals));
       if (S.ghlEmailUrl && b.email) {
         await sendReminderEmail(S, b, fillTemplate(S.templates.reminder_email_subject, vals), fillTemplate(S.templates.reminder_email_body, vals));
@@ -32,6 +47,47 @@ export async function runReminderSweep(env, S) {
       sent++;
     } catch (e) { console.error("[reminder] failed for", b.id, e); }
   }
-  console.log(`[reminder] due ${results.length}, sent ${sent}`);
-  return { due: results.length, sent };
+
+  const pickup = await runPickupSweep(env, S, today);
+  console.log(`[reminder] delivery due ${results.length}, sent ${sent}; pickup customer ${pickup.customer}, owner ${pickup.owner}`);
+  return { due: results.length, sent, pickup };
+}
+
+// Passes 2 + 3. Statuses: confirmed/paid only - completed means already picked up,
+// pending is an unpaid hold. Flags are marked even when a send is skipped (owner
+// toggle off, missing webhook) so a quiet day never re-fires old rows later.
+async function runPickupSweep(env, S, today) {
+  let customer = 0, owner = 0;
+
+  // Customer, day before pickup: time to call and extend.
+  const soon = addDays(today, 1);
+  const dueCustomer = (await env.DB.prepare(
+    `SELECT * FROM bookings
+       WHERE pickup_date = ?1 AND status IN ('confirmed','paid')
+         AND service_type IN ('dumpster','trailer') AND pickup_reminder_sent_at IS NULL`
+  ).bind(soon).all()).results || [];
+  for (const b of dueCustomer) {
+    try {
+      await sendReminderSms(S, b, fillTemplate(S.templates.pickup_reminder, tokenVals(S, b)));
+      await env.DB.prepare("UPDATE bookings SET pickup_reminder_sent_at=?1 WHERE id=?2").bind(new Date().toISOString(), b.id).run();
+      customer++;
+    } catch (e) { console.error("[pickup reminder] failed for", b.id, e); }
+  }
+
+  // Owner, morning of pickup day: today's pickup list, one text per job.
+  const dueOwner = (await env.DB.prepare(
+    `SELECT * FROM bookings
+       WHERE pickup_date = ?1 AND status IN ('confirmed','paid')
+         AND service_type IN ('dumpster','trailer') AND owner_pickup_reminder_sent_at IS NULL`
+  ).bind(today).all()).results || [];
+  for (const b of dueOwner) {
+    try {
+      const adminLink = (S.publicBaseUrl || "").replace(/\/+$/, "") + "/admin/booking/" + b.id;
+      await sendOwnerReminder(S, b, fillTemplate(S.templates.owner_pickup_reminder || "", { ...tokenVals(S, b), admin_link: adminLink, link: adminLink }));
+      await env.DB.prepare("UPDATE bookings SET owner_pickup_reminder_sent_at=?1 WHERE id=?2").bind(new Date().toISOString(), b.id).run();
+      owner++;
+    } catch (e) { console.error("[owner pickup reminder] failed for", b.id, e); }
+  }
+
+  return { customer, owner };
 }
