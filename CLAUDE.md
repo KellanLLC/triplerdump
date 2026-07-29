@@ -2,6 +2,37 @@
 
 > Read this at the START of every session. Update it before you finish.
 
+*** DOMAIN CUTOVER DONE 2026-07-29 (worker v 4554797a). triplerdump.com now serves THIS
+worker, off Wix. ***
+- Registrar is PORKBUN (not Wix). DNS was delegated to Wix (ns6/ns7.wixdns.net); NS at
+  Porkbun now = grannbo.ns.cloudflare.com / ricardo.ns.cloudflare.com. ROLLBACK = paste the
+  two wixdns names back at Porkbun.
+- Cloudflare zone 8993d58d91137efadc828eb24ad41a41, account 5354e954..., plan Free, ACTIVE.
+  GOTCHA: a new zone sits at status "initializing" and activation_check fails with 81163
+  until a PLAN IS SELECTED in the UI (/select-plan). Selecting Free unblocked it -> pending
+  -> active in ~1 min.
+- Method: added zone, let CF import all 7 records, FORCED THEM DNS-ONLY (import defaults to
+  proxied, which would have broken Wix over SSL), verified CF's NS answered byte-identically
+  to Wix BEFORE flipping (nslookup against grannbo.ns.cloudflare.com). NS flip was therefore
+  a no-op for visitors and mail.
+- EMAIL: domain has GOOGLE WORKSPACE (MX 10 aspmx.l.google.com + SPF + google-site-
+  verification TXT). All three PRESERVED through the cutover and re-verified after. Kellan
+  says nobody actually uses @triplerdump.com. NOTE: if the Workspace subscription is billed
+  THROUGH WIX, cancelling Wix kills the mailboxes regardless of DNS — billing, not DNS.
+- Wix A records + www CNAME DELETED; both triplerdump.com and www bound as Workers custom
+  domains. www IS CANONICAL (Wix redirected apex->www, so this preserves SEO); apex 301s to
+  www via a Cloudflare dynamic-redirect rule (query string preserved).
+- SITE_ORIGIN (wrangler.toml) AND D1 public_base_url both = https://www.triplerdump.com.
+  THEY MUST ALWAYS MOVE TOGETHER.
+- VERIFIED LIVE ON THE NEW DOMAIN: /, /book, /terms, /api/availability, /booked, valid SSL,
+  admin 401 unauthed, apex->www 301, and a REAL booking (TRD-EWEFTJ, $376.25, cs_live
+  session) — row deleted after; bookings table back to 0.
+- *** TELL JOSEPH: DO NOT CANCEL WIX YET. *** Resolvers still caching the old wixdns NS
+  (24h TTL) keep sending visitors to Wix's IPs; if Wix dies before those caches expire those
+  visitors get nothing. Wait ~48h, confirm 1.1.1.1 and 8.8.8.8 both return the cloudflare
+  NS, THEN cancel. (At cutover: 8.8.8.8 already switched, 1.1.1.1 had not.)
+- STILL OUTSTANDING: roll the old exposed rk_live key in the Stripe dashboard.
+
 FINAL PRE-CUTOVER VERIFICATION 2026-07-29 (worker v 941f0436, live). Re-ran EVERYTHING
 against the deployed build after the pickup-reminder deploy. ALL GREEN:
 • MONEY, live Stripe, all 4 services, exact amounts: dumpster 20yd 1-3 $376.25, trailer
