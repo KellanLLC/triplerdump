@@ -97,6 +97,10 @@ export function defaultSettings(env = {}) {
     // the point: each fee now has exactly ONE source of truth, which is why the page
     // could previously quote two different prices for the same fee.
     fees: { ...DEFAULT_FEES },
+    // Delivery area: straight-line miles from the yard in West Haven. 60 covers the
+    // published counties (Weber, Morgan, Davis, Salt Lake). 0 disables the check.
+    serviceRadiusMiles: 60,
+    serviceCenter: { lat: 41.203, lon: -112.054 },
     invoiceTerms: DEFAULT_INVOICE_TERMS,
     invoiceDueDays: 14,
     invoiceTaxDefault: true,
@@ -130,6 +134,7 @@ export async function loadSettings(env) {
   if (o.public_base_url) s.publicBaseUrl = o.public_base_url;
   if (o.reminder_lead_days !== undefined) s.reminderLeadDays = num(o.reminder_lead_days, s.reminderLeadDays);
   if (o.fees) s.fees = { ...s.fees, ...o.fees };
+  if (o.service_radius_miles !== undefined) s.serviceRadiusMiles = num(o.service_radius_miles, s.serviceRadiusMiles);
   if (o.invoice_terms !== undefined) s.invoiceTerms = o.invoice_terms;
   if (o.invoice_due_days !== undefined) s.invoiceDueDays = num(o.invoice_due_days, s.invoiceDueDays);
   if (o.invoice_tax_default !== undefined) s.invoiceTaxDefault = o.invoice_tax_default === true;

@@ -150,7 +150,10 @@ export function renderPanel(S, bookings, lowReviews, saved) {
     '<div class="row"><div><label>15 yard</label><input name="inv_15" inputmode="numeric" value="' + esc(S.bins["15"].inventory) + '"></div>' +
     '<div><label>20 yard</label><input name="inv_20" inputmode="numeric" value="' + esc(S.bins["20"].inventory) + '"></div>' +
     '<div><label>25 yard</label><input name="inv_25" inputmode="numeric" value="' + esc(S.bins["25"].inventory) + '"></div>' +
-    '<div><label>Most out at once<span class="hint">All sizes combined.</span></label><input name="cap" inputmode="numeric" value="' + esc(S.totalCap) + '"></div></div></div>');
+    '<div><label>Most out at once<span class="hint">All sizes combined.</span></label><input name="cap" inputmode="numeric" value="' + esc(S.totalCap) + '"></div></div>' +
+    '<h3>Delivery area</h3>' +
+    '<div class="row"><div><label>How far you\'ll deliver<span class="hint">Miles from your yard. Addresses farther than this can\'t book online &mdash; they\'re told to call you instead. Put 0 to turn the check off.</span></label>' +
+    '<input name="service_radius" inputmode="numeric" value="' + esc(S.serviceRadiusMiles) + '"></div></div></div>');
 
   sec("alerts", "Alerts", '<div class="card"><h2>Your alerts</h2>' +
     '<p class="what">Where the website texts you when something happens.</p>' +
@@ -278,7 +281,11 @@ export async function saveSettings(env, form) {
   // page), so each falls back to the value already in settings.
   const cents = (v, current) => { const x = parseFloat(v); return Number.isNaN(x) ? current : Math.round(x * 100); };
   const numOr = (v, current) => { const x = parseFloat(v); return Number.isNaN(x) ? current : x; };
-  const cur = (await loadSettings(env)).fees || {};
+  const curS = await loadSettings(env);
+  const cur = curS.fees || {};
+  // 0 is a legitimate value here (check off), so only blank/garbage falls back.
+  const sr = parseFloat(form.service_radius);
+  await saveSetting(env, "service_radius_miles", Number.isNaN(sr) ? curS.serviceRadiusMiles : sr);
   await saveSetting(env, "fees", {
     dryRun: cents(form.fee_dry_run, cur.dryRun),
     overweightTon: cents(form.fee_overweight_ton, cur.overweightTon),

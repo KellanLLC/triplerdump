@@ -336,9 +336,55 @@ export async function getAvailability(env, S, size, date, tier = "1-3") {
   return { ok: true, available, size, tier, date, pickup_date: pickup, size_out: sizeOut, size_cap: sizeCap, total_out: counts.total, total_cap: S.totalCap };
 }
 
+// ---- Service area ------------------------------------------------------------
+// The address field alone accepted anything ("length >= 5"), so someone a state
+// away could book and PAY, and Joseph would eat a Stripe refund plus a wasted
+// morning. Geocode the drop-off via Photon (same upstream as the autocomplete)
+// and measure straight-line miles from the yard.
+//
+// Deliberately conservative in BOTH directions:
+//  - Reject only when EVERY candidate interpretation of the address is beyond the
+//    radius, so an ambiguous address gets the benefit of the doubt.
+//  - Fail OPEN (allow) when Photon errors, times out, or finds nothing — an outage
+//    or an unusual-but-real address must never block a paying local customer.
+//    Gibberish addresses also pass; they always did, and Joseph triages by phone.
+function milesBetween(lat1, lon1, lat2, lon2) {
+  const rad = Math.PI / 180, R = 3958.8; // earth radius, miles
+  const dLat = (lat2 - lat1) * rad, dLon = (lon2 - lon1) * rad;
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * rad) * Math.cos(lat2 * rad) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
+
+async function outsideServiceArea(S, address) {
+  const radius = Number(S.serviceRadiusMiles);
+  if (!radius || radius <= 0) return null; // 0/blank in the CMS = check disabled
+  const c = S.serviceCenter || { lat: 41.203, lon: -112.054 }; // West Haven, UT
+  try {
+    const r = await fetch(
+      "https://photon.komoot.io/api/?q=" + encodeURIComponent(String(address).slice(0, 120)) +
+      "&limit=3&lang=en&lat=" + c.lat + "&lon=" + c.lon,
+      { headers: { "user-agent": "TripleRDump-Booking/1.0 (service-area check)" }, signal: AbortSignal.timeout(4000) }
+    );
+    if (!r.ok) return null;
+    const data = await r.json();
+    const feats = ((data && data.features) || []).filter((f) => f && f.geometry && Array.isArray(f.geometry.coordinates));
+    if (!feats.length) return null;
+    let best = Infinity;
+    for (const f of feats) {
+      const mi = milesBetween(c.lat, c.lon, f.geometry.coordinates[1], f.geometry.coordinates[0]);
+      if (mi < best) best = mi;
+    }
+    return best > radius ? { miles: Math.round(best) } : null;
+  } catch (e) {
+    console.error("[servicearea] failing open:", e && e.message ? e.message : e);
+    return null;
+  }
+}
+
 export async function createBooking(env, S, input) {
   // Commercial = a separate, unpriced lead flow ("request a quote"). Handle it
-  // before any residential validation/pricing/capacity logic runs.
+  // before any residential validation/pricing/capacity logic runs. No area gate
+  // on leads: a far-away commercial inquiry costs nothing and may be worth a call.
   if (String(input && input.account_type) === "commercial") {
     return createCommercialLead(env, S, input);
   }
@@ -351,6 +397,17 @@ export async function createBooking(env, S, input) {
   const latest = addDays(today, S.booking.maxAdvanceDays);
   if (clean.date < earliest) return { ok: false, errors: [`Earliest delivery is ${earliest}.`] };
   if (clean.date > latest) return { ok: false, errors: [`We book up to ${S.booking.maxAdvanceDays} days out.`] };
+
+  // Outside the delivery area -> a clear no with a phone number, BEFORE any
+  // capacity hold or Stripe session is created.
+  const far = await outsideServiceArea(S, clean.dropAddress);
+  if (far) {
+    return { ok: false, errors: [
+      `That address looks to be about ${far.miles} miles from us — outside our delivery area ` +
+      `(within ${Number(S.serviceRadiusMiles)} miles of West Haven). If that seems wrong, or you're close, ` +
+      `call ${(S.business && S.business.phone) || "801-564-3164"} and we'll see what we can do.`,
+    ] };
+  }
 
   // Free any expired unpaid holds so they don't wrongly block this booking.
   await expireStaleHolds(env, S);
