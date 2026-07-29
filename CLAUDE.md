@@ -92,6 +92,13 @@ domain/DNS until the final cutover (the last step in the whole project).
 - Capacity: per-size inventory + 11-bin total cap (dumpster service only).
 - Address autocomplete: GET /api/geocode?q= proxies to Photon (OSM), KEYLESS, West Haven
   bias. 2026-06-25: now KEEPS the typed leading house number when OSM returns street-only.
+- SERVICE AREA (added 2026-07-28): createBooking geocodes the drop-off (Photon) and
+  REFUSES residential bookings farther than `service_radius_miles` (CMS, Bins tab,
+  default 60 mi from West Haven ~ the published counties; 0 = off) BEFORE any hold or
+  Stripe session. Rejects only if EVERY geocode candidate is outside; fails OPEN on
+  Photon errors/no-results (an outage must never block a local customer — gibberish
+  still passes, Joseph triages by phone). Commercial leads NOT gated. Verified live:
+  Vegas rejected at "about 391 miles", West Haven + Draper accepted, gibberish accepted.
 - /book UI: clean/minimal/conversion-first. index.html is OWNER-BUILT - do not redesign it.
 
 ## Stripe (LIVE as of 2026-06-26 - live key set + live checkout VERIFIED; sandbox still selectable via CMS)
