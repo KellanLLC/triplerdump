@@ -4,7 +4,7 @@ import { createBooking, getAvailability, expireStaleHolds } from "./booking.js";
 import { handleStripeWebhook, confirmPaidByRedirect } from "./stripe.js";
 import { renderBookedPage } from "./booked.js";
 import { buildICalFeed } from "./ical.js";
-import { startReview } from "./review.js";
+import { startReview, runReviewFollowups, markReviewClicked } from "./review.js";
 import { runReminderSweep } from "./reminders.js";
 import { renderBookingPage } from "./page.js";
 import { renderTermsPage } from "./terms.js";
@@ -313,6 +313,10 @@ export default {
         const S = await loadSettings(env);
         const b = await env.DB.prepare("SELECT customer_name FROM bookings WHERE review_token=?1").bind(rr[1]).first();
         const first = b ? String(b.customer_name || "").split(/\s+/)[0] : "";
+        // Opening the link is the strongest signal we get that they heard us —
+        // stop the follow-up ladder even if they never pick a star. Never let a
+        // tracking write break the page they came to see.
+        try { await markReviewClicked(env, rr[1]); } catch (e) { console.error("[review click]", e); }
         return html(renderReviewLanding(S, rr[1], first));
       }
       if (p === "/api/review" && m === "POST") {
@@ -338,14 +342,26 @@ export default {
     }
   },
 
+  // Runs HOURLY. The review follow-up ladder needs finer resolution than a daily
+  // tick (+24h/+24h/+48h from whenever the previous message went out), and freeing
+  // stale unpaid holds hourly is strictly better than daily. The reminder sweep is
+  // the one job that must fire at a civilised hour, so it is gated to 10:00 local
+  // rather than run every pass.
   async scheduled(event, env, ctx) {
     ctx.waitUntil((async () => {
       const S = await loadSettings(env);
       // Run the sweeps independently so one failing can't abort the others.
-      // NOTE: review requests are STRICTLY owner-triggered (startReview on "mark
-      // complete") — there is deliberately NO review sweep here.
+      // NOTE: the FIRST review ask is still owner-triggered (startReview on "mark
+      // complete"). Only the follow-ups to an unanswered ask run on the cron.
       await expireStaleHolds(env, S).catch((e) => console.error("[cron expire]", e));
-      await runReminderSweep(env, S).catch((e) => console.error("[cron reminder]", e));
+      await runReviewFollowups(env, S).catch((e) => console.error("[cron review followup]", e));
+
+      const localHour = Number(new Intl.DateTimeFormat("en-US", {
+        timeZone: S.business.timezone, hour: "numeric", hour12: false,
+      }).format(new Date()));
+      if (localHour === (Number(S.reminderHourLocal) || 10)) {
+        await runReminderSweep(env, S).catch((e) => console.error("[cron reminder]", e));
+      }
     })());
   },
 };

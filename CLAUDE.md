@@ -2,6 +2,32 @@
 
 > Read this at the START of every session. Update it before you finish.
 
+*** THE CLIENT-SIDE PERSON IS **BOSTON**. "Kellan" (KellanLLC / getkellan.com) is his
+COMPANY, not his name. Older notes and commits below wrongly call him Kellan. ***
+
+REVIEW FOLLOW-UP LADDER BUILT 2026-07-29 (worker v dc317caf) — modelled on the
+kronos-electric worker (C:\Users\Home\Desktop\projects\kronos-electric).
+- The FIRST ask is still owner-triggered (startReview on "mark picked up / completed").
+  Only the chase is automatic: +24h, +24h, +48h, then STOP FOREVER.
+- STOPS on any signal: `clicked` (opening /r/<token> — markReviewClicked, strongest
+  signal, set even if they never rate), `rated` (stopReviewLadder from handleReviewRate),
+  `exhausted` (3 sent, or an hours box set to 0). stopReviewLadder COALESCEs so the FIRST
+  reason wins and a later pass can't overwrite "clicked" with "exhausted".
+- Migration 0004 APPLIED to live D1: review_step, review_next_due_at, review_stopped_at,
+  review_stop_reason, review_clicked_at + a partial index on (review_next_due_at) WHERE
+  review_stopped_at IS NULL.
+- CMS: Reviews tab has the 3 hour boxes (`review_followup_hours`, JSON array [24,24,48],
+  0 = rung off); Texts tab has review_followup_1/2/3 — sms_templates is now 13 keys.
+- *** CRON IS NOW HOURLY (`0 * * * *`, was `0 16 * * *`). *** The ladder needs sub-daily
+  resolution. The DELIVERY/PICKUP REMINDER SWEEP IS GATED to 10:00 America/Denver inside
+  scheduled() (Intl.DateTimeFormat hour check) so it still lands at a civilised hour —
+  if you ever touch that gate, reminders will fire at the wrong time or every hour.
+- 25/25 offline asserts pass (mocked D1 + fetch, zero real SMS).
+ADMIN "How this works" TAB (first tab, readonly so the Save bar hides) — a condensed
+owner guide inside /admin so Joseph never has to find OWNER-GUIDE.md. Keep the two in
+step when behaviour changes.
+FOOTER: index.html now credits "Made by Kellan" -> https://getkellan.com.
+
 *** DOMAIN CUTOVER DONE 2026-07-29 (worker v 4554797a). triplerdump.com now serves THIS
 worker, off Wix. ***
 - Registrar is PORKBUN (not Wix). DNS was delegated to Wix (ns6/ns7.wixdns.net); NS at

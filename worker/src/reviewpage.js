@@ -2,6 +2,7 @@
 // Gating is enforced server-side: the Google link is only returned by the API
 // when the rating qualifies, so low-rating customers never receive it.
 import { notifyOwnerLowRating } from "./sms.js";
+import { stopReviewLadder } from "./review.js";
 
 const esc = (s) => String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
@@ -60,6 +61,8 @@ export async function handleReviewRate(env, S, body) {
   else { action = "feedback"; }
 
   await env.DB.prepare("UPDATE bookings SET review_rating=?1 WHERE id=?2").bind(rating, b.id).run();
+  // They answered — no more follow-ups, whatever they said.
+  await stopReviewLadder(env, b.id, "rated");
   await env.DB.prepare("DELETE FROM reviews WHERE booking_id=?1").bind(b.id).run();
   await env.DB.prepare("INSERT INTO reviews (booking_id, rating, routed_to, created_at) VALUES (?1,?2,?3,?4)")
     .bind(b.id, rating, action, new Date().toISOString()).run();

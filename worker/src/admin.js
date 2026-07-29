@@ -135,6 +135,61 @@ export function renderPanel(S, bookings, lowReviews, saved) {
   let body = '<div class="top"><h1>Triple R Dump</h1><form method="POST" action="/admin/logout"><button style="background:#64748b">Log out</button></form></div>';
   if (saved) body += '<div class="ok" style="margin-top:12px"><b>Saved.</b> Your changes are live on the website now.</div>';
 
+  // First tab on purpose: the answer to "what am I looking at" should be the
+  // thing in front of him, not something he has to go hunting for. Marked
+  // readonly so the Save bar hides — there is nothing here to submit.
+  sec("guide", "How this works", '<div class="card">' +
+    '<h2>The one thing to remember</h2>' +
+    '<p class="what" style="font-size:15px">When the bin is back on your truck, open that job and tap <b>&ldquo;Mark picked up / completed.&rdquo;</b> That is the only step the website can\'t work out on its own, and it\'s what asks the customer for a review. Everything else runs itself.</p>' +
+    '</div>' +
+
+    '<div class="card"><h2>How a job flows</h2>' +
+    '<ol style="margin:0;padding-left:20px;line-height:1.75">' +
+      '<li>Customer books and <b>pays in full online</b>. Nothing to collect.</li>' +
+      '<li><b>You get a text</b> with the job and a link to every detail.</li>' +
+      '<li>You deliver. A reminder text goes to you both the day before.</li>' +
+      '<li>You pick up. A reminder text goes to you the <b>morning it\'s due</b>.</li>' +
+      '<li>You tap <b>Mark picked up / completed</b> &mdash; the review request goes out.</li>' +
+    '</ol></div>' +
+
+    '<div class="card"><h2>Reminders you\'ll get</h2>' +
+    '<table><tr><th>When</th><th>Who</th><th>What</th></tr>' +
+      '<tr><td>Day before delivery</td><td>You + customer</td><td>Deliver this bin tomorrow</td></tr>' +
+      '<tr><td>Day before pickup</td><td>Customer</td><td>We pick up tomorrow &mdash; call to extend</td></tr>' +
+      '<tr><td><b>Morning of pickup</b></td><td><b>You</b></td><td><b>Pick up this bin today</b></td></tr>' +
+    '</table>' +
+    '<p class="muted" style="margin-top:10px">If someone wants to keep it longer, open the job and use <b>Pickup date</b>. That stops the bin being double-booked, restarts the reminders for the new date, and notes the change. Then charge the extra days in Stripe.</p></div>' +
+
+    '<div class="card"><h2>Money</h2>' +
+    '<p class="what">Residential customers pay in full when they book. <b>Refunds are done in the Stripe dashboard</b>, not here.</p>' +
+    '<p class="what" style="margin-bottom:6px"><b>Charging extra later</b> (overweight, damage, a wasted trip):</p>' +
+    '<table><tr><th>How the job was paid</th><th>Can you charge their card later?</th></tr>' +
+      '<tr><td>Booked &amp; paid online</td><td><b>Yes</b> &mdash; card is saved, charge it in Stripe</td></tr>' +
+      '<tr><td>You sent an invoice</td><td><b>No card is saved.</b> Send a second invoice</td></tr>' +
+    '</table>' +
+    '<p class="muted" style="margin-top:10px">Don\'t promise &ldquo;we\'ll just put it on your card&rdquo; unless they booked online. The fees you can charge are listed on your <a href="/terms" target="_blank" rel="noopener" style="color:#116DFF;font-weight:600;text-decoration:none">Terms page</a>, and they agreed to them at booking.</p></div>' +
+
+    '<div class="card"><h2>Reviews</h2>' +
+    '<p class="what">After you mark a job complete the customer is asked how it went. <b>4 or 5 stars</b> goes straight to your Google page. <b>3 or less</b> comes privately to you as a text with their comment &mdash; so you hear about a problem before the internet does.</p>' +
+    '<p class="muted">If they ignore it, we nudge them up to three more times and then stop for good. The nudges stop the second they open the link or answer. Nobody who already reviewed you gets asked again.</p></div>' +
+
+    '<div class="card"><h2>Things it does without asking</h2>' +
+    '<ul style="margin:0;padding-left:20px;line-height:1.75">' +
+      '<li><b>Turns away far-away jobs.</b> Past your delivery radius they\'re told to call you instead.</li>' +
+      '<li><b>Junk removal is weekends only.</b> Weekday requests are refused.</li>' +
+      '<li><b>Won\'t overbook you.</b> It knows how many bins you own.</li>' +
+      '<li><b>Blocks spam.</b> If a real customer says &ldquo;it told me to call you&rdquo;, just take it by phone.</li>' +
+    '</ul></div>' +
+
+    '<div class="card"><h2>Using these tabs</h2>' +
+    '<p class="what">Change anything here and it\'s live on the website immediately &mdash; no one needs to redeploy anything.</p>' +
+    '<ul style="margin:0;padding-left:20px;line-height:1.75">' +
+      '<li><b>Extra fees</b> rewrites your Terms page automatically.</li>' +
+      '<li>In <b>Texts</b>, keep the bits in {curly braces} &mdash; they become real details. <b>Never leave a message box empty</b>; empty means that text stops sending.</li>' +
+      '<li><b>Leave Advanced alone.</b> That\'s plumbing.</li>' +
+    '</ul>' +
+    '<p class="muted" style="margin-top:12px">Something actually broken? Call Boston. Don\'t start changing settings to fix it &mdash; that makes it harder to find.</p></div>', true);
+
   sec("prices", "Prices", '<div class="card"><h2>What you charge</h2>' +
     '<p class="what">Your bin prices. First box is a 1&ndash;3 day rental, second is 4&ndash;7 days.</p>' +
     '<div class="row">' + priceField(S, "15", "1-3") + priceField(S, "15", "4-7") + '</div>' +
@@ -190,7 +245,14 @@ export function renderPanel(S, bookings, lowReviews, saved) {
     '<label>Your Google review link</label><input name="review_link" value="' + esc(S.reviewLink) + '">' +
     '<div class="row"><div><label>Who gets sent to Google<span class="hint">Gated sends only happy customers; unhappy ones reach you privately instead.</span></label>' +
     '<select name="review_mode"><option value="gated"' + (S.reviewMode === "gated" ? " selected" : "") + '>Only happy customers</option><option value="open"' + (S.reviewMode === "open" ? " selected" : "") + '>Everyone</option></select></div>' +
-    '<div><label>Stars needed<span class="hint">This many or more counts as happy.</span></label><input name="threshold" inputmode="numeric" value="' + esc(S.reviewThreshold) + '"></div></div></div>');
+    '<div><label>Stars needed<span class="hint">This many or more counts as happy.</span></label><input name="threshold" inputmode="numeric" value="' + esc(S.reviewThreshold) + '"></div></div>' +
+    '<h3>Chasing the ones who never answer</h3>' +
+    '<p class="what" style="margin:-2px 0 10px">If they don\'t reply, we nudge them up to three times, then stop for good. <b>The moment they open the link or leave a rating, the nudges stop.</b> Hours count from the message before. Put 0 to switch a nudge off.</p>' +
+    '<div class="row">' +
+      '<div><label>1st nudge<span class="hint">Hours after the first ask.</span></label><input name="fu_1" inputmode="numeric" value="' + esc((S.reviewFollowupHours || [])[0] != null ? S.reviewFollowupHours[0] : "") + '"></div>' +
+      '<div><label>2nd nudge<span class="hint">Hours after the 1st.</span></label><input name="fu_2" inputmode="numeric" value="' + esc((S.reviewFollowupHours || [])[1] != null ? S.reviewFollowupHours[1] : "") + '"></div>' +
+      '<div><label>3rd nudge<span class="hint">Hours after the 2nd.</span></label><input name="fu_3" inputmode="numeric" value="' + esc((S.reviewFollowupHours || [])[2] != null ? S.reviewFollowupHours[2] : "") + '"></div>' +
+    '</div></div>');
 
   sec("texts", "Texts", '<div class="card"><h2>Text messages</h2>' +
     '<p class="what">The wording of every text the website sends. Anything in {curly braces} gets swapped for the real detail, so leave those as they are.</p>' +
@@ -201,6 +263,9 @@ export function renderPanel(S, bookings, lowReviews, saved) {
     '<label>Delivery reminder <span class="muted">(day before)</span></label><textarea name="tpl_reminder_sms">' + esc(t.reminder_sms) + '</textarea>' +
     '<label>Pickup reminder <span class="muted">(day before pickup, so they can call to extend; {extension_day} = your per-day extension fee)</span></label><textarea name="tpl_pickup_reminder">' + esc(t.pickup_reminder) + '</textarea>' +
     '<label>Review request <span class="muted">(after pickup &mdash; use {review_link})</span></label><textarea name="tpl_review">' + esc(t.review) + '</textarea>' +
+    '<label>Nudge 1 <span class="muted">(if they never answered)</span></label><textarea name="tpl_review_followup_1">' + esc(t.review_followup_1) + '</textarea>' +
+    '<label>Nudge 2</label><textarea name="tpl_review_followup_2">' + esc(t.review_followup_2) + '</textarea>' +
+    '<label>Nudge 3 <span class="muted">(the last one they ever get)</span></label><textarea name="tpl_review_followup_3">' + esc(t.review_followup_3) + '</textarea>' +
     '<h3>To you</h3>' +
     '<label>New booking <span class="muted">(use {admin_link})</span></label><textarea name="tpl_owner">' + esc(t.owner) + '</textarea>' +
     '<label>Delivery reminder <span class="muted">(use {admin_link})</span></label><textarea name="tpl_owner_reminder">' + esc(t.owner_reminder) + '</textarea>' +
@@ -244,7 +309,7 @@ export function renderPanel(S, bookings, lowReviews, saved) {
   sec("activity", "Bookings", activity, true);
 
   // Tab order is what he reaches for most, first. "Advanced" is deliberately last.
-  const ORDER = ["prices", "fees", "bins", "invoices", "alerts", "reviews", "texts", "activity", "advanced"];
+  const ORDER = ["guide", "prices", "fees", "bins", "invoices", "alerts", "reviews", "texts", "activity", "advanced"];
   panels.sort((a, b) => ORDER.indexOf(a.id) - ORDER.indexOf(b.id));
 
   // Tab bar, then every panel. The panels all live inside ONE form, so Save writes
@@ -327,7 +392,12 @@ export async function saveSettings(env, form) {
   await saveSetting(env, "invoice_terms", String(form.invoice_terms || ""));
   await saveSetting(env, "invoice_due_days", parseInt(form.invoice_due_days, 10) || 14);
   await saveSetting(env, "invoice_tax_default", form.invoice_tax_default === "on" || form.invoice_tax_default === "true");
-  await saveSetting(env, "sms_templates", { confirmation: String(form.tpl_confirmation || ""), reminder_sms: String(form.tpl_reminder_sms || ""), pickup_reminder: String(form.tpl_pickup_reminder || ""), review: String(form.tpl_review || ""), owner: String(form.tpl_owner || ""), owner_reminder: String(form.tpl_owner_reminder || ""), owner_pickup_reminder: String(form.tpl_owner_pickup_reminder || ""), commercial: String(form.tpl_commercial || ""), low_rating: String(form.tpl_low_rating || ""), invoice: String(form.tpl_invoice || "") });
+  await saveSetting(env, "sms_templates", { confirmation: String(form.tpl_confirmation || ""), reminder_sms: String(form.tpl_reminder_sms || ""), pickup_reminder: String(form.tpl_pickup_reminder || ""), review: String(form.tpl_review || ""), review_followup_1: String(form.tpl_review_followup_1 || ""), review_followup_2: String(form.tpl_review_followup_2 || ""), review_followup_3: String(form.tpl_review_followup_3 || ""), owner: String(form.tpl_owner || ""), owner_reminder: String(form.tpl_owner_reminder || ""), owner_pickup_reminder: String(form.tpl_owner_pickup_reminder || ""), commercial: String(form.tpl_commercial || ""), low_rating: String(form.tpl_low_rating || ""), invoice: String(form.tpl_invoice || "") });
+  // Follow-up ladder timing. Stored as a 3-slot array; a 0 ends the ladder there.
+  await saveSetting(env, "review_followup_hours", [form.fu_1, form.fu_2, form.fu_3].map((v) => {
+    const n = Number(String(v == null ? "" : v).trim());
+    return Number.isFinite(n) && n > 0 ? Math.round(n) : 0;
+  }));
 }
 
 // ----- Bookings management (own routes; auth-gated in index.js) -----

@@ -41,6 +41,11 @@ CREATE TABLE IF NOT EXISTS bookings (
   reminder_sent_at TEXT,               -- set by the nightly reminder sweep
   pickup_reminder_sent_at TEXT,        -- customer text, day before pickup
   owner_pickup_reminder_sent_at TEXT,  -- owner text, morning of pickup day
+  review_step INTEGER NOT NULL DEFAULT 0, -- follow-ups sent so far (0-3)
+  review_next_due_at TEXT,             -- when the next follow-up fires
+  review_stopped_at TEXT,              -- when the ladder ended
+  review_stop_reason TEXT,             -- clicked | rated | exhausted
+  review_clicked_at TEXT,              -- first tap on /r/<token>
   review_token TEXT,                   -- minted by the review sweep; powers /r/<token>
   review_rating INTEGER,               -- 1-5, captured on the review landing
   notes TEXT

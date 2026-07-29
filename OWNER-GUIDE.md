@@ -3,6 +3,9 @@
 For Joseph. Written to be read straight through, and to double as the running
 order for the walkthrough video.
 
+> A short version of this lives inside your admin panel too — it's the first
+> tab, **"How this works."** So you never have to go looking for this file.
+
 Nothing here needs a computer science degree. There is really only **one new
 habit** to learn (see step 3). Everything else is the system working for you.
 
@@ -90,6 +93,27 @@ hear about a problem before the internet does.
 
 Someone who's already left you a review won't be asked again.
 
+### If they ignore it
+
+Most people don't answer the first text. So the website nudges them, then gives
+up gracefully:
+
+| | When | What it says |
+|---|---|---|
+| First ask | The moment you mark it complete | "How did we do?" |
+| Nudge 1 | 24 hours later | "Did you get a chance…" |
+| Nudge 2 | 24 hours after that | "One more nudge, thirty seconds" |
+| Nudge 3 | 48 hours after that | "Last time we'll ask" |
+
+Then it stops permanently. Nobody ever gets a fourth.
+
+**The nudges stop the instant they respond** — and that includes just *opening*
+the link, even if they never pick a star. So someone who taps through and gets
+distracted is never pestered again.
+
+You can change the timing in **Reviews** and the wording in **Texts**. Putting
+`0` in one of the nudge boxes switches that nudge off.
+
 ---
 
 ## 4. Money
@@ -156,8 +180,8 @@ You can change these yourself, no developer needed. Changes go live instantly.
 | **Bins** | How many of each size you own, and how far you'll deliver |
 | **Invoices** | Default due date and the terms printed on invoices |
 | **Alerts** | Your phone number and which texts you want |
-| **Reviews** | Your Google review link and the star cutoff |
-| **Texts** | The exact wording of every text the site sends |
+| **Reviews** | Your Google review link, the star cutoff, and the nudge timing |
+| **Texts** | The exact wording of every text the site sends, nudges included |
 | **Bookings** | Recent jobs and customer ratings |
 
 **Two rules:**
@@ -175,7 +199,6 @@ You can change these yourself, no developer needed. Changes go live instantly.
 
 So you're not waiting on things that aren't coming:
 
-- **Follow-up review texts.** One request goes out, and that's it — no nagging.
 - **Branded email.** Texts are the notification channel today.
 - **Refunds from the website.** Stripe dashboard only, on purpose.
 
@@ -187,7 +210,7 @@ So you're not waiting on things that aren't coming:
   number in Admin → Bookings. The page tells you the truth about whether the
   payment landed.
 - **You need a job gone** — open it and use Delete. That's permanent.
-- **Something's genuinely broken** — call Kellan. Don't start changing settings
+- **Something's genuinely broken** — call Boston. Don't start changing settings
   to fix it; that usually makes it harder to find.
 
 ---
@@ -201,4 +224,4 @@ So you're not waiting on things that aren't coming:
 | Your admin | https://www.triplerdump.com/admin |
 | Your terms | https://www.triplerdump.com/terms |
 | Payments | Stripe dashboard |
-| Password | Ask Kellan — not written down here on purpose |
+| Password | Ask Boston — not written down here on purpose |

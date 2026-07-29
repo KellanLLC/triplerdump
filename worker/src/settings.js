@@ -21,6 +21,12 @@ const DEFAULT_TEMPLATES = {
   confirmation: "Triple R Dump: your {item} is booked for {date} (ref {id}). Dump fees included. Questions? {phone}",
   owner: "New booking: {name} — {item}, {date}. Full details: {admin_link}",
   review: "Thanks for choosing Triple R Dump, {name}! How did we do? {review_link}",
+  // Follow-up ladder for people who never answered the first ask. Fires at
+  // reviewFollowupHours after the previous message; stops dead the moment they
+  // tap the link or leave a rating. Wording gets softer, then bows out.
+  review_followup_1: "Hi {name}, Joseph at Triple R Dump again — did you get a chance to tell us how the {item} rental went? {review_link}",
+  review_followup_2: "Hi {name}, one more nudge from Triple R Dump. It takes about thirty seconds: {review_link}",
+  review_followup_3: "Hi {name}, last time we'll ask. If we did right by you it would mean a lot: {review_link} Thanks either way.",
   reminder_sms: "Reminder from Triple R Dump: your {item} is scheduled for {date}. Questions? {phone}",
   // Pickup-reminder-only token: {extension_day} = the per-day extension fee in dollars.
   pickup_reminder: "Triple R Dump: we pick up your {item} tomorrow ({pickup}). Need it longer? Call {phone} today to extend (${extension_day}/day).",
@@ -88,6 +94,9 @@ export function defaultSettings(env = {}) {
     reviewLink: DEFAULT_REVIEW_LINK,
     reviewMode: "gated",
     reviewThreshold: 4,
+    // Hours from the PREVIOUS message to each follow-up: +24h, +24h, +48h.
+    // A 0 (or blank) ends the ladder at that rung.
+    reviewFollowupHours: [24, 24, 48],
     requirePayment: false,
     stripeMode: "sandbox",
     notifyOwnerBookings: true,
@@ -129,6 +138,7 @@ export async function loadSettings(env) {
   if (o.review_link) s.reviewLink = o.review_link;
   if (o.review_mode) s.reviewMode = o.review_mode;
   if (o.review_threshold !== undefined) s.reviewThreshold = num(o.review_threshold, s.reviewThreshold);
+  if (Array.isArray(o.review_followup_hours)) s.reviewFollowupHours = o.review_followup_hours.map((h) => num(Number(h), 0));
   if (o.require_payment !== undefined) s.requirePayment = o.require_payment === true;
   if (o.stripe_mode) s.stripeMode = o.stripe_mode === "live" ? "live" : "sandbox";
   if (o.notify_owner_bookings !== undefined) s.notifyOwnerBookings = o.notify_owner_bookings === true;
