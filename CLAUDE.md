@@ -5,6 +5,48 @@
 *** THE CLIENT-SIDE PERSON IS **BOSTON**. "Kellan" (KellanLLC / getkellan.com) is his
 COMPANY, not his name. Older notes and commits below wrongly call him Kellan. ***
 
+*** DASHBOARD + CLOSE-NUDGE + REVIEW PROOF 2026-08-13, later same day (worker v dbb933e8) ***
+- /admin now OPENS ON A TODAY VIEW above the settings tabs: "Still out — needs closing"
+  (amber card, overdue unmarked jobs), then Today with Deliver / "Pick up — tap when done"
+  buckets. Each job = one row (maps link, tel link, ref link) + a green "✓ Picked up"
+  button that POSTs the existing /status route with back=admin (only the literal "admin"
+  is honored). renderPanel SIGNATURE CHANGED to (S, data): data = { recent, lowReviews,
+  saved, flash, flashRef, today, active }; index.js /admin GET queries active jobs
+  (status confirmed/paid AND (delivery_date=today OR pickup_date<=today)).
+- FLASH CONFIRMATIONS (Boston: "make sure it says ok marked picked up successfully"):
+  /status and /pickupdate redirect with ?flash=…; flashHtml() renders plain-words green
+  banners — done-review ("review text on its way") / done-already ("never ask twice") /
+  done-failed (amber, "press again to retry" — truthful: re-marking completed re-calls
+  startReview, whose guards make it a safe retry). Booking detail now has a REVIEW row
+  (★ N stars / "asked DATE · they opened the link" / "not asked yet").
+- CLOSE NUDGE (new pass 4 in reminders.js runPickupSweep): the day AFTER pickup_date
+  (query pickup_date <= yesterday so slipped days still catch), status confirmed/paid,
+  ALL services, one text per booking ever (flag owner_complete_nudge_sent_at — migration
+  0005 APPLIED to live D1; /pickupdate NULLs it so extensions re-arm). Template
+  owner_complete_nudge — sms_templates is now 14 keys; the key is ABSENT from the saved
+  D1 row so the code default serves (per-key merge). THE WHOLESALE-SAVE TRAP: the Texts
+  tab textarea (tpl_owner_complete_nudge) MUST exist in the form — saveSettings writes
+  sms_templates wholesale, and a missing field would save "" and silently kill the text.
+  Respects notify_owner_reminders; flag stamped even when the send is skipped; rides the
+  10:00 America/Denver gate.
+- REVIEW AUTOMATION: PROVEN, twice. (1) Real customer Tony Roest — review sent Aug 3 on
+  mark-completed, he clicked Aug 4 and rated 5 (Boston's "it didn't send anything" when
+  re-marking = the already-sent/already-rated guards, by design — the new flash banner
+  now SAYS so). (2) Live test to Boston's own phone: row TRD-BTESTA (3852004532, status
+  completed, token 9ea1ef0f…), GHL relay returned 200, ladder armed (nudge 1 due
+  2026-08-14T22:14Z if he doesn't tap; tapping stops it with reason "clicked").
+  *** CLEANUP DUE: DELETE TRD-BTESTA (+ its reviews-table row if he rates) once Boston
+  confirms the text/flow — his rating sets review_rating on that row, and the per-phone
+  dedup would then treat 3852004532 as "already reviewed" forever. ***
+- VERIFIED: 27/27 new offline asserts (nudge sweep incl. toggle-off-still-stamps, Today
+  buckets incl. same-day junk in "finish", flash, review row, no-undefined) + 32/32
+  lockout-suite regression; real-browser probe at 375px CSS = ZERO horizontal overflow
+  (headless-Edge right-edge clipping at 125% DPI remains a screenshot ARTIFACT — trust
+  the scrollWidth probe). Palette: admin bg #eef2f7 -> #ecf2fa (brand-blue-tinted, not
+  the stock UI-kit grey); statuses = colored TEXT not pills; the done action is green
+  #146c2e (6.5:1 on white). OWNER-GUIDE.md + the admin guide tab updated in step (4-row
+  reminders table).
+
 *** INCIDENT + FIX 2026-08-13 (worker v e1e09a91) — THE SELF-LOCKOUT THAT COST A REAL JOB ***
 - Brody Floto (Hooper, 2.8 mi away) tried to book the 15yd twice (Aug 11 + Aug 12; rows
   TRD-SA9MN6 / TRD-SU7XVK left `cancelled` in D1 as real history — do not delete). Both

@@ -1,6 +1,6 @@
 // CMS / admin panel. Auth = HMAC-signed cookie (ADMIN_SECRET) gated by
 // ADMIN_PASSWORD. All editable config lives in D1 `settings`.
-import { saveSetting, loadSettings } from "./settings.js";
+import { saveSetting, loadSettings, itemLabel } from "./settings.js";
 
 const COOKIE = "trd_admin";
 const enc = new TextEncoder();
@@ -44,7 +44,7 @@ const esc = (s) => String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</
 const page = (body) => '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Triple R Dump - Admin</title><style>' +
 // Type is deliberately larger than a typical dashboard (16px base, 17px inputs):
 // this gets used on a phone, outdoors, by one person who is not a software user.
-'body{margin:0;font:16px/1.55 system-ui,Segoe UI,Roboto,sans-serif;color:#0b1b2b;background:#eef2f7}' +
+'body{margin:0;font:16px/1.55 system-ui,Segoe UI,Roboto,sans-serif;color:#0b1b2b;background:#ecf2fa}' +
 '.wrap{max-width:780px;margin:0 auto;padding:24px 16px 40px}' +
 'h1{font-size:25px;margin:0}h2{font-size:19px;margin:0 0 3px}' +
 'h3{font-size:15px;margin:22px 0 6px;color:#334155}' +
@@ -75,12 +75,28 @@ const page = (body) => '<!DOCTYPE html><html lang="en"><head><meta charset="utf-
 'table{width:100%;border-collapse:collapse;font-size:14px}td,th{text-align:left;padding:7px 6px;border-bottom:1px solid #eef2f7}' +
 '.ok{background:#e9f9ee;border:1px solid #9be0b3;padding:10px 14px;border-radius:8px;margin-bottom:12px}' +
 '.top{display:flex;justify-content:space-between;align-items:center;gap:12px}' +
+// Loud, plain-words confirmation of the thing he just did ("✓ marked picked up,
+// review text on its way") — the old silent redirect read as "nothing happened".
+'.flash{background:#e9f9ee;border:1px solid #9be0b3;border-radius:10px;padding:14px 16px;margin-top:12px;font-size:16.5px}' +
+'.flash.warn{background:#fff8ec;border-color:#f0c36d}' +
+// Today view: one row per job, the single action that matters on the right.
+'.job{display:flex;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid #eef2f7}' +
+'.job:last-child{border-bottom:0}' +
+'.job-info{flex:1;min-width:0}' +
+'.job-who{font-weight:700;font-size:17px}' +
+'.job-meta{color:#5a6b7d;font-size:14.5px;margin-top:2px;overflow-wrap:anywhere}' +
+'.job-meta a{color:#116DFF;text-decoration:none;font-weight:600}' +
+'button.done{background:#146c2e;white-space:nowrap}button.done:hover{background:#0f5423}' +
+'.card.attn{border-color:#f0c36d;background:#fffdf6}' +
+// Two big flat-footed doors to the other screens — no hunting through tabs.
+'.quick{display:flex;gap:10px;margin-top:14px}' +
+'.quick a{flex:1;display:block;text-align:center;background:#fff;border:1px solid #d7e3f4;border-radius:12px;padding:15px 8px;font-weight:700;color:#0b1b2b;text-decoration:none;font-size:16px}' +
 // Advanced settings are demoted and collapsed: they are the ones that break the
 // site if guessed at, and they are not what he opens this page to do.
 'details.adv{margin-top:16px;background:#f7f9fc;border:1px dashed #cdd7e3;border-radius:12px;padding:14px 18px}' +
 'details.adv summary{cursor:pointer;font-weight:700;color:#5a6b7d}' +
 // Save stays reachable without hunting for the end of a long form.
-'.savebar{position:sticky;bottom:0;background:#eef2f7;padding:12px 0;margin-top:8px;border-top:1px solid #dde5ef}' +
+'.savebar{position:sticky;bottom:0;background:#ecf2fa;padding:12px 0;margin-top:8px;border-top:1px solid #dde5ef}' +
 // Tabs: one job per screen instead of one very long page. type="button" on each so
 // they can never submit the form. Without JS every panel simply stays visible, so
 // the page degrades to the old long-scroll version rather than showing nothing.
@@ -102,14 +118,89 @@ const page = (body) => '<!DOCTYPE html><html lang="en"><head><meta charset="utf-
   '.card{padding:16px 14px}' +
   '.savebar button{width:100%}' +
   'h1{font-size:22px}' +
+  // Job rows stack: info on top, a full-width thumb-sized green button under it.
+  '.job{flex-wrap:wrap}.job form{width:100%}.job form button{width:100%;padding:14px}' +
 '}' +
 '</style></head><body><main class="wrap">' + body + '</main></body></html>';
 
 export function renderLogin(error) {
-  return page('<h1>Triple R Dump - Admin</h1><div class="card"><form method="POST" action="/admin/login">' +
-    (error ? '<div style="color:#c0392b;margin-bottom:8px">' + esc(error) + '</div>' : '') +
+  return page('<div style="max-width:420px;margin:8vh auto 0"><h1 style="text-align:center">Triple R Dump</h1>' +
+    '<div class="card"><form method="POST" action="/admin/login">' +
+    (error ? '<div style="color:#c0392b;margin-bottom:8px;font-weight:600">' + esc(error) + '</div>' : '') +
     '<label>Password</label><input type="password" name="password" autofocus required>' +
-    '<button style="margin-top:12px">Log in</button></form></div>');
+    '<button style="margin-top:14px;width:100%">Log in</button></form></div></div>');
+}
+
+// Plain-words banner for the action just taken. The "done-*" codes come from the
+// mark-picked-up flow and say exactly what happened with the review text, because
+// "did it send?" is the first thing the owner wonders.
+function flashHtml(flash, ref) {
+  if (!flash) return "";
+  const who = ref ? "<b>" + esc(ref) + "</b> " : "";
+  const M = {
+    "done-review": who + "<b>marked picked up.</b> The customer's review text is on its way.",
+    "done-already": who + "<b>marked picked up.</b> They'd already been asked for a review, so no new text (we never ask twice).",
+    "done-failed": who + "<b>marked picked up</b> &mdash; but the review text could not be sent right now. Press the green button again in a minute to retry.",
+    "done": who + "<b>marked picked up.</b>",
+    "saved": who + "<b>Saved.</b>",
+  };
+  if (!M[flash]) return "";
+  return '<div class="flash' + (flash === "done-failed" ? " warn" : "") + '">&#10003; ' + M[flash] + '</div>';
+}
+
+// Status words get a consistent color everywhere they appear — colored TEXT, not
+// badges: paid/confirmed = live money (blue), completed = closed (green),
+// pending = an unpaid hold (amber), cancelled = gone (grey).
+const BOOKING_STATUS_COLOR = { paid: "#116DFF", confirmed: "#116DFF", completed: "#16a34a", pending: "#b45309", quote_requested: "#b45309", cancelled: "#64748b" };
+const statusWord = (s) => '<b style="color:' + (BOOKING_STATUS_COLOR[s] || "#0b1b2b") + '">' + esc(s || "—") + "</b>";
+
+// ----- Today view -------------------------------------------------------------
+// The first thing the owner sees on /admin: what needs doing NOW, each job one
+// row with the single action that matters. The green button posts the same
+// /status route as the booking page; back=admin returns him here with the
+// confirmation banner on top.
+function jobRow(b, withDone) {
+  const gmap = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(b.address || "");
+  const tel = "tel:+1" + String(b.phone || "").replace(/[^\d]/g, "").slice(-10);
+  let html = '<div class="job"><div class="job-info">' +
+    '<div class="job-who">' + esc(b.customer_name) + ' &mdash; ' + esc(itemLabel(b)) + '</div>' +
+    '<div class="job-meta"><a href="' + gmap + '" target="_blank" rel="noopener">' + esc(b.address || "no address") + '</a>' +
+    ' &middot; <a href="' + esc(tel) + '">' + esc(b.phone || "") + '</a>' +
+    ' &middot; <a href="/admin/booking/' + esc(b.id) + '">' + esc(b.id) + '</a></div></div>';
+  if (withDone) {
+    html += '<form method="POST" action="/admin/booking/' + esc(b.id) + '/status">' +
+      '<input type="hidden" name="status" value="completed"><input type="hidden" name="back" value="admin">' +
+      '<button class="done">&#10003; Picked up</button></form>';
+  }
+  return html + '</div>';
+}
+
+function todaySection(S, d) {
+  const today = d.today || "";
+  const active = d.active || [];
+  const overdue = active.filter((b) => b.pickup_date < today);
+  const finish = active.filter((b) => b.pickup_date === today);
+  const deliver = active.filter((b) => b.delivery_date === today && b.pickup_date > today);
+  const dayName = today
+    ? new Date(today + "T12:00:00Z").toLocaleDateString("en-US", { timeZone: (S.business && S.business.timezone) || "America/Denver", weekday: "long", month: "long", day: "numeric" })
+    : "";
+
+  let html = "";
+  if (overdue.length) {
+    html += '<div class="card attn"><h2 style="color:#b45309">Still out &mdash; needs closing</h2>' +
+      '<p class="what">These were due back already but were never marked picked up. Job done? Tap the green button &mdash; that also sends the customer their review text.</p>';
+    for (const b of overdue) html += jobRow(b, true);
+    html += '</div>';
+  }
+  html += '<div class="card"><h2>Today' + (dayName ? ' &mdash; ' + esc(dayName) : '') + '</h2>';
+  if (!finish.length && !deliver.length) {
+    html += '<p class="muted" style="margin:6px 0 0">Nothing scheduled today.</p>';
+  } else {
+    if (deliver.length) { html += '<h3 style="margin-top:12px">Deliver</h3>'; for (const b of deliver) html += jobRow(b, false); }
+    if (finish.length) { html += '<h3 style="margin-top:12px">Pick up &mdash; tap when done</h3>'; for (const b of finish) html += jobRow(b, true); }
+  }
+  html += '</div>';
+  return html + '<div class="quick"><a href="/admin/bookings">All bookings</a><a href="/admin/invoices">Invoices</a></div>';
 }
 
 function priceField(S, size, tier) {
@@ -124,7 +215,10 @@ function cashField(name, label, cents, hint) {
     '<div class="cash"><span>$</span><input name="' + name + '" inputmode="decimal" value="' + esc(cents == null ? "" : Math.round(cents / 100)) + '"></div></div>';
 }
 
-export function renderPanel(S, bookings, lowReviews, saved) {
+export function renderPanel(S, data) {
+  const d = data || {};
+  const bookings = d.recent || [];
+  const lowReviews = d.lowReviews || [];
   const t = S.templates || {};
   const f = S.fees || {};
   // One panel per job. Collected first, then rendered as tabs, so the owner sees a
@@ -133,7 +227,11 @@ export function renderPanel(S, bookings, lowReviews, saved) {
   const sec = (id, label, html, readonly) => panels.push({ id, label, html, readonly });
 
   let body = '<div class="top"><h1>Triple R Dump</h1><form method="POST" action="/admin/logout"><button style="background:#64748b">Log out</button></form></div>';
-  if (saved) body += '<div class="ok" style="margin-top:12px"><b>Saved.</b> Your changes are live on the website now.</div>';
+  if (d.saved) body += '<div class="flash"><b>Saved.</b> Your changes are live on the website now.</div>';
+  body += flashHtml(d.flash, d.flashRef);
+  // What needs doing today sits ABOVE the settings tabs: the owner opens this
+  // page to run his day, not to edit config.
+  body += todaySection(S, d);
 
   // First tab on purpose: the answer to "what am I looking at" should be the
   // thing in front of him, not something he has to go hunting for. Marked
@@ -157,6 +255,7 @@ export function renderPanel(S, bookings, lowReviews, saved) {
       '<tr><td>Day before delivery</td><td>You + customer</td><td>Deliver this bin tomorrow</td></tr>' +
       '<tr><td>Day before pickup</td><td>Customer</td><td>We pick up tomorrow &mdash; call to extend</td></tr>' +
       '<tr><td><b>Morning of pickup</b></td><td><b>You</b></td><td><b>Pick up this bin today</b></td></tr>' +
+      '<tr><td>Day after pickup</td><td>You</td><td>Only if the job was never marked done &mdash; tap the link to close it</td></tr>' +
     '</table>' +
     '<p class="muted" style="margin-top:10px">If someone wants to keep it longer, open the job and use <b>Pickup date</b>. That stops the bin being double-booked, restarts the reminders for the new date, and notes the change. Then charge the extra days in Stripe.</p></div>' +
 
@@ -271,6 +370,7 @@ export function renderPanel(S, bookings, lowReviews, saved) {
     '<label>New booking <span class="muted">(use {admin_link})</span></label><textarea name="tpl_owner">' + esc(t.owner) + '</textarea>' +
     '<label>Delivery reminder <span class="muted">(use {admin_link})</span></label><textarea name="tpl_owner_reminder">' + esc(t.owner_reminder) + '</textarea>' +
     '<label>Pickup day <span class="muted">(sent the morning a bin is due back; use {admin_link})</span></label><textarea name="tpl_owner_pickup_reminder">' + esc(t.owner_pickup_reminder) + '</textarea>' +
+    '<label>Job never closed <span class="muted">(day after pickup, only if you forgot to mark it done; use {admin_link})</span></label><textarea name="tpl_owner_complete_nudge">' + esc(t.owner_complete_nudge) + '</textarea>' +
     '<label>Commercial quote request <span class="muted">(adds {company} {interest} {timeframe} {email} {details})</span></label><textarea name="tpl_commercial">' + esc(t.commercial) + '</textarea>' +
     '<label>Low rating alert <span class="muted">(adds {rating} {feedback}; use {admin_link})</span></label><textarea name="tpl_low_rating">' + esc(t.low_rating) + '</textarea>' +
     '<h3>Invoices</h3>' +
@@ -299,7 +399,7 @@ export function renderPanel(S, bookings, lowReviews, saved) {
 
   // Read-only tab: the save bar is hidden here, since there is nothing to save.
   let activity = '<div class="card"><div class="top"><h2 style="border:0;margin:0">Recent bookings</h2><span><a href="/admin/invoices" style="color:#116DFF;font-weight:600;text-decoration:none">Invoices</a> &nbsp;&middot;&nbsp; <a href="/admin/bookings" style="color:#116DFF;font-weight:600;text-decoration:none">Manage all &rarr;</a></span></div><table><tr><th>Ref</th><th>Status</th><th>Size</th><th>Drop</th><th>Customer</th><th>Total</th></tr>';
-  for (const b of (bookings || [])) activity += '<tr><td>' + esc(b.id) + '</td><td>' + esc(b.status) + '</td><td>' + esc(b.bin_size) + 'yd</td><td>' + esc(b.delivery_date) + '</td><td>' + esc(b.customer_name) + '</td><td>$' + ((b.amount_cents || 0) / 100).toFixed(2) + '</td></tr>';
+  for (const b of (bookings || [])) activity += '<tr><td><a href="/admin/booking/' + esc(b.id) + '" style="color:#116DFF;font-weight:600;text-decoration:none">' + esc(b.id) + '</a></td><td>' + statusWord(b.status) + '</td><td>' + esc(b.bin_size) + 'yd</td><td>' + esc(b.delivery_date) + '</td><td>' + esc(b.customer_name) + '</td><td>$' + ((b.amount_cents || 0) / 100).toFixed(2) + '</td></tr>';
   if (!bookings || !bookings.length) activity += '<tr><td colspan="6" class="muted">No bookings yet.</td></tr>';
   activity += '</table></div>';
 
@@ -393,7 +493,7 @@ export async function saveSettings(env, form) {
   await saveSetting(env, "invoice_terms", String(form.invoice_terms || ""));
   await saveSetting(env, "invoice_due_days", parseInt(form.invoice_due_days, 10) || 14);
   await saveSetting(env, "invoice_tax_default", form.invoice_tax_default === "on" || form.invoice_tax_default === "true");
-  await saveSetting(env, "sms_templates", { confirmation: String(form.tpl_confirmation || ""), reminder_sms: String(form.tpl_reminder_sms || ""), pickup_reminder: String(form.tpl_pickup_reminder || ""), review: String(form.tpl_review || ""), review_followup_1: String(form.tpl_review_followup_1 || ""), review_followup_2: String(form.tpl_review_followup_2 || ""), review_followup_3: String(form.tpl_review_followup_3 || ""), owner: String(form.tpl_owner || ""), owner_reminder: String(form.tpl_owner_reminder || ""), owner_pickup_reminder: String(form.tpl_owner_pickup_reminder || ""), commercial: String(form.tpl_commercial || ""), low_rating: String(form.tpl_low_rating || ""), invoice: String(form.tpl_invoice || "") });
+  await saveSetting(env, "sms_templates", { confirmation: String(form.tpl_confirmation || ""), reminder_sms: String(form.tpl_reminder_sms || ""), pickup_reminder: String(form.tpl_pickup_reminder || ""), review: String(form.tpl_review || ""), review_followup_1: String(form.tpl_review_followup_1 || ""), review_followup_2: String(form.tpl_review_followup_2 || ""), review_followup_3: String(form.tpl_review_followup_3 || ""), owner: String(form.tpl_owner || ""), owner_reminder: String(form.tpl_owner_reminder || ""), owner_pickup_reminder: String(form.tpl_owner_pickup_reminder || ""), owner_complete_nudge: String(form.tpl_owner_complete_nudge || ""), commercial: String(form.tpl_commercial || ""), low_rating: String(form.tpl_low_rating || ""), invoice: String(form.tpl_invoice || "") });
   // Follow-up ladder timing. Stored as a 3-slot array; a 0 ends the ladder there.
   await saveSetting(env, "review_followup_hours", [form.fu_1, form.fu_2, form.fu_3].map((v) => {
     const n = Number(String(v == null ? "" : v).trim());
@@ -409,25 +509,33 @@ export function renderBookingsList(S, rows, q) {
   body += '<div class="card"><table><tr><th>Ref</th><th>Status</th><th>Service</th><th>Delivery</th><th>Customer</th><th>Total</th></tr>';
   for (const b of (rows || [])) {
     const svc = esc(b.service_type || "dumpster") + (b.bin_size ? " " + esc(b.bin_size) + "yd" : "");
-    body += '<tr><td><a href="/admin/booking/' + esc(b.id) + '" style="color:#116DFF;font-weight:600">' + esc(b.id) + '</a></td><td>' + esc(b.status) + '</td><td>' + svc + '</td><td>' + esc(b.delivery_date) + '</td><td>' + esc(b.customer_name) + '</td><td>$' + ((b.amount_cents || 0) / 100).toFixed(2) + '</td></tr>';
+    body += '<tr><td><a href="/admin/booking/' + esc(b.id) + '" style="color:#116DFF;font-weight:600">' + esc(b.id) + '</a></td><td>' + statusWord(b.status) + '</td><td>' + svc + '</td><td>' + esc(b.delivery_date) + '</td><td>' + esc(b.customer_name) + '</td><td>$' + ((b.amount_cents || 0) / 100).toFixed(2) + '</td></tr>';
   }
   if (!rows || !rows.length) body += '<tr><td colspan="6" class="muted">No bookings' + (q ? ' match "' + esc(q) + '"' : ' yet') + '.</td></tr>';
   body += '</table></div>';
   return page(body);
 }
 
-export function renderBookingDetail(S, b) {
+export function renderBookingDetail(S, b, flash) {
   if (!b) return page('<div class="top"><h1>Booking</h1><a href="/admin/bookings" style="color:#64748b;text-decoration:none">&larr; Bookings</a></div><div class="card"><p class="muted">Not found.</p></div>');
   const addr = b.address || "";
   const gmap = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(addr);
   const amap = "https://maps.apple.com/?q=" + encodeURIComponent(addr);
   const money = (c) => "$" + ((c || 0) / 100).toFixed(2);
   const r = (k, v) => '<div style="display:flex;border-bottom:1px solid #eef2f7;padding:5px 0"><div style="flex:0 0 42%;color:#5a6b7d">' + esc(k) + '</div><div style="flex:1"><b>' + esc(v == null || v === "" ? "—" : v) + '</b></div></div>';
+  // The review question ("did it send?") gets answered right on the page instead
+  // of leaving the owner guessing at whether the automation worked.
+  const reviewState = b.review_rating != null
+    ? "★ " + b.review_rating + " star" + (Number(b.review_rating) === 1 ? "" : "s")
+    : b.review_sms_sent_at
+      ? "asked " + String(b.review_sms_sent_at).slice(0, 10) + (b.review_stop_reason === "clicked" ? " · they opened the link" : "")
+      : "not asked yet";
   let body = '<div class="top"><h1>' + esc(b.id) + '</h1><a href="/admin/bookings" style="color:#64748b;text-decoration:none">&larr; Bookings</a></div>';
+  body += flashHtml(flash, "");
   body += '<div class="card">';
   body += r("Status", b.status) + r("Account", b.account_type) + r("Service", b.service_type) + r("Bin size", b.bin_size ? b.bin_size + "yd" : "") + r("Rental", b.rental_tier ? b.rental_tier + " day" : (b.rental_days ? b.rental_days + " days" : "")) + r("Customer", b.customer_name) + r("Phone", b.phone) + r("Email", b.email) + r("Company", b.company);
   body += r("Delivery", b.delivery_date + (b.delivery_time ? " " + b.delivery_time : "")) + r("Pickup", b.pickup_date) + r("Address", b.address) + r("Ground", b.ground_condition) + r("Customer note", b.message);
-  body += r("Subtotal", money(b.subtotal_cents)) + r("Tax", money(b.tax_cents)) + r("Total", money(b.amount_cents)) + (b.deposit_cents ? r("Deposit", money(b.deposit_cents)) : "") + r("Payment", b.payment_type) + r("Paid at", b.paid_at) + r("Stripe session", b.stripe_session_id);
+  body += r("Subtotal", money(b.subtotal_cents)) + r("Tax", money(b.tax_cents)) + r("Total", money(b.amount_cents)) + (b.deposit_cents ? r("Deposit", money(b.deposit_cents)) : "") + r("Payment", b.payment_type) + r("Paid at", b.paid_at) + r("Review", reviewState) + r("Stripe session", b.stripe_session_id);
   body += '<div style="margin-top:12px"><a href="' + gmap + '" target="_blank" rel="noopener" style="color:#116DFF;font-weight:600;text-decoration:none">Open in Google Maps</a> &nbsp;·&nbsp; <a href="' + amap + '" target="_blank" rel="noopener" style="color:#116DFF;font-weight:600;text-decoration:none">Apple Maps</a></div>';
   body += '</div>';
   body += '<div class="card"><h2>Notes</h2><form method="POST" action="/admin/booking/' + esc(b.id) + '/notes"><textarea name="notes" placeholder="Internal notes — pickup details, gate code, etc.">' + esc(b.notes || "") + '</textarea><div style="margin-top:8px"><button>Save notes</button></div></form></div>';
@@ -443,7 +551,8 @@ export function renderBookingDetail(S, b) {
       '<div style="flex:0 0 auto"><button>Update pickup date</button></div></div></form></div>';
   }
   body += '<div class="card"><h2>Actions</h2>';
-  body += '<form method="POST" action="/admin/booking/' + esc(b.id) + '/status" style="display:inline-block;margin:0 6px 6px 0"><input type="hidden" name="status" value="completed"><button>Mark picked up / completed</button></form>';
+  body += '<p class="what">When the job is finished, press the green button. It closes the job and texts the customer their review ask (once per customer, ever).</p>';
+  body += '<form method="POST" action="/admin/booking/' + esc(b.id) + '/status" style="display:inline-block;margin:0 6px 6px 0"><input type="hidden" name="status" value="completed"><button class="done" style="font-size:17px;padding:14px 22px">&#10003; Mark picked up / completed</button></form>';
   body += '<form method="POST" action="/admin/booking/' + esc(b.id) + '/delete" style="display:inline-block" onsubmit="return confirm(\'Delete booking ' + esc(b.id) + '? This cannot be undone.\')"><button style="background:#c0392b">Delete (dev)</button></form>';
   body += '<div style="margin-top:10px"><a href="/admin/invoice/new?booking=' + encodeURIComponent(b.id) + '" style="color:#116DFF;font-weight:600;text-decoration:none">Create an invoice for this booking &rarr;</a></div>';
   body += '<p class="muted" style="margin-top:8px">Refunds are handled in the Stripe dashboard.</p>';

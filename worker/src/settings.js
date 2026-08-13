@@ -31,6 +31,10 @@ const DEFAULT_TEMPLATES = {
   // Pickup-reminder-only token: {extension_day} = the per-day extension fee in dollars.
   pickup_reminder: "Triple R Dump: we pick up your {item} tomorrow ({pickup}). Need it longer? Call {phone} today to extend (${extension_day}/day).",
   owner_pickup_reminder: "Pick up {item} from {name} today at {address} (ref {id}). Details: {admin_link}",
+  // Day-AFTER-pickup double-check to the owner when a job was never marked
+  // completed. Marking it done is what fires the customer's review text, so a
+  // forgotten tap silently costs a review.
+  owner_complete_nudge: "Triple R Dump: still showing the {item} for {name} as out (pickup was {pickup}). All done? Tap here and press the green button to close it — that sends their review text too: {admin_link}",
   reminder_email_subject: "Your Triple R Dump delivery is coming up ({date})",
   reminder_email_body: "Hi {name}, a reminder that your {item} is scheduled for {date} at {address} (ref {id}). Reply or call {phone} with any changes.",
   owner_reminder: "Deliver {item} to {name} on {date} at {address} (ref {id}). Details: {admin_link}",

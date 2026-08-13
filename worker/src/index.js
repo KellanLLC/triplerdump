@@ -1,5 +1,6 @@
 // Triple R Dump - one worker: static site (via assets) + booking + CMS + review.
 import { loadSettings, itemLabel } from "./settings.js";
+import { todayISO } from "./util.js";
 import { createBooking, getAvailability, expireStaleHolds, cancelAbandonedCheckout } from "./booking.js";
 import { handleStripeWebhook, confirmPaidByRedirect } from "./stripe.js";
 import { renderBookedPage } from "./booked.js";
@@ -60,7 +61,18 @@ export default {
         if (!(await isAuthed(request, env))) return html(renderLogin());
         const bookings = (await env.DB.prepare("SELECT id,status,bin_size,delivery_date,customer_name,amount_cents FROM bookings ORDER BY created_at DESC LIMIT 15").all()).results || [];
         const reviews = (await env.DB.prepare("SELECT booking_id,rating,feedback,created_at FROM reviews ORDER BY created_at DESC LIMIT 25").all()).results || [];
-        return html(renderPanel(S, bookings, reviews, url.searchParams.get("saved")));
+        // Today view: every live job that needs eyes — delivering today, due back
+        // today, or overdue and never marked completed.
+        const today = todayISO(S.business.timezone);
+        const active = (await env.DB.prepare(
+          "SELECT id,status,service_type,bin_size,rental_tier,customer_name,phone,address,delivery_date,delivery_time,pickup_date FROM bookings " +
+          "WHERE status IN ('confirmed','paid') AND (delivery_date=?1 OR pickup_date<=?1) ORDER BY pickup_date, delivery_date LIMIT 40"
+        ).bind(today).all()).results || [];
+        return html(renderPanel(S, {
+          recent: bookings, lowReviews: reviews, saved: url.searchParams.get("saved"),
+          flash: url.searchParams.get("flash"), flashRef: url.searchParams.get("ref"),
+          today, active,
+        }));
       }
       if (p === "/admin/login" && m === "POST") {
         const cookie = await loginCookie(env, (await formObj(request)).password);
@@ -88,23 +100,39 @@ export default {
           if (!(await isAuthed(request, env))) return html(renderLogin());
           const S = await loadSettings(env);
           const b = await env.DB.prepare("SELECT * FROM bookings WHERE id=?1").bind(bd[1]).first();
-          return html(renderBookingDetail(S, b));
+          return html(renderBookingDetail(S, b, url.searchParams.get("flash")));
         }
         const bs = p.match(/^\/admin\/booking\/([^/]+)\/status$/);
         if (bs && m === "POST") {
           if (!(await isAuthed(request, env))) return json({ ok: false, error: "unauthorized" }, 401);
-          const st = String((await formObj(request)).status || "").trim();
+          const fo = await formObj(request);
+          const st = String(fo.status || "").trim();
           // No 'delivered': the capacity/iCal/reminder queries don't recognize it, so a
           // delivered-but-not-picked-up bin would silently free its slot for double-booking.
+          // `flash` tells the next page what to confirm out loud — the owner needs to SEE
+          // that the tap worked and whether the review text went out.
+          let flash = "";
           if (["confirmed", "paid", "completed", "cancelled"].includes(st)) {
             await env.DB.prepare("UPDATE bookings SET status=?1 WHERE id=?2").bind(st, bs[1]).run();
+            flash = "saved";
             if (st === "completed") {
               const S = await loadSettings(env);
               const b = await env.DB.prepare("SELECT * FROM bookings WHERE id=?1").bind(bs[1]).first();
-              if (b) { try { await startReview(env, S, b); } catch (e) { console.error("[startReview]", e); } }
+              flash = "done";
+              if (b) {
+                try {
+                  const r = await startReview(env, S, b);
+                  flash = r && r.sent ? "done-review" : (r && r.skipped ? "done-already" : "done-failed");
+                } catch (e) { flash = "done-failed"; console.error("[startReview]", e); }
+              }
             }
           }
-          return redirect("/admin/booking/" + encodeURIComponent(bs[1]));
+          // Dashboard buttons post back=admin so the owner lands on the Today view he
+          // tapped from, confirmation on top. Only the literal "admin" is honored.
+          const dest = fo.back === "admin"
+            ? "/admin?flash=" + encodeURIComponent(flash) + "&ref=" + encodeURIComponent(bs[1])
+            : "/admin/booking/" + encodeURIComponent(bs[1]) + "?flash=" + encodeURIComponent(flash);
+          return redirect(dest);
         }
         const bdel = p.match(/^\/admin\/booking\/([^/]+)\/delete$/);
         if (bdel && m === "POST") {
@@ -119,9 +147,9 @@ export default {
           await env.DB.prepare("UPDATE bookings SET notes=?1 WHERE id=?2").bind(notes, bnotes[1]).run();
           return redirect("/admin/booking/" + encodeURIComponent(bnotes[1]));
         }
-        // Extension: move the pickup date. Clears both pickup-reminder flags so the
-        // customer day-before and owner pickup-day texts re-fire for the new date,
-        // and stamps the change into notes as an audit trail. rental_days follows so
+        // Extension: move the pickup date. Clears the pickup-reminder flags AND the
+        // day-after close nudge so all three texts re-fire for the new date, and
+        // stamps the change into notes as an audit trail. rental_days follows so
         // the trailer's {length} label stays truthful; historical amounts are kept -
         // extension days are billed off-session from the Stripe dashboard.
         const bpd = p.match(/^\/admin\/booking\/([^/]+)\/pickupdate$/);
@@ -133,11 +161,11 @@ export default {
             const days = Math.max(1, Math.round((Date.parse(nd) - Date.parse(b.delivery_date)) / 864e5));
             const stamp = "Pickup moved " + b.pickup_date + " to " + nd + " (" + new Date().toISOString().slice(0, 10) + ")";
             await env.DB.prepare(
-              "UPDATE bookings SET pickup_date=?1, rental_days=?2, pickup_reminder_sent_at=NULL, owner_pickup_reminder_sent_at=NULL, " +
+              "UPDATE bookings SET pickup_date=?1, rental_days=?2, pickup_reminder_sent_at=NULL, owner_pickup_reminder_sent_at=NULL, owner_complete_nudge_sent_at=NULL, " +
               "notes=CASE WHEN notes IS NULL OR notes='' THEN ?3 ELSE notes || char(10) || ?3 END WHERE id=?4"
             ).bind(nd, days, stamp, bpd[1]).run();
           }
-          return redirect("/admin/booking/" + encodeURIComponent(bpd[1]));
+          return redirect("/admin/booking/" + encodeURIComponent(bpd[1]) + "?flash=saved");
         }
       }
 

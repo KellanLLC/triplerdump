@@ -1,11 +1,15 @@
-// Daily cron sweeps, three passes over bookings:
+// Daily cron sweeps, four passes over bookings:
 //   1. Delivery reminder, the day before delivery (customer + owner copy).
 //   2. Pickup reminder to the CUSTOMER, the day before pickup - in time to call
 //      and extend (terms require 24h notice; {extension_day} quotes the daily fee).
 //   3. Pickup-day text to the OWNER, the morning of the pickup itself.
+//   4. Close-the-job nudge to the OWNER, the day AFTER pickup, for any job never
+//      marked completed - marking it done is what fires the customer review text,
+//      so a forgotten tap silently costs a review.
 // Junk + bin-switch are single-day services with nothing to pick up later, so only
-// dumpster + trailer get the pickup passes. Extending a booking in admin clears the
-// pickup flags, so both pickup reminders re-arm for the new date automatically.
+// dumpster + trailer get passes 2-3; pass 4 covers EVERY service (same-day jobs
+// need closing too). Extending a booking in admin clears the pickup flags AND the
+// close nudge, so all three re-arm for the new date automatically.
 import { todayISO, addDays } from "./util.js";
 import { fillTemplate, itemLabel, lengthLabel, chargedCents } from "./settings.js";
 import { sendReminderSms, sendReminderEmail, sendOwnerReminder } from "./sms.js";
@@ -49,7 +53,7 @@ export async function runReminderSweep(env, S) {
   }
 
   const pickup = await runPickupSweep(env, S, today);
-  console.log(`[reminder] delivery due ${results.length}, sent ${sent}; pickup customer ${pickup.customer}, owner ${pickup.owner}`);
+  console.log(`[reminder] delivery due ${results.length}, sent ${sent}; pickup customer ${pickup.customer}, owner ${pickup.owner}, close nudge ${pickup.close}`);
   return { due: results.length, sent, pickup };
 }
 
@@ -57,7 +61,7 @@ export async function runReminderSweep(env, S) {
 // pending is an unpaid hold. Flags are marked even when a send is skipped (owner
 // toggle off, missing webhook) so a quiet day never re-fires old rows later.
 async function runPickupSweep(env, S, today) {
-  let customer = 0, owner = 0;
+  let customer = 0, owner = 0, close = 0;
 
   // Customer, day before pickup: time to call and extend.
   const soon = addDays(today, 1);
@@ -89,5 +93,25 @@ async function runPickupSweep(env, S, today) {
     } catch (e) { console.error("[owner pickup reminder] failed for", b.id, e); }
   }
 
-  return { customer, owner };
+  // Owner, day AFTER pickup: any job still not marked completed. `<= yesterday`
+  // (not `=`) so a job that slipped several days without the flag still gets its
+  // one nudge. All services - junk/bin-switch have pickup_date = delivery_date,
+  // so "the day after the job" works uniformly. One text per booking, ever;
+  // /pickupdate clears the flag so an extension re-arms it for the new date.
+  const yesterday = addDays(today, -1);
+  const dueClose = (await env.DB.prepare(
+    `SELECT * FROM bookings
+       WHERE pickup_date <= ?1 AND status IN ('confirmed','paid')
+         AND owner_complete_nudge_sent_at IS NULL`
+  ).bind(yesterday).all()).results || [];
+  for (const b of dueClose) {
+    try {
+      const adminLink = (S.publicBaseUrl || "").replace(/\/+$/, "") + "/admin/booking/" + b.id;
+      await sendOwnerReminder(S, b, fillTemplate(S.templates.owner_complete_nudge || "", { ...tokenVals(S, b), admin_link: adminLink, link: adminLink }));
+      await env.DB.prepare("UPDATE bookings SET owner_complete_nudge_sent_at=?1 WHERE id=?2").bind(new Date().toISOString(), b.id).run();
+      close++;
+    } catch (e) { console.error("[owner close nudge] failed for", b.id, e); }
+  }
+
+  return { customer, owner, close };
 }

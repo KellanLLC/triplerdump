@@ -52,16 +52,19 @@ it in their confirmation text too, so if someone calls, ask for it.
 
 ## 2. Reminders — the part you were looking forward to
 
-Three texts go out automatically, every day at 10:00 AM:
+Four texts go out automatically, every day at 10:00 AM:
 
 | When | Who gets it | What it says |
 |---|---|---|
 | Day before delivery | You **and** the customer | Deliver this bin tomorrow |
 | Day before pickup | The customer | We pick up tomorrow — call to extend |
 | **Morning of pickup** | **You** | Pick up this bin today, here's the address |
+| Day after pickup | You | Only if you never marked the job done — tap the link to close it |
 
-That last one is the one for forgotten bins. It arrives the morning each bin is
-due back, one text per job, with the address and a link.
+The morning-of text is the one for forgotten bins. The day-after text is the
+safety net for forgotten *taps*: if a job's pickup date has passed and it was
+never marked picked up, you get one reminder with a link straight to the job —
+press the green button and it's closed (and the customer gets their review ask).
 
 The customer's day-before-pickup text tells them to call you if they need it
 longer, and quotes the extra-day price. That means fewer surprise "I still have
@@ -79,12 +82,19 @@ the job so you have a record. Then charge the extra days in Stripe (next section
 
 ## 3. Marking a job complete — the one habit
 
-When the bin is back on the truck, open the job and tap
-**"Mark picked up / completed."**
+When the bin is back on the truck, open the job and tap the green
+**"✓ Mark picked up / completed"** button.
+
+You'll see a green confirmation right away — "marked picked up, the customer's
+review text is on its way" — so you always know it worked.
 
 This is the only thing the system can't figure out on its own, and it's what
-kicks off the review request. If you skip it, that customer never gets asked for
-a review.
+kicks off the review request. If you skip it, the day-after reminder text will
+catch it — but the habit is better than the safety net.
+
+The admin home page also lists it for you: jobs to deliver today, jobs to pick
+up today (each with its own green button), and anything overdue for closing sits
+at the top in its own highlighted box.
 
 **What happens then:** the customer gets a text asking how it went. If they say
 4 or 5 stars, they go straight to your Google review page. If they say 3 or

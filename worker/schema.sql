@@ -41,6 +41,7 @@ CREATE TABLE IF NOT EXISTS bookings (
   reminder_sent_at TEXT,               -- set by the nightly reminder sweep
   pickup_reminder_sent_at TEXT,        -- customer text, day before pickup
   owner_pickup_reminder_sent_at TEXT,  -- owner text, morning of pickup day
+  owner_complete_nudge_sent_at TEXT,   -- owner text, day AFTER pickup if never marked completed
   review_step INTEGER NOT NULL DEFAULT 0, -- follow-ups sent so far (0-3)
   review_next_due_at TEXT,             -- when the next follow-up fires
   review_stopped_at TEXT,              -- when the ladder ended
