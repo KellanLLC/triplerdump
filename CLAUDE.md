@@ -35,9 +35,9 @@ COMPANY, not his name. Older notes and commits below wrongly call him Kellan. **
   now SAYS so). (2) Live test to Boston's own phone: row TRD-BTESTA (3852004532, status
   completed, token 9ea1ef0f…), GHL relay returned 200, ladder armed (nudge 1 due
   2026-08-14T22:14Z if he doesn't tap; tapping stops it with reason "clicked").
-  *** CLEANUP DUE: DELETE TRD-BTESTA (+ its reviews-table row if he rates) once Boston
-  confirms the text/flow — his rating sets review_rating on that row, and the per-phone
-  dedup would then treat 3852004532 as "already reviewed" forever. ***
+  Boston CONFIRMED the text arrived on his phone; TRD-BTESTA was then DELETED (he never
+  tapped, so no reviews row and the armed nudge died with the row — no residue, and
+  3852004532 stays eligible for future tests). Bookings table = the 4 real rows.
 - VERIFIED: 27/27 new offline asserts (nudge sweep incl. toggle-off-still-stamps, Today
   buckets incl. same-day junk in "finish", flash, review row, no-undefined) + 32/32
   lockout-suite regression; real-browser probe at 375px CSS = ZERO horizontal overflow
