@@ -551,8 +551,18 @@ export function renderBookingDetail(S, b, flash) {
       '<div style="flex:0 0 auto"><button>Update pickup date</button></div></div></form></div>';
   }
   body += '<div class="card"><h2>Actions</h2>';
-  body += '<p class="what">When the job is finished, press the green button. It closes the job and texts the customer their review ask (once per customer, ever).</p>';
-  body += '<form method="POST" action="/admin/booking/' + esc(b.id) + '/status" style="display:inline-block;margin:0 6px 6px 0"><input type="hidden" name="status" value="completed"><button class="done" style="font-size:17px;padding:14px 22px">&#10003; Mark picked up / completed</button></form>';
+  if (b.status === "completed") {
+    // Already closed. Offering "Mark picked up" here was stale UI — it re-ran a
+    // finished job and did nothing (the review guards skip it), which just reads
+    // as broken. Say it's done, and give the way back for a mis-tap instead.
+    body += '<p class="what" style="color:#146c2e;font-weight:700;font-size:16px">&#10003; This job is closed &mdash; already marked picked up.</p>';
+    body += '<form method="POST" action="/admin/booking/' + esc(b.id) + '/status" style="display:inline-block;margin:0 6px 6px 0">' +
+      '<input type="hidden" name="status" value="' + (b.paid_at ? "paid" : "confirmed") + '">' +
+      '<button style="background:#64748b">Reopen this job</button></form>';
+  } else {
+    body += '<p class="what">When the job is finished, press the green button. It closes the job and texts the customer their review ask (once per customer, ever).</p>';
+    body += '<form method="POST" action="/admin/booking/' + esc(b.id) + '/status" style="display:inline-block;margin:0 6px 6px 0"><input type="hidden" name="status" value="completed"><button class="done" style="font-size:17px;padding:14px 22px">&#10003; Mark picked up / completed</button></form>';
+  }
   body += '<form method="POST" action="/admin/booking/' + esc(b.id) + '/delete" style="display:inline-block" onsubmit="return confirm(\'Delete booking ' + esc(b.id) + '? This cannot be undone.\')"><button style="background:#c0392b">Delete (dev)</button></form>';
   body += '<div style="margin-top:10px"><a href="/admin/invoice/new?booking=' + encodeURIComponent(b.id) + '" style="color:#116DFF;font-weight:600;text-decoration:none">Create an invoice for this booking &rarr;</a></div>';
   body += '<p class="muted" style="margin-top:8px">Refunds are handled in the Stripe dashboard.</p>';
