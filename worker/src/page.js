@@ -477,6 +477,13 @@ export function renderBookingPage(S, service) {
 // service is pre-selected SERVER-side from ?service= (hidden input value); ?size= falls back to dumpster (server default).
 'var ps=new URLSearchParams(location.search),qsz=ps.get("size"),qtr=ps.get("tier")||"1-3";' +
 '[].forEach.call(f.bin_size||[],function(r){if(r.value===qsz){r.checked=true;}});if(qsz){[].forEach.call(f.rental_tier||[],function(r){if(r.value===qtr){r.checked=true;}});}' +
+// Arrived via Stripe's back arrow (cancel_url) — the hold was already released
+// server-side; reassure and invite a retry instead of leaving a blank form.
+'if(ps.get("canceled")){out.className="out";out.classList.remove("hidden");out.textContent="Checkout was canceled and nothing was charged. Pick your dates below to try again, or call "+PHONE+".";}' +
+// Safari/iOS restores this page from the back-forward cache EXACTLY as it was
+// left: submit disabled, status stuck on "Checking availability..." — a dead
+// form (this stranded a real customer). Re-arm it on restore.
+'window.addEventListener("pageshow",function(ev){if(ev.persisted){btn.disabled=false;if(!ps.get("canceled")){out.classList.add("hidden");}}});' +
 'f.addEventListener("change",function(e){' +
 'if(e.target.name==="account_type"){switchAcct(e.target.value);return;}' +
 // service_type is a hidden input driven by the custom Service dropdown (its onChange calls switchSvc) - no change event here.

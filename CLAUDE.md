@@ -5,6 +5,41 @@
 *** THE CLIENT-SIDE PERSON IS **BOSTON**. "Kellan" (KellanLLC / getkellan.com) is his
 COMPANY, not his name. Older notes and commits below wrongly call him Kellan. ***
 
+*** INCIDENT + FIX 2026-08-13 (worker v e1e09a91) — THE SELF-LOCKOUT THAT COST A REAL JOB ***
+- Brody Floto (Hooper, 2.8 mi away) tried to book the 15yd twice (Aug 11 + Aug 12; rows
+  TRD-SA9MN6 / TRD-SU7XVK left `cancelled` in D1 as real history — do not delete). Both
+  times he passed every gate, reached LIVE Stripe Checkout, and payment died on his device
+  (ZERO PaymentIntents ever hit Stripe — nothing was submitted). His own pending hold then
+  owned the ONLY 15-yarder for 60 min, so every retry read "No 15 yard bins free". He
+  walked; Joseph reported it Aug 13 as "kicked him out / wouldn't let him back in".
+- It was NOT the service area (his address geocodes 2.8 mi; the gate passed him both days).
+  Boston, mid-triage, saved radius=0 + bins 15yd->3; bins are now the VERIFIED fleet
+  1/3/5 (confirmed with Joseph — leave alone) and the radius was RESTORED to 60 (Vegas
+  re-verified refused at ~389 mi live).
+- THE FIX — one shared releaseHold() in booking.js with a MONEY INVARIANT every caller
+  gets: a hold row is cancelled ONLY once its Checkout session provably can't take a
+  payment (paid -> markPaid; open -> must successfully POST /expire at Stripe first;
+  expire refused -> re-check once (may have just completed) -> else leave pending;
+  Stripe 5xx/network -> leave pending). Callers:
+  (1) createBooking releases the SAME customer's pending unpaid holds (phone OR email
+      match) BEFORE the capacity gate — a retry can never be blocked by your own earlier
+      attempt. If one turns out PAID, it refuses the duplicate ("you're already booked,
+      ref X") instead of double-charging.
+  (2) /book?canceled=<ref> (Stripe's back arrow / cancel_url) -> cancelAbandonedCheckout
+      releases that hold immediately; page shows a "nothing was charged" banner.
+  (3) expireStaleHolds (60-min sweep) now routes through the same releaseHold().
+- page.js: `pageshow` handler re-arms the form on back-forward-cache restore — Safari was
+  restoring /book with the submit button PERMANENTLY DISABLED and "Checking
+  availability..." stuck (the literal "wouldn't let me back in"). Capacity refusals now
+  end with the business phone so a real sell-out becomes a call, not a lost job.
+- VERIFIED: 32/32 offline asserts (mocked D1+fetch, zero SMS/charges) + live: double-book
+  released hold A (row cancelled + session force-EXPIRED at Stripe), ?canceled released
+  hold B, Vegas refused, /book HTML carries pageshow+banner. Test rows deleted; bookings
+  table = the 4 real historical rows. Both guides (admin tab + OWNER-GUIDE.md) updated.
+- STILL UNKNOWN: why Stripe's page failed him twice (server-side everything worked; Tony
+  Roest paid fine July 30 with identical config). If anyone reports it a third time, take
+  it by phone — Joseph can send an invoice pay link from /admin.
+
 REVIEW FOLLOW-UP LADDER BUILT 2026-07-29 (worker v dc317caf) — modelled on the
 kronos-electric worker (C:\Users\Home\Desktop\projects\kronos-electric).
 - The FIRST ask is still owner-triggered (startReview on "mark picked up / completed").

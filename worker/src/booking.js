@@ -13,6 +13,12 @@ const SERVICE_INTEREST_LABELS = {
 
 const SERVICE_TYPES = ["dumpster", "trailer", "junk", "binswitch"];
 
+// Business phone for customer-facing refusals — every dead end should hand the
+// customer a way to reach Joseph instead of just a "no".
+function bizPhone(S) {
+  return (S.business && S.business.phone) || "801-564-3164";
+}
+
 const REF_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 function genRef() {
   let s = "";
@@ -292,35 +298,115 @@ export async function expireStaleHolds(env, S, holdMinutes = 60) {
     console.error("[expireStaleHolds] query", e && e.message ? e.message : e);
     return;
   }
-
   for (const row of rows) {
-    let verdict = "cancel";
-    let session = null;
-    if (row.stripe_session_id) {
-      // The session id prefix (cs_live_/cs_test_) says which catalog minted it —
-      // robust even if the CMS stripe_mode was flipped after this booking was made.
-      const key = row.stripe_session_id.startsWith("cs_live_") ? env.STRIPE_SECRET_KEY_LIVE : env.STRIPE_SECRET_KEY;
-      if (key) {
-        try {
-          const res = await fetch("https://api.stripe.com/v1/checkout/sessions/" + encodeURIComponent(row.stripe_session_id), {
-            headers: { authorization: "Bearer " + key },
-          });
-          const s = await res.json().catch(() => null);
-          if (res.ok && s && s.payment_status === "paid") { verdict = "paid"; session = s; }
-          else if (!res.ok && res.status >= 500) verdict = "skip"; // Stripe hiccup — don't guess
-        } catch (e) {
-          verdict = "skip"; // network error — never cancel what might be paid
-          console.error("[expireStaleHolds] stripe check failed for", row.id, e && e.message ? e.message : e);
-        }
-      }
-    }
-    try {
-      if (verdict === "paid") await markPaid(env, S, row.id, session);
-      else if (verdict === "cancel") await env.DB.prepare("UPDATE bookings SET status='cancelled' WHERE id=?1 AND status='pending'").bind(row.id).run();
-    } catch (e) {
-      console.error("[expireStaleHolds]", row.id, e && e.message ? e.message : e);
+    try { await releaseHold(env, S, row); }
+    catch (e) { console.error("[expireStaleHolds]", row.id, e && e.message ? e.message : e); }
+  }
+}
+
+// Asks Stripe whether a Checkout session was actually PAID before we touch its
+// booking. "paid" -> confirm it; "unpaid" -> verified not paid (or nothing to
+// verify: no session id / no key configured, where no charge can exist);
+// "unknown" -> Stripe 5xx or network error: act on NOTHING, never guess about
+// money. The session id prefix (cs_live_/cs_test_) picks the key — robust even
+// if the CMS stripe_mode was flipped after this booking was made.
+async function sessionPaymentState(env, sessionId) {
+  if (!sessionId) return { state: "unpaid", session: null, key: null };
+  const key = sessionId.startsWith("cs_live_") ? env.STRIPE_SECRET_KEY_LIVE : env.STRIPE_SECRET_KEY;
+  if (!key) return { state: "unpaid", session: null, key: null };
+  try {
+    const res = await fetch("https://api.stripe.com/v1/checkout/sessions/" + encodeURIComponent(sessionId), {
+      headers: { authorization: "Bearer " + key },
+    });
+    const s = await res.json().catch(() => null);
+    if (res.ok && s && s.payment_status === "paid") return { state: "paid", session: s, key };
+    if (!res.ok && res.status >= 500) return { state: "unknown", session: null, key };
+    return { state: "unpaid", session: s && s.id ? s : null, key };
+  } catch (e) {
+    console.error("[sessionPaymentState]", e && e.message ? e.message : e);
+    return { state: "unknown", session: null, key };
+  }
+}
+
+// Kills an open Checkout session. True only when Stripe confirmed the expiry —
+// i.e. the session provably can no longer take a payment.
+async function expireStripeSession(key, sessionId) {
+  if (!key || !sessionId) return false;
+  try {
+    const res = await fetch("https://api.stripe.com/v1/checkout/sessions/" + encodeURIComponent(sessionId) + "/expire", {
+      method: "POST",
+      headers: { authorization: "Bearer " + key },
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+// Releases one pending unpaid hold. The money-safety invariant every caller gets:
+// a row is cancelled ONLY once its Checkout session provably cannot take a
+// payment any more (no session, naturally expired, or expired by us right now) —
+// otherwise the customer could still pay into a booking whose capacity we just
+// gave away.
+//   "paid"     -> session was actually paid; the booking got confirmed instead.
+//   "released" -> hold cancelled, capacity freed.
+//   "left"     -> could not verify safely; row left pending for the next sweep.
+async function releaseHold(env, S, row) {
+  const st = await sessionPaymentState(env, row.stripe_session_id);
+  if (st.state === "paid") { await markPaid(env, S, row.id, st.session); return "paid"; }
+  if (st.state === "unknown") return "left";
+  if (st.session && st.session.status === "open") {
+    const expired = await expireStripeSession(st.key, row.stripe_session_id);
+    if (!expired) {
+      // Expire refused — the session may have completed in the race. Re-check
+      // once: paid now -> confirm it; otherwise leave the row for the sweep.
+      const re = await sessionPaymentState(env, row.stripe_session_id);
+      if (re.state === "paid") { await markPaid(env, S, row.id, re.session); return "paid"; }
+      return "left";
     }
   }
+  await env.DB.prepare("UPDATE bookings SET status='cancelled' WHERE id=?1 AND status='pending'").bind(row.id).run();
+  return "released";
+}
+
+// The lockout that cost a real job (two attempts, Aug 11–12): a failed or
+// abandoned checkout leaves the customer's own pending hold counting against
+// capacity for up to an hour — and with a 1-bin size, every retry is refused as
+// "No bins free" BY THEIR OWN EARLIER ATTEMPT. Before the capacity gate, release
+// any unpaid holds belonging to THIS customer (same phone, or same email). If
+// one turns out already PAID, report it so the caller refuses the duplicate
+// instead of charging them twice.
+async function releaseOwnHolds(env, S, clean) {
+  let rows = [];
+  try {
+    rows = (await env.DB.prepare(
+      "SELECT id, stripe_session_id FROM bookings WHERE status='pending' AND payment_type='checkout' AND paid_at IS NULL AND (phone=?1 OR (?2 <> '' AND lower(email)=lower(?2)))"
+    ).bind(clean.phone, clean.email || "").all()).results || [];
+  } catch (e) {
+    console.error("[releaseOwnHolds] query", e && e.message ? e.message : e);
+    return null;
+  }
+  for (const row of rows) {
+    try {
+      if ((await releaseHold(env, S, row)) === "paid") return { paidRef: row.id };
+    } catch (e) {
+      console.error("[releaseOwnHolds]", row.id, e && e.message ? e.message : e);
+    }
+  }
+  return null;
+}
+
+// Stripe Checkout's back arrow lands on /book?canceled=<ref>. Release that hold
+// right away instead of letting it sit on a bin for up to an hour. Same money
+// safety as every release: a paid session confirms the booking, an unverifiable
+// one is left for the sweep.
+export async function cancelAbandonedCheckout(env, S, ref) {
+  const row = await env.DB.prepare(
+    "SELECT id, stripe_session_id FROM bookings WHERE id=?1 AND status='pending' AND payment_type='checkout' AND paid_at IS NULL"
+  ).bind(String(ref || "")).first();
+  if (!row) return;
+  try { await releaseHold(env, S, row); }
+  catch (e) { console.error("[cancelAbandonedCheckout]", row.id, e && e.message ? e.message : e); }
 }
 
 export async function getAvailability(env, S, size, date, tier = "1-3") {
@@ -405,7 +491,20 @@ export async function createBooking(env, S, input) {
     return { ok: false, errors: [
       `That address looks to be about ${far.miles} miles from us — outside our delivery area ` +
       `(within ${Number(S.serviceRadiusMiles)} miles of West Haven). If that seems wrong, or you're close, ` +
-      `call ${(S.business && S.business.phone) || "801-564-3164"} and we'll see what we can do.`,
+      `call ${bizPhone(S)} and we'll see what we can do.`,
+    ] };
+  }
+
+  // A customer's own failed/abandoned checkout must never lock them out of
+  // retrying (it did, Aug 11–12: with one 15-yarder, a stranded hold made every
+  // retry read "No bins free" — the customer walked). Release THIS customer's
+  // unpaid holds first; if one was actually paid, refuse the duplicate instead
+  // of double-charging them.
+  const prior = await releaseOwnHolds(env, S, clean);
+  if (prior && prior.paidRef) {
+    return { ok: false, errors: [
+      `Good news — your earlier attempt actually went through: you're already booked (ref ${prior.paidRef}) ` +
+      `and your card was only charged once. Your confirmation text is on its way. Questions? Call ${bizPhone(S)}.`,
     ] };
   }
 
@@ -424,7 +523,7 @@ export async function createBooking(env, S, input) {
     pickup = addDays(clean.date, rentalDays);
     const counts = await overlapCounts(env, clean.date, pickup);
     if ((counts.bySize[clean.size] || 0) >= S.bins[clean.size].inventory || counts.total >= S.totalCap) {
-      return { ok: false, errors: [`No ${S.bins[clean.size].label} bins free around ${clean.date}. Try another date or size.`] };
+      return { ok: false, errors: [`No ${S.bins[clean.size].label} bins free around ${clean.date}. Try another date or size, or call ${bizPhone(S)} and we'll see what we can do.`] };
     }
     q = quoteService(S, "dumpster", { size: clean.size, tier: clean.tier });
   } else if (svcType === "trailer") {
@@ -433,7 +532,7 @@ export async function createBooking(env, S, input) {
     const inv = (S.services.trailer && S.services.trailer.inventory) || 2;
     const out = await trailerOverlapCount(env, clean.date, pickup);
     if (out >= inv) {
-      return { ok: false, errors: [`No trailers free around ${clean.date}. Try another date.`] };
+      return { ok: false, errors: [`No trailers free around ${clean.date}. Try another date, or call ${bizPhone(S)}.`] };
     }
     q = quoteService(S, "trailer", { days: rentalDays });
   } else {
@@ -445,7 +544,7 @@ export async function createBooking(env, S, input) {
     const out = await sameServiceDayCount(env, svcType, clean.date);
     if (out >= cap) {
       const label = (svc.label || svcType);
-      return { ok: false, errors: [`No ${label} slots free on ${clean.date}. Try another date.`] };
+      return { ok: false, errors: [`No ${label} slots free on ${clean.date}. Try another date, or call ${bizPhone(S)}.`] };
     }
     q = quoteService(S, svcType, {});
   }

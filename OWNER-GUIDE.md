@@ -164,8 +164,10 @@ Don't be surprised by these — they're all deliberate:
 - **Blocks spam.** If a real customer ever says "the website told me to call
   you," just take the booking over the phone — that's the spam filter being
   cautious, and it's rare.
-- **Holds unpaid bookings for 60 minutes.** If someone starts checkout and
-  wanders off, the slot frees up automatically.
+- **Frees up abandoned checkouts.** If someone starts checkout and wanders off,
+  the slot frees itself — instantly if they back out of the payment page, within
+  the hour at worst. And if they come back to try again, their earlier attempt
+  never blocks them.
 
 ---
 

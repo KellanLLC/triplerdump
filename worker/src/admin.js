@@ -178,6 +178,7 @@ export function renderPanel(S, bookings, lowReviews, saved) {
       '<li><b>Turns away far-away jobs.</b> Past your delivery radius they\'re told to call you instead.</li>' +
       '<li><b>Junk removal is weekends only.</b> Weekday requests are refused.</li>' +
       '<li><b>Won\'t overbook you.</b> It knows how many bins you own.</li>' +
+      '<li><b>Frees abandoned checkouts.</b> If payment doesn\'t finish, the slot frees itself and the customer can simply try again.</li>' +
       '<li><b>Blocks spam.</b> If a real customer says &ldquo;it told me to call you&rdquo;, just take it by phone.</li>' +
     '</ul></div>' +
 

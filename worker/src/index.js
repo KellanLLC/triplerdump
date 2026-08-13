@@ -1,6 +1,6 @@
 // Triple R Dump - one worker: static site (via assets) + booking + CMS + review.
 import { loadSettings, itemLabel } from "./settings.js";
-import { createBooking, getAvailability, expireStaleHolds } from "./booking.js";
+import { createBooking, getAvailability, expireStaleHolds, cancelAbandonedCheckout } from "./booking.js";
 import { handleStripeWebhook, confirmPaidByRedirect } from "./stripe.js";
 import { renderBookedPage } from "./booked.js";
 import { buildICalFeed } from "./ical.js";
@@ -233,7 +233,14 @@ export default {
       }
 
       // ----- Booking -----
-      if (p === "/" || p === "/book") { const S = await loadSettings(env); return html(renderBookingPage(S, url.searchParams.get("service"))); }
+      if (p === "/" || p === "/book") {
+        const S = await loadSettings(env);
+        // Stripe's back arrow returns here (cancel_url). Release that booking's
+        // hold right away so an abandoned checkout can't sit on a bin for an hour.
+        const canceledRef = url.searchParams.get("canceled");
+        if (canceledRef) { try { await cancelAbandonedCheckout(env, S, canceledRef); } catch (e) { console.error("[cancel-return]", e); } }
+        return html(renderBookingPage(S, url.searchParams.get("service")));
+      }
       if (p === "/terms" && m === "GET") { const S = await loadSettings(env); return html(renderTermsPage(S)); }
       if (p === "/api/availability" && m === "GET") {
         const S = await loadSettings(env);
