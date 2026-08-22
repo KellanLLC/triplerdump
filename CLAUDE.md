@@ -2,6 +2,31 @@
 
 > Read this at the START of every session. Update it before you finish.
 
+*** SEO PAGES + SITEMAP 2026-08-22 (worker v 956b44b0; worker SOURCE UNCHANGED) ***
+- The marketing site is no longer one page. `build_pages.py` (repo root) generates, from
+  data at the top of the file, in the home page's exact look (pages.css = the index CSS
+  lifted into a stylesheet; index.html keeps its own inline CSS and was NOT redesigned):
+  /dumpster-rental/{15,20,25}-yard/, /junk-removal/, /dump-trailer-rental/, /bin-switch/,
+  /service-area/ + 19 city pages (/service-area/<city>/), /faq/, plus sitemap.xml (30 URLs
+  incl. / /book /terms) and robots.txt (Disallow /admin /api/ /booked /r/ /inv/ /calendar/;
+  Sitemap line). All plain static files served by Workers Static Assets; NONE of the paths
+  collide with a worker route, so the booking system is not involved in serving them.
+- build_deploy.py now ALSO copies those page folders + pages.css/sitemap.xml/robots.txt
+  into deploy/ and scans them for ROOT-ABSOLUTE asset refs (/assets/…, /uploads/…) —
+  generated pages use leading-slash paths, unlike index.html. It also recreates
+  deploy/.assetsignore. Workflow for a page/price change: edit build_pages.py ->
+  `python build_pages.py` -> `python build_deploy.py` -> `cd worker && npx wrangler deploy`.
+- index.html: SURGICAL href edits only — footer Services links -> the size/service pages,
+  footer Service Area column -> city pages + hub + FAQ, and one sentence under the
+  counties linking the hub. Nothing else in index.html changed.
+- Prices/fees in the pages are the same numbers as the home page + /terms (15/20/25 =
+  $300/$325, $350/$375, $400/$425; junk $550; trailer $200/day + $300 deposit; switch
+  $200; extension $50/day). IF THE CMS PRICES CHANGE, update build_pages.py and re-run,
+  or the static pages go stale.
+- VERIFIED live after deploy: all 30 sitemap URLs 200; /book, /terms, /api/availability,
+  /admin (login form), /booked?ref=bogus unchanged; bad admin password 401. No bookings
+  were created. Search Console: submit https://www.triplerdump.com/sitemap.xml.
+
 *** THE CLIENT-SIDE PERSON IS **BOSTON**. "Kellan" (KellanLLC / getkellan.com) is his
 COMPANY, not his name. Older notes and commits below wrongly call him Kellan. ***
 

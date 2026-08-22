@@ -73,5 +73,63 @@ for ref in refs:
     total += size_out
     print(f"{ref}:  {size_in//1024} -> {size_out//1024} KB")
 
+# ── The generated pages (build_pages.py): size, service, service-area and FAQ
+# pages, the stylesheet they share, the sitemap and robots. They are plain
+# static files, copied as-is. Their asset refs are ROOT-ABSOLUTE (/assets/...,
+# /uploads/...) so one page works from any depth; the scan below resolves that
+# leading slash against the repo root and ships anything index.html did not
+# already cover, through the same recompression path.
+PAGE_DIRS = ["dumpster-rental", "junk-removal", "dump-trailer-rental", "bin-switch", "service-area", "faq"]
+PAGE_FILES = ["pages.css", "sitemap.xml", "robots.txt"]
+page_refs = set()
+for d in PAGE_DIRS:
+    src_dir = os.path.join(ROOT, d)
+    if not os.path.isdir(src_dir):
+        continue
+    for dirpath, _, files in os.walk(src_dir):
+        for name in files:
+            if not name.endswith(".html"):
+                continue
+            full = os.path.join(dirpath, name)
+            rel = os.path.relpath(full, ROOT)
+            os.makedirs(os.path.dirname(os.path.join(DST, rel)), exist_ok=True)
+            shutil.copy2(full, os.path.join(DST, rel))
+            html = open(full, encoding="utf-8").read()
+            page_refs |= set(re.findall(r'(?:src|href|srcset)="/((?:assets|uploads)/[^"\s]+)"', html))
+            page_refs |= set(re.findall(r"url\('/((?:assets|uploads)/[^')]+)'\)", html))
+for name in PAGE_FILES:
+    src = os.path.join(ROOT, name)
+    if os.path.exists(src):
+        shutil.copy2(src, DST)
+        if name == "pages.css":
+            page_refs |= set(re.findall(r"url\('/((?:assets|uploads)/[^')]+)'\)", open(src, encoding="utf-8").read()))
+for ref in sorted(page_refs - set(refs)):
+    src = os.path.join(ROOT, ref)
+    dst = os.path.join(DST, ref)
+    if not os.path.exists(src):
+        print(f"WARNING: page references missing file {ref}")
+        continue
+    if os.path.exists(dst):
+        continue
+    os.makedirs(os.path.dirname(dst), exist_ok=True)
+    ext = os.path.splitext(ref)[1].lower()
+    size_in = os.path.getsize(src)
+    if ext in (".jpg", ".jpeg") or (ext == ".png" and size_in > 400_000):
+        im = ImageOps.exif_transpose(Image.open(src))
+        if im.width > MAX_W:
+            im = im.resize((MAX_W, round(im.height * MAX_W / im.width)), Image.LANCZOS)
+        if ext == ".png":
+            im.convert("RGB").save(dst, "PNG", optimize=True)
+        else:
+            im.convert("RGB").save(dst, "JPEG", quality=72, optimize=True, progressive=True)
+    else:
+        shutil.copy2(src, dst)
+    total += os.path.getsize(dst)
+    print(f"(pages) {ref}:  {size_in//1024} -> {os.path.getsize(dst)//1024} KB")
+
+# Workers Static Assets must not upload these if they ever reappear.
+with open(os.path.join(DST, ".assetsignore"), "w", encoding="utf-8") as f:
+    f.write(".git\n.assetsignore\n")
+
 total += os.path.getsize(os.path.join(DST, "index.html")) + os.path.getsize(os.path.join(DST, "tokens.css"))
 print(f"\ndeploy total: {total/1024/1024:.1f} MB")

@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /api/
+Disallow: /booked
+Disallow: /r/
+Disallow: /inv/
+Disallow: /calendar/
+
+Sitemap: https://www.triplerdump.com/sitemap.xml
