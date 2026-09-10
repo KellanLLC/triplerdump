@@ -80,7 +80,7 @@ const DEFAULT_INVOICE_TERMS =
   "), and prohibited-material fines ($" + (DEFAULT_FEES.prohibitedItem / 100) +
   " per item) identified after service remain the customer's responsibility. " +
   "Questions about this invoice? Call 801-564-3164.";
-const DEFAULT_REVIEW_LINK = "https://search.google.com/local/writereview?placeid=ChIJc1Zhse8j7AcRxMoS_Ri7SA8";
+const DEFAULT_REVIEW_LINK = "https://g.page/r/CbcwSVDRTrtzEBM/review";
 
 export function defaultSettings(env = {}) {
   return {
@@ -120,6 +120,9 @@ export function defaultSettings(env = {}) {
     invoiceTerms: DEFAULT_INVOICE_TERMS,
     invoiceDueDays: 14,
     invoiceTaxDefault: true,
+    // Promo codes (CMS "Discounts" tab): [{code, pct, active}]. Empty = feature
+    // dormant — the /book field still renders but no code ever matches.
+    discountCodes: [],
     templates: { ...DEFAULT_TEMPLATES },
   };
 }
@@ -155,6 +158,7 @@ export async function loadSettings(env) {
   if (o.invoice_terms !== undefined) s.invoiceTerms = o.invoice_terms;
   if (o.invoice_due_days !== undefined) s.invoiceDueDays = num(o.invoice_due_days, s.invoiceDueDays);
   if (o.invoice_tax_default !== undefined) s.invoiceTaxDefault = o.invoice_tax_default === true;
+  if (Array.isArray(o.discount_codes)) s.discountCodes = o.discount_codes;
   if (o.sms_templates) s.templates = { ...s.templates, ...o.sms_templates };
   return s;
 }
@@ -175,6 +179,21 @@ export function quoteService(S, serviceType, opts) {
 // shape as before (deposit_cents is 0 for dumpster and harmless if read).
 export function quote(S, binSize, tier) {
   return quoteService(S, "dumpster", { size: binSize, tier });
+}
+
+// Looks up a promo code from the CMS list. Case-insensitive on the code; rows
+// switched off ("On" unticked) and non-positive percents never match. Returns
+// {code, pct} normalized, or null.
+export function findDiscountCode(S, code) {
+  const want = String(code || "").trim().toUpperCase();
+  if (!want) return null;
+  for (const d of (S && S.discountCodes) || []) {
+    if (!d || d.active === false) continue;
+    const c = String(d.code || "").trim().toUpperCase();
+    const pct = Number(d.pct);
+    if (c && c === want && Number.isFinite(pct) && pct > 0) return { code: c, pct: Math.min(100, pct) };
+  }
+  return null;
 }
 
 export function fillTemplate(tpl, vals) {

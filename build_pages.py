@@ -21,9 +21,12 @@ index.html. None of these paths collide with a Worker route (/book, /terms,
 /api, /admin, /booked, /r, /inv, /calendar), so the booking system is not
 involved in serving them. index.html is hand-built and is NOT touched here.
 
-Facts come from one place (the same numbers the home page and the booking
-form show): bin prices, the 7.5% tax at checkout, the fees on /terms, and the
-four counties. If a price changes in the CMS, change it here too and re-run.
+PRICES ARE NOT BAKED IN ANYMORE (2026-08-23). Every dollar amount in these
+pages is a {{TRD:key}} token (see T() below); the worker substitutes the live
+CMS value on every request (worker/src/marketing.js, wrangler run_worker_first).
+A price change in /admin is live on every page within 5 minutes, no rebuild.
+Keys: d15_13 d15_47 d20_13 d20_47 d25_13 d25_47 junk trailer_day trailer_dep
+binswitch ext_day. Never hardcode a dollar amount here again.
 """
 import json
 import os
@@ -41,7 +44,7 @@ BIZ = {
     "email": "Joseph.Rodrigues@triplerdump.com",
     "address": "3539 S 4250 W, West Haven, UT 84401",
     "city": "West Haven",
-    "review": "https://g.page/r/CcTKEv0Yu0gPEBM/review",
+    "review": "https://g.page/r/CbcwSVDRTrtzEBM/review",
     "instagram": "https://www.instagram.com/triple.r.dump/",
     "facebook": "https://www.facebook.com/profile.php?id=61587229028024",
 }
@@ -54,7 +57,7 @@ P = "/uploads/triplerdump_photos/triplerdump_photos/"
 
 SIZES = [
     {
-        "slug": "15-yard", "yd": 15, "p13": 300, "p47": 325, "img": P + "01_15yd_bin.png",
+        "slug": "15-yard", "yd": 15, "img": P + "01_15yd_bin.png",
         "tag": "The driveway bin",
         "best": "Garage cleanouts, small remodels, yard waste, moving.",
         "fits": "Fits in a standard driveway without blocking the garage.",
@@ -64,11 +67,11 @@ SIZES = [
         "faq": [
             ("How much fits in a 15 yard dumpster?", "About five full-size pickup loads. Think a two-car garage cleanout, a bathroom remodel, or the debris from one or two rooms. If you are staring at a kitchen, the 20 yard is the safer call."),
             ("Will it fit in my driveway?", "Yes, that is what the 15 is for. It takes roughly one parking space. Tell us which side of the drive you want it on when you book and the driver sets it there, on boards if you want the concrete protected."),
-            ("What does $300 actually cover?", "Delivery, pickup, the rental for 1 to 3 days, and the dump fee. Utah sales tax is added at checkout. Extra days are $50 each; heavy loads over the weight limit and prohibited items are the only other charges, and they are spelled out on the terms page."),
+            ("What does ${{TRD:d15_13}} actually cover?", "Delivery, pickup, the rental for 1 to 3 days, and the dump fee. Utah sales tax is added at checkout. Extra days are ${{TRD:ext_day}} each; heavy loads over the weight limit and prohibited items are the only other charges, and they are spelled out on the terms page."),
         ],
     },
     {
-        "slug": "20-yard", "yd": 20, "p13": 350, "p47": 375, "img": P + "02_20yd_bin_side.jpeg",
+        "slug": "20-yard", "yd": 20, "img": P + "02_20yd_bin_side.jpeg",
         "tag": "Our most-rented size",
         "best": "Kitchen remodels, landscaping, flooring, estate cleanouts.",
         "fits": "Still driveway-sized. The right answer when you are not sure.",
@@ -76,13 +79,13 @@ SIZES = [
         "lead": "The 20 yard is the one we rent most, and the one we point people at when they are not sure. Kitchen remodels, flooring through a whole main level, a landscaping tear-out, an estate cleanout. Still fits a driveway, holds about seven pickup loads, and the dump fee is included.",
         "good": ["Kitchen remodels and cabinet tear-outs", "Flooring and carpet, whole floor", "Landscaping, fence and deck tear-downs", "Estate and whole-garage cleanouts", "Roof tear-offs on a standard home", "Basement finishes and remodels"],
         "faq": [
-            ("Why is the 20 yard your most-rented bin?", "Because it covers the most jobs for the least money. It is the size that handles a kitchen, a floor, or a yard without running out of room, and it still fits in a driveway. When a 15 feels tight, the 20 is $50 more."),
-            ("Can I start with a 15 and switch to a 20?", "Yes. If the bin fills mid-project we haul it and drop the next one in the same trip; that is the bin switch, $200. One of our reviews is exactly that story. Cheaper still is to start with the 20."),
-            ("What is the price for a week?", "$375 for 4 to 7 days, plus Utah sales tax at checkout. $350 for 1 to 3 days. Both include delivery, pickup and the dump fee."),
+            ("Why is the 20 yard your most-rented bin?", "Because it covers the most jobs for the least money. It is the size that handles a kitchen, a floor, or a yard without running out of room, and it still fits in a driveway. When a 15 feels tight, the 20 is the safer call for a little more."),
+            ("Can I start with a 15 and switch to a 20?", "Yes. If the bin fills mid-project we haul it and drop the next one in the same trip; that is the bin switch, ${{TRD:binswitch}}. One of our reviews is exactly that story. Cheaper still is to start with the 20."),
+            ("What is the price for a week?", "${{TRD:d20_47}} for 4 to 7 days, plus Utah sales tax at checkout. ${{TRD:d20_13}} for 1 to 3 days. Both include delivery, pickup and the dump fee."),
         ],
     },
     {
-        "slug": "25-yard", "yd": 25, "p13": 400, "p47": 425, "img": P + "03_25yd_bin_side.jpeg",
+        "slug": "25-yard", "yd": 25, "img": P + "03_25yd_bin_side.jpeg",
         "tag": "Maximum capacity",
         "best": "Construction, roofing, full-home cleanouts, commercial jobs.",
         "fits": "Needs a longer space: a long driveway, a job site, or the street with a permit.",
@@ -92,17 +95,17 @@ SIZES = [
         "faq": [
             ("Do I need a permit for a 25 yard bin?", "Only if it has to sit on a public street. In a driveway or on your own lot, no. If it is going on the street, your city may want a permit; the booking form asks, and we can tell you what your city does."),
             ("Can I put concrete, dirt or brick in it?", "Not in a 25. Heavy material hits the weight limit long before the bin is full and the overage is billed by the ton. Heavy loads want their own small container; call and we will set it up properly."),
-            ("How long can I keep it?", "1 to 3 days is $400, 4 to 7 days is $425, plus tax. Need longer? Call before pickup and we extend it at $50 a day. On a long job, a bin switch keeps the same bin on site with a fresh one dropped when it fills."),
+            ("How long can I keep it?", "1 to 3 days is ${{TRD:d25_13}}, 4 to 7 days is ${{TRD:d25_47}}, plus tax. Need longer? Call before pickup and we extend it at ${{TRD:ext_day}} a day. On a long job, a bin switch keeps the same bin on site with a fresh one dropped when it fills."),
         ],
     },
 ]
 
 SERVICES = [
     {
-        "slug": "junk-removal", "name": "Junk Removal", "price": "$550", "unit": "flat rate",
+        "slug": "junk-removal", "name": "Junk Removal", "price": "${{TRD:junk}}", "unit": "flat rate",
         "book": "/book?service=junk", "img": P + "06_bin_rental_3.jpeg",
         "title": "Junk Removal in West Haven & Weber County, UT",
-        "description": "Full-service junk removal on the Wasatch Front: we bring the truck and the crew, load it, haul it and pay the dump. $550 flat, weekends only. Book online or call 801-564-3164.",
+        "description": "Full-service junk removal on the Wasatch Front: we bring the truck and the crew, load it, haul it and pay the dump. ${{TRD:junk}} flat, weekends only. Book online or call 801-564-3164.",
         "h1": "Junk removal.<br><em>We do the lifting.</em>",
         "lead": "Some jobs do not want a bin sitting there for three days; they want it gone by lunch. That is junk removal. We bring the truck and the hands, load it, haul it and pay the dump. One flat rate. Weekends only, so the weekday fleet stays on the bins.",
         "sections": [
@@ -117,33 +120,33 @@ SERVICES = [
         ],
     },
     {
-        "slug": "dump-trailer-rental", "name": "Dump Trailer Rental", "price": "$200", "unit": "per day",
+        "slug": "dump-trailer-rental", "name": "Dump Trailer Rental", "price": "${{TRD:trailer_day}}", "unit": "per day",
         "book": "/book?service=trailer", "img": P + "14_gallery_photo_4.jpg",
         "title": "Dump Trailer Rental in West Haven & Weber County, UT",
-        "description": "Rent a dump trailer by the day in West Haven, UT: $200 a day, 1 to 14 days, with a $300 refundable deposit. Haul it yourself, dump it yourself. Book online or call 801-564-3164.",
+        "description": "Rent a dump trailer by the day in West Haven, UT: ${{TRD:trailer_day}} a day, 1 to 14 days, with a ${{TRD:trailer_dep}} refundable deposit. Haul it yourself, dump it yourself. Book online or call 801-564-3164.",
         "h1": "Dump trailer.<br><em>By the day.</em>",
-        "lead": "If you have the truck and the time, a dump trailer is the cheapest way to move a lot of material: your own runs to the dump, a move, hauling gravel or branches. $200 a day, one to fourteen days, with a $300 deposit that comes back when the trailer does.",
+        "lead": "If you have the truck and the time, a dump trailer is the cheapest way to move a lot of material: your own runs to the dump, a move, hauling gravel or branches. ${{TRD:trailer_day}} a day, one to fourteen days, with a ${{TRD:trailer_dep}} deposit that comes back when the trailer does.",
         "sections": [
             ("How it works", ["Book the days online, pay the rental plus the refundable deposit, and pick the trailer up from us in West Haven. Haul whatever you need, dump it yourself, bring it back clean on the last day. The deposit comes back to your card once it is checked in."]),
             ("When it is the right call", ["Moving house with a pickup. Your own dump runs at your own pace. Gravel, mulch, soil in. Branches and yard waste out. Anything where you would rather do the driving than pay for a bin to sit."]),
             ("What you need", ["A truck with a hitch rated for it and a driver comfortable towing. The trailer comes with the tie-downs; you bring the muscle. Damage and overages are covered by the card on file, same as every rental, and it is all on the terms page."]),
         ],
         "faq": [
-            ("What is the deposit for?", "It is $300, refundable, and it covers the trailer coming back on time and in one piece. It is returned to your card once the trailer is checked in."),
+            ("What is the deposit for?", "It is ${{TRD:trailer_dep}}, refundable, and it covers the trailer coming back on time and in one piece. It is returned to your card once the trailer is checked in."),
             ("Can I keep it longer than I booked?", "Call before the last day and we extend it at the daily rate if it is not booked behind you. Bringing it back late without a call runs into the late fee on the terms page, so call."),
             ("Is the dump fee included?", "No. With the trailer you are doing your own dump runs and paying the dump directly. The bins include the dump fee; the trailer is the do-it-yourself option, which is why it is cheaper per day."),
         ],
     },
     {
-        "slug": "bin-switch", "name": "Bin Switch", "price": "$200", "unit": "per switch",
+        "slug": "bin-switch", "name": "Bin Switch", "price": "${{TRD:binswitch}}", "unit": "per switch",
         "book": "/book?service=binswitch", "img": P + "13_gallery_photo_3.jpeg",
         "title": "Bin Switch, Same-Trip Dumpster Swap in Weber County, UT",
-        "description": "Filled the dumpster before the job is done? A bin switch hauls the full one and drops a fresh one in the same trip, $200. Serving West Haven, Ogden, Roy and the Wasatch Front. Call 801-564-3164.",
+        "description": "Filled the dumpster before the job is done? A bin switch hauls the full one and drops a fresh one in the same trip, ${{TRD:binswitch}}. Serving West Haven, Ogden, Roy and the Wasatch Front. Call 801-564-3164.",
         "h1": "Full bin?<br><em>Swap it, same trip.</em>",
         "lead": "A remodel that found another wall. A roof with one more layer than anyone thought. A cleanout that kept going. When the bin fills before the job ends, a switch hauls the full one away and drops a fresh one in the same trip, so nothing sits and nobody waits.",
         "sections": [
-            ("How it works", ["Book the switch online or call, and tell us the job you are on. The driver pulls the full bin, runs it to the dump, and sets an empty one in the same spot, same visit. The switch is $200; the new bin's rental and dump fee are billed like any other rental."]),
-            ("Before you need one", ["If you think you might fill it, start one size up. A 20 is $50 more than a 15 and saves a $200 switch. If you are not sure, call and describe the job; we have placed enough bins to guess well."]),
+            ("How it works", ["Book the switch online or call, and tell us the job you are on. The driver pulls the full bin, runs it to the dump, and sets an empty one in the same spot, same visit. The switch is ${{TRD:binswitch}}; the new bin's rental and dump fee are billed like any other rental."]),
+            ("Before you need one", ["If you think you might fill it, start one size up. A 20 costs only a little more than a 15 and saves a ${{TRD:binswitch}} switch. If you are not sure, call and describe the job; we have placed enough bins to guess well."]),
         ],
         "faq": [
             ("How fast can you switch a bin?", "Usually same day or next morning, depending on where the trucks are. Call as soon as you can see the top of the pile and we will slot it in."),
@@ -198,14 +201,14 @@ FAQ = [
     ("What size dumpster do I need?", "Three sizes: 15 yard (about five pickup loads; garage cleanouts, small remodels, yard waste), 20 yard (about seven loads; kitchens, flooring, landscaping, estate cleanouts; our most-rented), and 25 yard (about nine loads; construction, roofing, whole-home cleanouts). Not sure? Call and describe the job; we will fit the bin to it."),
     ("What does the price include?", "Delivery, pickup, the rental period and the dump fee. The 1 to 3 day and 4 to 7 day prices are on the home page for every size. Utah sales tax is added at checkout. Extra days, overweight loads and prohibited items are the only other charges, and they are spelled out on the terms page."),
     ("Is the dump fee really included?", "Yes, on every bin rental. You are not billed by the ton at pickup for a normal load. Very heavy loads (concrete, dirt, brick) have a weight limit and the overage is billed per ton, which is why heavy material wants its own small container; call first for those."),
-    ("How long can I keep the bin?", "1 to 3 days or 4 to 7 days, priced separately. Need longer? Call before pickup and we extend it at $50 a day. If the bin fills before the job is done, a bin switch hauls the full one and drops a fresh one in the same trip."),
+    ("How long can I keep the bin?", "1 to 3 days or 4 to 7 days, priced separately. Need longer? Call before pickup and we extend it at ${{TRD:ext_day}} a day. If the bin fills before the job is done, a bin switch hauls the full one and drops a fresh one in the same trip."),
     ("How fast can you deliver?", "Same-day and next-day delivery are available most of the year, depending on where the trucks are. Book online with your date or call and ask."),
     ("Where does the bin go?", "Driveway, job site or lot, wherever you point. Drivers set it on boards if you want the concrete protected; just say so when you book. If the bin has to sit on a public street, your city may require a permit; the booking form asks, and we will tell you what your city does."),
     ("What can I not put in it?", "Hazardous waste, wet paint and other liquids, asbestos, propane tanks and fuel. Tires, mattresses and appliances with refrigerant can go but carry a handling fee. The full list is on the terms page."),
     ("How do I book and pay?", "Pick the size and the dates on the booking page, enter the address and pay by card. You get a confirmation text with your reference number, a reminder the day before delivery and the day before pickup. Commercial accounts can request a quote instead and Joseph calls back."),
     ("Where do you deliver?", "Weber, Morgan, Davis and Salt Lake County, from a shop in West Haven. The service area page lists every city with how far it is from us. Out past that, call and ask; if it is too far we will say so rather than waste your time."),
-    ("Do you do junk removal?", "Yes, weekends only, $550 flat: we bring the truck and the crew, load it, haul it and pay the dump. Weekdays, a 15 yard bin is usually the answer."),
-    ("Can I rent a dump trailer instead?", "Yes. $200 a day, 1 to 14 days, with a $300 refundable deposit. You do the hauling and the dump runs yourself; it is the do-it-yourself option."),
+    ("Do you do junk removal?", "Yes, weekends only, ${{TRD:junk}} flat: we bring the truck and the crew, load it, haul it and pay the dump. Weekdays, a 15 yard bin is usually the answer."),
+    ("Can I rent a dump trailer instead?", "Yes. ${{TRD:trailer_day}} a day, 1 to 14 days, with a ${{TRD:trailer_dep}} refundable deposit. You do the hauling and the dump runs yourself; it is the do-it-yourself option."),
     ("Who am I dealing with?", "Joseph Rodrigues and his family. Triple R Dump is family-owned and operated out of West Haven, and the person who answers the phone is the person who books the job."),
 ]
 
@@ -213,6 +216,10 @@ FAQ = [
 
 def esc(s):
     return (str(s).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;"))
+
+def T(key):
+    """A live-price token the worker replaces with the current CMS value."""
+    return "{{TRD:" + key + "}}"
 
 def ld(obj):
     return '<script type="application/ld+json">' + json.dumps(obj, indent=2) + "</script>"
@@ -289,6 +296,9 @@ def footer():
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
         </a>
       </div>
+      <a class="foot-bbb" href="https://www.bbb.org/us/ut/west-haven/profile/dumpster-rentals/triple-r-dump-1126-1000181920/#sealclick" target="_blank" rel="noopener nofollow">
+        <img src="https://seal-central-northern-western-arizona.bbb.org/seals/blue-seal-250-52-bbb-1000181920.png" alt="Triple R Dump BBB Business Review" width="250" height="52" loading="lazy">
+      </a>
     </div>
     <div class="foot-col">
       <h3>Services</h3>
@@ -306,13 +316,15 @@ def footer():
         <li>{BIZ["address"]}</li>
         <li><a href="/faq/">Questions &amp; answers</a></li>
         <li><a href="/terms">Terms &amp; fees</a></li>
+        <li><a href="/bbb/">BBB accredited</a></li>
+        <li><a href="/contact/">Contact page</a></li>
       </ul>
     </div>
   </div>
   <div class="foot-bottom wrap">
     <p>© 2026 J. Rodrigues · Triple R Dump · Family owned &amp; operated</p>
     <p>Sustainable solutions for all</p>
-    <p>Made by <a href="https://getkellan.com" target="_blank" rel="noopener">Kellan</a></p>
+    <p class="foot-made"><a href="https://getkellan.com" target="_blank" rel="noopener">Made by Kellan</a></p>
   </div>
 </footer>
 <a class="call-pill hidden" href="{BIZ["tel"]}" aria-label="Call Triple R Dump, {BIZ["phone"]}">
@@ -367,8 +379,8 @@ def rate_table(only=None, heading=True):
         <p class="rate-size">{s["yd"]}<small>yard</small></p>
         <p class="rate-best"><strong>{esc(s["best"])}</strong> {esc(s["fits"])}</p>
         <div class="rate-prices-m">
-          <p class="rate-price">${s["p13"]}<small>1–3 days</small></p>
-          <p class="rate-price">${s["p47"]}<small>4–7 days</small></p>
+          <p class="rate-price">${T(f"d{s['yd']}_13")}<small>1–3 days</small></p>
+          <p class="rate-price">${T(f"d{s['yd']}_47")}<small>4–7 days</small></p>
         </div>
         <a href="/book?size={s["yd"]}" class="btn btn-fill">Book {s["yd"]} yd</a>
       </div>''')
@@ -453,8 +465,8 @@ urls = [("/", "1.0"), ("/book", "0.9"), ("/terms", "0.3")]
 # size pages
 for s in SIZES:
     path = f"/dumpster-rental/{s['slug']}/"
-    title = f"{s['yd']} Yard Dumpster Rental in West Haven, UT | ${s['p13']}, Dump Fee Included"
-    desc = f"{s['yd']} yard roll-off dumpster rental in West Haven, Ogden, Roy and the Wasatch Front: ${s['p13']} for 1–3 days, ${s['p47']} for 4–7 days, dump fee included. {s['best']} Book online or call {BIZ['phone']}."
+    title = f"{s['yd']} Yard Dumpster Rental in West Haven, UT | ${T(f'd{s["yd"]}_13')}, Dump Fee Included"
+    desc = f"{s['yd']} yard roll-off dumpster rental in West Haven, Ogden, Roy and the Wasatch Front: ${T(f'd{s["yd"]}_13')} for 1–3 days, ${T(f'd{s["yd"]}_47')} for 4–7 days, dump fee included. {s['best']} Book online or call {BIZ['phone']}."
     good = "".join(f"<li>{esc(g)}</li>" for g in s["good"])
     others = [x for x in SIZES if x["slug"] != s["slug"]]
     body = hero(
@@ -468,7 +480,7 @@ for s in SIZES:
 <section class="sec">
   <div class="wrap">
     <header class="sec-head"><p class="label">The {s["yd"]} yard</p><h2>Straight price.<br><em>Dump's included.</em></h2>
-      <p>Delivery, pickup, the rental and the dump fee, in one number. Utah sales tax is added at checkout. Extra days are $50 each; call before pickup to extend.</p></header>
+      <p>Delivery, pickup, the rental and the dump fee, in one number. Utah sales tax is added at checkout. Extra days are ${T("ext_day")} each; call before pickup to extend.</p></header>
     {rate_table(only=s["slug"])}
   </div>
 </section>
@@ -492,8 +504,8 @@ for s in SIZES:
 <section class="sec">
   <div class="wrap">
     <header class="sec-head"><p class="label">Other sizes</p><h2>Not the right one?</h2></header>
-    <div class="rate-table">{"".join(f'''<div class="rate-row"><img class="rate-thumb" src="{o["img"]}" alt="{o["yd"]} yard roll-off bin" loading="lazy"><p class="rate-size">{o["yd"]}<small>yard</small></p><p class="rate-best"><strong>{esc(o["best"])}</strong></p><div class="rate-prices-m"><p class="rate-price">${o["p13"]}<small>1–3 days</small></p><p class="rate-price">${o["p47"]}<small>4–7 days</small></p></div><a href="/dumpster-rental/{o["slug"]}/" class="btn btn-ghost">About the {o["yd"]} yd</a></div>''' for o in others)}</div>
-    <p class="rate-note">Junk gone today instead? <a href="/junk-removal/">Junk removal</a> is weekends only, $550 flat. Hauling it yourself? <a href="/dump-trailer-rental/">Dump trailer</a>, $200 a day.</p>
+    <div class="rate-table">{"".join(f'''<div class="rate-row"><img class="rate-thumb" src="{o["img"]}" alt="{o["yd"]} yard roll-off bin" loading="lazy"><p class="rate-size">{o["yd"]}<small>yard</small></p><p class="rate-best"><strong>{esc(o["best"])}</strong></p><div class="rate-prices-m"><p class="rate-price">${T(f"d{o['yd']}_13")}<small>1–3 days</small></p><p class="rate-price">${T(f"d{o['yd']}_47")}<small>4–7 days</small></p></div><a href="/dumpster-rental/{o["slug"]}/" class="btn btn-ghost">About the {o["yd"]} yd</a></div>''' for o in others)}</div>
+    <p class="rate-note">Junk gone today instead? <a href="/junk-removal/">Junk removal</a> is weekends only, ${T("junk")} flat. Hauling it yourself? <a href="/dump-trailer-rental/">Dump trailer</a>, ${T("trailer_day")} a day.</p>
   </div>
 </section>
 ''' + cta()
@@ -501,8 +513,8 @@ for s in SIZES:
         ld({"@context": "https://schema.org", "@type": "Product", "name": f"{s['yd']} Yard Dumpster Rental", "description": desc,
             "image": SITE + s["img"], "brand": {"@type": "Brand", "name": BIZ["name"]},
             "offers": [
-                {"@type": "Offer", "name": "1–3 day rental, dump fee included", "price": str(s["p13"]), "priceCurrency": "USD", "availability": "https://schema.org/InStock", "url": SITE + f"/book?size={s['yd']}", "areaServed": "Weber, Morgan, Davis and Salt Lake County, Utah"},
-                {"@type": "Offer", "name": "4–7 day rental, dump fee included", "price": str(s["p47"]), "priceCurrency": "USD", "availability": "https://schema.org/InStock", "url": SITE + f"/book?size={s['yd']}&tier=4-7"},
+                {"@type": "Offer", "name": "1–3 day rental, dump fee included", "price": T(f"d{s['yd']}_13"), "priceCurrency": "USD", "availability": "https://schema.org/InStock", "url": SITE + f"/book?size={s['yd']}", "areaServed": "Weber, Morgan, Davis and Salt Lake County, Utah"},
+                {"@type": "Offer", "name": "4–7 day rental, dump fee included", "price": T(f"d{s['yd']}_47"), "priceCurrency": "USD", "availability": "https://schema.org/InStock", "url": SITE + f"/book?size={s['yd']}&tier=4-7"},
             ]}),
         faq_ld(s["faq"]),
         breadcrumbs([("Home", "/"), ("Bins & rates", "/#rates"), (f"{s['yd']} yard", path)]),
@@ -530,7 +542,7 @@ for s in SERVICES:
       <p class="big-price">{s["price"]}<small>{esc(s["unit"])}</small></p>
       <ul class="checks">
         {"<li>Weekends only</li><li>Truck, crew, hauling and dump fee in one price</li><li>One load; call for more</li>" if s["slug"] == "junk-removal" else ""}
-        {"<li>1 to 14 days</li><li>$300 refundable deposit</li><li>Pick up and return in West Haven</li>" if s["slug"] == "dump-trailer-rental" else ""}
+        {"<li>1 to 14 days</li><li>${{TRD:trailer_dep}} refundable deposit</li><li>Pick up and return in West Haven</li>" if s["slug"] == "dump-trailer-rental" else ""}
         {"<li>Same-trip swap</li><li>Any size that is free</li><li>New bin billed as a normal rental</li>" if s["slug"] == "bin-switch" else ""}
       </ul>
       <a href="{s["book"]}" class="btn btn-fill">Book it online</a>
@@ -602,7 +614,7 @@ for c in CITIES:
     near = sorted([x for x in CITIES if x["slug"] != c["slug"]], key=lambda x: abs(x["min"] - c["min"]))[:5]
     dist = "minutes from the shop" if c["min"] == 0 else f"about {c['min']} minutes from our shop in West Haven"
     title = f"Dumpster Rental in {c['name']}, UT | 15, 20 & 25 Yard Bins, Dump Fee Included"
-    desc = f"Roll-off dumpster rental in {c['name']}, Utah from Triple R Dump, {dist}. 15, 20 and 25 yard bins from $300, dump fee included, same-day delivery available. Book online or call {BIZ['phone']}."
+    desc = f"Roll-off dumpster rental in {c['name']}, Utah from Triple R Dump, {dist}. 15, 20 and 25 yard bins from ${T('d15_13')}, dump fee included, same-day delivery available. Book online or call {BIZ['phone']}."
     from_shop = "the shop" if c["min"] == 0 else f"~{c['min']} min from the shop"
     body = hero(
         f"{c['county']} County · {from_shop}",
@@ -673,6 +685,107 @@ write("faq/index.html", page(
     [faq_ld(FAQ), breadcrumbs([("Home", "/"), ("FAQ", "/faq/")])],
 ))
 urls.append(("/faq/", "0.6"))
+
+# BBB accreditation
+BBB_PROFILE = "https://www.bbb.org/us/ut/west-haven/profile/dumpster-rentals/triple-r-dump-1126-1000181920/"
+BBB_SEAL = "https://seal-central-northern-western-arizona.bbb.org/seals/blue-seal-250-52-bbb-1000181920.png"
+bbb_body = hero(
+    "Accountability, in writing",
+    "BBB<br><em>accredited.</em>",
+    "Triple R Dump is accredited by the Better Business Bureau. That is not a badge we printed for ourselves; it is a standard we applied for, were vetted against, and have to keep.",
+    P + "07_bin_rental_4.jpeg",
+    "/book",
+    "Book online",
+) + ticker() + f'''
+<section class="sec">
+  <div class="wrap two">
+    <div class="prose">
+      <div class="prose-block"><h2>What accreditation means</h2>
+        <p>The BBB accredits businesses that meet its Standards for Trust and keep meeting them: advertise honestly, tell the truth about prices, honor what was promised, and answer when a customer has a problem. Accreditation is reviewed, not bought once and kept forever; a business that stops living up to it loses it.</p>
+        <p>For a dumpster company that means the number on the page is the number on your card, the dump fee is included like the site says, and the fees for the rare extras are written down before you book, not discovered after.</p></div>
+      <div class="prose-block"><h2>If something goes wrong</h2>
+        <p>Call first; the person who answers is the owner and he would rather fix it today than read about it later. But accreditation means you do not have to take our word for that. Our BBB profile is a public channel we are obligated to answer, with our complaint history and current rating in the open.</p></div>
+      <div class="prose-block"><h2>Check for yourself</h2>
+        <p>The seal here is served by the BBB itself, not by us; it always shows our current standing, and it links straight to <a href="{BBB_PROFILE}" target="_blank" rel="noopener nofollow">our profile on bbb.org</a>. Reviews, rating, history: all of it is theirs to publish, not ours to edit.</p></div>
+    </div>
+    <aside class="side-card">
+      <p class="label">Verified by the BBB</p>
+      <a href="{BBB_PROFILE}#sealclick" target="_blank" rel="noopener nofollow"><img class="bbb-seal" src="{BBB_SEAL}" alt="Triple R Dump BBB Business Review" width="250" height="52" loading="lazy"></a>
+      <ul class="checks"><li>Accredited business</li><li>Live rating, straight from bbb.org</li><li>Public complaint channel</li></ul>
+      <a href="{BBB_PROFILE}" target="_blank" rel="noopener nofollow" class="btn btn-fill">See our BBB profile</a>
+      <a href="{BIZ["tel"]}" class="side-call">or call {BIZ["phone"]}</a>
+    </aside>
+  </div>
+</section>
+<section class="sec">
+  <div class="wrap">
+    <header class="sec-head"><p class="label">Bins &amp; rates</p><h2>Straight prices.<br><em>Dump's included.</em></h2></header>
+    {rate_table()}
+  </div>
+</section>
+''' + cta()
+write("bbb/index.html", page(
+    "/bbb/",
+    "BBB Accredited Business | Triple R Dump, West Haven UT",
+    "Triple R Dump is a BBB Accredited dumpster rental company in West Haven, Utah. What accreditation means, how to check our current rating, and where to find our profile on bbb.org.",
+    bbb_body,
+    [breadcrumbs([("Home", "/"), ("BBB accredited", "/bbb/")])],
+    og_image=P + "07_bin_rental_4.jpeg",
+))
+urls.append(("/bbb/", "0.5"))
+
+# contact (the old Wix site had /contact and it still shows in search results —
+# this page exists so that URL lands somewhere real instead of a 404)
+MAPS_G = "https://maps.google.com/?q=3539+S+4250+W,+West+Haven,+UT+84401"
+MAPS_A = "https://maps.apple.com/?q=3539+S+4250+W,+West+Haven,+UT+84401"
+contact_body = hero(
+    "Call, text or book",
+    "Talk to<br><em>the owner.</em>",
+    "No call center, no queue. The number here rings Joseph, and the booking page is open all night. Say what the job is and we will tell you which bin, which day and what it costs.",
+    HERO_IMG,
+    "/book",
+    "Book online",
+) + ticker() + f'''
+<section class="sec">
+  <div class="wrap two">
+    <div class="prose">
+      <div class="prose-block"><h2>Call or text</h2>
+        <p><a href="{BIZ["tel"]}">{BIZ["phone"]}</a>. Calls get answered by the person who books the jobs and drives the trucks; texts get answered between them. Have the drop-off address, the dates and a rough idea of what you are tossing, and it is a two-minute conversation.</p></div>
+      <div class="prose-block"><h2>Email</h2>
+        <p><a href="mailto:{BIZ["email"]}">{BIZ["email"]}</a> works for quotes, commercial accounts, paperwork and anything with an attachment. For a bin this week, the phone is faster.</p></div>
+      <div class="prose-block"><h2>The shop</h2>
+        <p>{BIZ["address"]}. That is where the trucks and trailers live; dump trailer pickups and returns happen here. Directions: <a href="{MAPS_G}" target="_blank" rel="noopener">Google Maps</a> or <a href="{MAPS_A}" target="_blank" rel="noopener">Apple Maps</a>.</p></div>
+      <div class="prose-block"><h2>Book without calling</h2>
+        <p>The <a href="/book">booking page</a> takes the size, the dates and the address, checks that a bin is actually free, and takes payment by card. It is the same calendar we run the trucks from. Junk removal books weekends only; everything else, any day.</p></div>
+    </div>
+    <aside class="side-card">
+      <p class="label">Reach us</p>
+      <p class="big-price contact-num">{BIZ["phone"]}<small>call or text, the owner answers</small></p>
+      <ul class="checks"><li>The owner answers</li><li>Same-day delivery most days</li><li>Booking online, day or night</li></ul>
+      <a href="{BIZ["tel"]}" class="btn btn-fill">Call {BIZ["phone"]}</a>
+      <a href="/book" class="side-call">or book online</a>
+    </aside>
+  </div>
+</section>
+<section class="sec">
+  <div class="wrap">
+    <header class="sec-head"><p class="label">Where we haul</p><h2>Four counties,<br><em>one shop.</em></h2><p>Weber, Morgan, Davis and Salt Lake County, from West Haven. <a href="/service-area/">Every city we serve is here.</a></p></header>
+  </div>
+</section>
+''' + cta()
+write("contact/index.html", page(
+    "/contact/",
+    "Contact Triple R Dump | Call, Text or Book Online | West Haven, UT",
+    f"Call or text Triple R Dump at {BIZ['phone']}, email {BIZ['email']}, or book a dumpster online. Family-owned roll-off dumpster rental at {BIZ['address']}, serving the Wasatch Front.",
+    contact_body,
+    [
+        ld({"@context": "https://schema.org", "@type": "ContactPage", "name": "Contact Triple R Dump", "url": SITE + "/contact/",
+            "about": {"@type": "LocalBusiness", "@id": SITE + "/#business", "name": BIZ["name"], "telephone": "+1-" + BIZ["phone"], "email": BIZ["email"], "url": SITE + "/",
+                      "address": {"@type": "PostalAddress", "streetAddress": "3539 S 4250 W", "addressLocality": "West Haven", "addressRegion": "UT", "postalCode": "84401", "addressCountry": "US"}}}),
+        breadcrumbs([("Home", "/"), ("Contact", "/contact/")]),
+    ],
+))
+urls.append(("/contact/", "0.6"))
 
 # sitemap + robots
 write("sitemap.xml", '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' + "".join(

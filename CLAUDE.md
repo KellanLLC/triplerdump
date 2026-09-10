@@ -1,6 +1,165 @@
+*** GOOGLE BUSINESS PROFILE REBUILT 2026-09-10 (worker v d102dfd5) ***
+- The ORIGINAL GBP (CID 1101335824891562692, listing 12025527903397476755, ~15 reviews) is
+  held by Brandcraft Marketing (ex-agency, jemmyn@brandcraftmarketingllc.com, unresponsive).
+  Boston's ownership request (Google case 9-0753000040917) went unanswered -> Google
+  UNVERIFIED it ~Aug 29 -> it vanished from Maps and every old review link dead-ended.
+  A support-instructed duplicate (10771400065548320888) was auto-suspended Sep 5; a second
+  one Boston built (listing 9322818379133839494, store 06310780382393276766) is ABANDONED
+  (unverified, still on bkthueson@gmail.com) - do not touch it.
+- JOSEPH BUILT + VERIFIED HIS OWN PROFILE: listing 4556821476581406756, store code
+  04459485155888013557, CID 8339345795908710583, owner Joseph.Rodrigues@triplerdump.com,
+  managers boston@getkellan.com + bkthueson@gmail.com. Category "Dumpster rental service",
+  hours 9-5, public on Maps as of Sep 10.
+- NEW REVIEW LINK = https://g.page/r/CbcwSVDRTrtzEBM/review (verified signed-out). Written
+  to D1 settings review_link, index.html footer, build_pages.py, settings.js default,
+  uploads/info.md. The old g.page/r/CcTKEv0Yu0gPEBM + placeid ChIJc1Zhse8j7AcRxMoS_Ri7SA8
+  are DEAD - never reintroduce them.
+- STILL OPEN: getting the ~15 old reviews merged onto the new profile. Two Google cases:
+  9-0753000040917 (ownership/merge - Michael promised an automatic merge on Sep 7) and
+  0-4342000042082 (review-transfer team; insists requester be on BOTH profiles, which is
+  impossible since nobody on our side is on the source). Joseph was emailed the
+  move-reviews form (support.google.com/business/contact/business_move_reviews) + an owner
+  authorization statement to email Boston for forwarding into the case. GBP invite emails
+  are unreliable (known 2026 bug) - Joseph had to create the profile himself.
+
 # Triple R Dump - Project Context
 
 > Read this at the START of every session. Update it before you finish.
+
+*** DISCOUNT / PROMO CODES 2026-08-25 (worker v 27a2173d; UI polish v c353741b) — Joseph
+asked "how do I apply discounts to invoices? like 10% military discount? or create a
+code online" ***
+- POLISH PASS (v c353741b) after Boston's screenshot: the blank spare rows carried
+  placeholder text "MILITARY10"/"10" that READ AS SAVED CODES (he thought the code was
+  duplicated), and add/remove was only implicit. Now: NO placeholders in the inputs
+  (the intro sentence carries the example), ONE clearly-empty spare row (no-JS path),
+  a grey "+ Add another code" button (appends rows with the next unused dc_ index),
+  and a Remove button on every row (clears the inputs + hides the row; blank code =
+  dropped on Save — nothing is deleted until Save changes is pressed). Rows pair with
+  their example line by data-i (never by position) so removed rows can leave gaps.
+  Verified with REAL CLICKS in a browser against renderPanel output served over
+  localhost (file:// previews are static snapshots — serve via http to script them):
+  example lines update live, Add appended dc_code_2, Remove cleared + hid the row and
+  its example. Offline suite now 59/59.
+- v f77d6fcb: the /book promo input's placeholder said "e.g. MILITARY10" — that hands
+  every CUSTOMER a string that is probably a real working code. Placeholder removed;
+  /book must NEVER show an example code (suite asserts it, 60/60). Example codes are
+  fine in /admin copy (owner-only), never on customer-facing pages.
+- CMS "Discounts" tab in /admin (between Extra fees and Bins): rows of code + percent +
+  On checkbox, two blank rows to add more, and a LIVE EXAMPLE line under each row (the
+  25yd 1-3 price run through the percent, before/after tax) so Joseph sees the math
+  before saving. Stored in D1 settings key `discount_codes` = [{code,pct,active}].
+  saveSettings parses indexed fields dc_code_0.. (whole panel is ONE form, so repeated
+  names would collapse); codes normalize to uppercase A-Z/0-9/dash ≤20 chars, pct clamps
+  1–100, blank code = delete, dupes keep the first. settings.js: S.discountCodes default
+  [] + findDiscountCode(S, code) (case-insensitive, skips active:false).
+- /book: "Promo code (optional)" input above the price summary (residential only —
+  commercial leads are unpriced). Debounced live check via NEW GET /api/promo?code= →
+  {ok,valid,code,pct} (reveals nothing but existence+pct). Valid → green "CODE applied:
+  N% off", summary grows a discount row, tax/total recomputed client-side; unknown →
+  red "Code not recognized". SERVER is authoritative: createBooking validates the code
+  and REFUSES an unknown one loudly (never silently charges full price). Math: discount
+  = pct% of PRE-TAX subtotal (capped at subtotal), tax recomputed on the net, deposit
+  NEVER discounted. bookings rows store promo_code (uppercase) + discount_cents
+  (migration 0006 APPLIED to live D1); subtotal_cents stays the ORIGINAL price and
+  amount_cents = subtotal − discount + tax, so {total}/chargedCents/booked-page all
+  stay right with no changes.
+- STRIPE CHECKOUT shows the discount as a real discount row: createCheckout creates a
+  one-off AMOUNT_OFF coupon (duration=once, name = the code) and passes
+  discounts[0][coupon]; amount_off NOT percent_off on purpose — percent would also
+  discount the tax + deposit LINES (our tax is already computed on the net). Service
+  line keeps full price AND its live product id. Coupon create fails → fallback charges
+  the net amount on the service line qty 1 (no per-day rounding drift for trailer) so
+  the discount is never lost. LIVE VERIFIED end-to-end: booking TRD-CAUJY3 with test
+  code TRDTEST9 (10%): $375 → total_details.amount_discount=3750, amount_total=36281 on
+  a real cs_live_ session. Cleaned up after: hold released via /book?canceled= (session
+  expired at Stripe), booking row + test settings row deleted, one-off coupon deleted;
+  bookings table back to the 8 real rows, discount_codes key ABSENT from D1 (code
+  default [] serves until Joseph saves his first code).
+- INVOICES: New Invoice page has a Discount section — select of saved codes ("CODE — N%
+  off", inactive ones hidden) + "Custom percent…" that reveals a percent box (JS; no-JS
+  shows both). index.js /admin/invoice/create applies it via invoice.js
+  applyPercentDiscount(items, pct, label): pushes a NEGATIVE line item before totalsFor,
+  so tax (on the net), D1 line_items JSON, the Stripe invoice, and the PDF all reflect
+  it with zero schema change (Stripe invoiceitems accept negative unit_amount_decimal;
+  capped at the items subtotal so a total can never go negative). invMoney now renders
+  negatives as "-$X.XX". NOT yet exercised against the real Stripe invoice API — the
+  negative-line-item call is offline-tested only; first real discounted invoice should
+  be watched (sandbox first if in doubt).
+- Admin booking detail shows "Discount (CODE) −$X" between Subtotal and Tax; /book
+  confirmation recap shows it too. Guide tab + OWNER-GUIDE.md updated (Discounts row in
+  the tab table + a "Discount codes" section under Money).
+- Offline suite: scratchpad promo_test.mjs — 56/56 asserts (findDiscountCode, booking
+  math incl. loud refusal + unchanged no-code path, checkout coupon + fallback + no-
+  coupon regression, invoice negative-line math incl. caps, admin render/save/detail,
+  invoice form, /book render). Post-verify regression: /book /admin /terms 200,
+  /api/availability normal, /api/promo valid:false after cleanup.
+
+*** LIVE PRICES EVERYWHERE + /bbb/ PAGE + FOOTER CREDIT 2026-08-23 later (worker v 08d9a149) ***
+- PRICES ARE NOW CMS-DRIVEN ON EVERY PAGE, NO REBUILD. New worker/src/marketing.js:
+  wrangler `run_worker_first` (glob list) routes the marketing HTML ( / , /dumpster-rental*,
+  /junk-removal*, /dump-trailer-rental*, /bin-switch*, /service-area*, /faq*, /bbb* )
+  through the worker, which fetches the asset via the new ASSETS binding and substitutes
+  live settings prices. Two markers: generated pages carry {{TRD:key}} tokens (visible
+  text, titles, meta, JSON-LD, FAQ prose — build_pages.py bakes NO dollar amounts any
+  more; keys d15_13/d15_47/d20_13/d20_47/d25_13/d25_47/junk/trailer_day/trailer_dep/
+  binswitch/ext_day, helper T()); index.html keeps real numbers but marks its 9
+  .rate-price elements with data-trd="key" (graceful fallback). Fail-open: settings
+  error → asset served unrewritten. Responses: cache-control max-age=300, ETag/
+  Last-Modified stripped, request validators stripped so a 304 can't pin stale prices.
+  A /admin price save is live site-wide within 5 min. Ext-day fee + junk/trailer/switch
+  prices also flow (S.services/S.fees) — services key has no D1 row today, so code
+  defaults serve until someone saves one.
+- WRANGLER UPGRADED 3.114 -> 4.125 in worker/package.json — REQUIRED (v3 only knows
+  boolean run_worker_first). Deploy syntax unchanged.
+- Offline test: scratchpad trd_rewrite_test.mjs (31 asserts — token sweep over all
+  generated pages incl. no-stray-`${`, JSON-LD prices, data-trd rewrite, cents
+  formatting, unknown-token passthrough, path matcher incl/excl) ALL PASS. LIVE
+  verified: 15yd page + homepage show D1 prices with zero {{TRD: residue (generated
+  pages have no baked numbers, so the rendered $275 proves the D1 chain), /book /terms
+  /admin /api/availability unaffected.
+- /bbb/ SEO page added (build_pages.py; PAGE_DIRS in build_deploy.py got "bbb").
+  31 sitemap URLs now. Footer of index.html + generated pages links it ("BBB
+  accredited"). Page: hero, what-accreditation-means prose, side card with the dynamic
+  seal + profile link, rate table (tokens), CTA.
+- FOOTER CREDIT RESTYLED per Boston's screenshot: "Made by Kellan" now .foot-made —
+  Anton, uppercase, letter-spacing .16em, .72rem, color UNCHANGED (--color-ink-2),
+  UNDERLINED, and the WHOLE phrase is one link to getkellan.com (Boston asked for all
+  three in follow-ups). index.html inline CSS + pages.css.
+- /contact/ PAGE 2026-08-24 (worker v 9af0659f): the old Wix /contact URL still ranked
+  in searches and 404'd. Real page added in build_pages.py (call/text, email, shop
+  address + Google/Apple Maps, book-online blocks; side card with the full phone number
+  — .big-price.contact-num, smaller clamp so it fits; ContactPage+LocalBusiness JSON-LD).
+  In sitemap (32 URLs), footer Contact cols link it, PAGE_DIRS + run_worker_first +
+  MARKETING_RE include it. Other legacy Wix paths probed and still 404: /about
+  /services /book-online /quote /gallery — nobody has reported those ranking; check
+  Search Console if traffic complaints continue.
+
+*** PRICE DROP SYNCED 2026-08-23 (worker v 0908692f; worker SOURCE UNCHANGED) ***
+- Joseph LOWERED dumpster prices $25 across the board via the admin CMS (he called it
+  "Stripe" in his text, but D1 `bins` is what changed): 15yd $275/$300, 20yd $325/$350,
+  25yd $375/$400 (1-3 / 4-7 day). Checkout was already charging these; the static pages
+  were stale. Synced index.html (3 rate rows) + build_pages.py (p13/p47, three FAQ
+  answers, the city-page "from $300"->"from $275" desc), rebuilt, deployed. VERIFIED
+  live: homepage + 15yd page show new prices; /book 200; availability API normal.
+  Junk $550 / trailer $200+$300 deposit / switch $200 unchanged.
+- ALSO CHANGED IN D1 (by Joseph, presumably same session): fees.overweightTon 7500->10000
+  ($100/ton — /terms renders this automatically) and total_cap 11->9 (matches the real
+  1/3/5 fleet). MISMATCH LEFT OPEN: D1 `invoice_terms` text still says "$75 per ton" —
+  one D1 write to fix once Joseph confirms $100 was intentional. CLAUDE.md's old "$75/ton
+  reconciled" notes are now historical.
+- build_deploy.py: rmtree(deploy) died on WinError 32 (open handle on the FOLDER itself;
+  the nested deploy/.git got deleted by the first half-run — it was regenerable). The
+  script now EMPTIES deploy/ instead of rmtree'ing it, so a held handle on the dir can't
+  break the build. deploy/ is no longer a nested git repo.
+- BBB SEAL LIVE (same day, worker v df1d08c0): Joseph forwarded BBB's dynamic-seal email
+  (business id 1000181920). Seal added to the footer of index.html AND the build_pages.py
+  footer template (+ .foot-bbb CSS in index inline styles and pages.css): BBB's hosted
+  PNG (seal-central-northern-western-arizona.bbb.org — hotlinked ON PURPOSE, it is a
+  "dynamic" seal BBB updates/revokes) linking to their bbb.org profile with #sealclick
+  (BBB's click tracking — keep it). Rendered 40px tall under the social icons. VERIFIED
+  live in a real browser: image loads (250x52 natural), shows "BBB Rating: A-", no
+  overflow. bbb.org profile URL 403s for curl (bot blocking) — normal, fine in browsers.
 
 *** SEO PAGES + SITEMAP 2026-08-22 (worker v 956b44b0; worker SOURCE UNCHANGED) ***
 - The marketing site is no longer one page. `build_pages.py` (repo root) generates, from
