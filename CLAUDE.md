@@ -1,3 +1,21 @@
+*** HOMEPAGE LocalBusiness JSON-LD 2026-09-18 (worker v 9dcf9d99; worker SOURCE UNCHANGED) ***
+- Every generated page's JSON-LD points provider/about at https://www.triplerdump.com/#business
+  but index.html had ZERO structured data, so that @id resolved to nothing. Added one
+  <script type="application/ld+json"> LocalBusiness block before </head> (name/phone/email/
+  address/4 counties areaServed/sameAs IG+FB/image+logo, values = BIZ in build_pages.py).
+  NO openingHours on purpose (site says 24/7, GBP says 9-5). Contains no {{TRD:}} / data-trd
+  so marketing.js passes it through. Only /index.html changed in the deploy (1 asset).
+- VERIFIED live post-deploy: 1 ld+json on /, 9/9 data-trd prices render, 0 token residue;
+  /book /terms /api/availability /admin /booked?ref=bogus /contact/ /service-area/ogden/
+  /sitemap.xml all 200; bad admin password 401. No bookings created. NOT committed yet.
+- GSC EXPORT (Aug 21-Sep 16, 9 clicks/448 imp): apex+http variants still show as separate
+  URLs = stale Wix-era data (live 301s verified correct). Only /, /contact and
+  /service-area/syracuse/ indexed so far - the Sep 10 pages are just not crawled yet.
+  ACTION for Boston: confirm sitemap submitted in Search Console + "Request indexing" on
+  /service-area/ogden/ and /service-area/roy/. "dumpster rental" ranks #1 with 0 clicks =
+  map pack, i.e. GBP (see header). "dumpster rental logan ut" 47 imp @ pos 43 - Logan is
+  Cache County, OUTSIDE the four stated counties; do not add a page unless Joseph serves it.
+
 *** GOOGLE BUSINESS PROFILE REBUILT 2026-09-10 (worker v d102dfd5) ***
 - The ORIGINAL GBP (CID 1101335824891562692, listing 12025527903397476755, ~15 reviews) is
   held by Brandcraft Marketing (ex-agency, jemmyn@brandcraftmarketingllc.com, unresponsive).

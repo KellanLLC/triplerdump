@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Triple R Dump — Dumpster Rental | West Haven, Utah | 801-564-3164</title>
+  <link rel="canonical" href="https://www.triplerdump.com/">
   <meta name="description" content="Family-owned roll-off dumpster rental serving Weber, Morgan, Davis & Salt Lake County. 15, 20 & 25 yard bins, dump fees included. Call 801-564-3164.">
   <link rel="icon" href="favicon.ico" sizes="any">
   <link rel="icon" href="assets/favicon-32x32.png" type="image/png" sizes="32x32">
@@ -913,6 +914,39 @@
       .reveal { opacity: 1; transform: none; }
     }
   </style>
+  <!-- The #business entity every city/service/contact page's JSON-LD points at
+       (provider/about @id). Values mirror BIZ in build_pages.py. No openingHours on
+       purpose: the site says 24/7, GBP says 9-5 — don't assert either here. -->
+  <script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "LocalBusiness",
+  "@id": "https://www.triplerdump.com/#business",
+  "name": "Triple R Dump",
+  "url": "https://www.triplerdump.com/",
+  "telephone": "+1-801-564-3164",
+  "email": "Joseph.Rodrigues@triplerdump.com",
+  "description": "Family-owned roll-off dumpster rental serving Weber, Morgan, Davis and Salt Lake County. 15, 20 and 25 yard bins, dump fees included.",
+  "image": "https://www.triplerdump.com/uploads/triple.r.dump-photo-DY2CxEIFMkG-20260527_075118_707154355.jpg",
+  "logo": "https://www.triplerdump.com/assets/triple-r-dump-nav.webp",
+  "address": {
+    "@type": "PostalAddress",
+    "streetAddress": "3539 S 4250 W",
+    "addressLocality": "West Haven",
+    "addressRegion": "UT",
+    "postalCode": "84401",
+    "addressCountry": "US"
+  },
+  "areaServed": [
+    {"@type": "AdministrativeArea", "name": "Weber County, Utah"},
+    {"@type": "AdministrativeArea", "name": "Morgan County, Utah"},
+    {"@type": "AdministrativeArea", "name": "Davis County, Utah"},
+    {"@type": "AdministrativeArea", "name": "Salt Lake County, Utah"}
+  ],
+  "sameAs": [
+    "https://www.instagram.com/triple.r.dump/",
+    "https://www.facebook.com/profile.php?id=61587229028024"
+  ]
+}</script>
 </head>
 <body>
 
