@@ -1,3 +1,26 @@
+*** GBP OPTIMIZATION PASS 2026-09-19 (profile only; no code change) ***
+- Reviews MERGED: Joseph's profile now shows 5.0 / 14 reviews, 6 photos. Joseph had already
+  replied to all 14 himself (Unreplied filter = empty). Review link g.page/r/CbcwSVDRTrtzEAE.
+- ADDED via the GBP editor: 10 custom services (15/20/25 Yard Dumpster Rental, Dump Trailer
+  Rental, Junk Removal, Bin Switch-Out, Residential/Commercial Dumpster Rental, Construction
+  Debris Removal, Yard Waste Removal) - it was at fromEmptyState, i.e. ZERO services before.
+  Second category "Waste management service" + 7 Google-native service types (Construction
+  debris removal, Dumpster rental, Furniture removal, House & garage cleanouts, Junk removal,
+  Trash removal & disposal, Yard debris removal). DELIBERATELY SKIPPED appliance / e-waste /
+  hazardous / mattress types - /terms lists those as PROHIBITED materials.
+  New SEO description (652 ch, cities + sizes + BBB). First Post published w/ Book button ->
+  /book (post id 16072318222926251).
+- NOT DONE: photos (no way to get local files into the page from here - Joseph or Boston must
+  upload; 6 now, target 20+), Products tab, Q&A seeding. Hours left at Joseph's 9-5 on purpose.
+- HOW TO DRIVE THE GBP EDITOR (this took a while to work out): business.google.com/n/<listing>/
+  <services|reviews|posts>?fid=<cid> redirects to google.com/search#mpd=... and the real editor
+  is a SAME-ORIGIN iframe -> [...document.querySelectorAll('iframe')].find(x=>x.offsetWidth>800)
+  .contentDocument. Chrome MUST be visible+focused (document.visibilityState) or real clicks
+  silently no-op and screenshots time out. Compute viewport coords as iframeRect + elRect and
+  use computer left_click. Synthetic MouseEvents work for plain buttons, but TEXT INPUTS MUST
+  BE TYPED FOR REAL - a native-setter value set leaves aria-invalid=true and the form refuses
+  to submit ("A link is required"). Also: Google rejects URLs inside the description field.
+
 *** AUTO-CHARGE ON LATE INVOICES 2026-09-19 (worker v d3ab2d60) ***
 - /terms "Late Payment & Automatic Charge" + "Payment Authorization" (terms.js) now say: unpaid
   invoice balance + accrued late fees may be charged to the card on file, without further
