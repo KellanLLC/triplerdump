@@ -73,13 +73,11 @@ const DEFAULT_FEES = {
 // as /terms so an invoice can never quote a late fee the policy page contradicts.
 // CMS-editable: reword it in /admin, no deploy needed.
 const DEFAULT_INVOICE_TERMS =
-  "Payment is due by the due date shown above. Balances unpaid more than " +
+  "Payment is due by the due date shown above. If this invoice is not paid by the due date, you authorize Triple R Dump to charge the full outstanding balance, plus any accrued late charges, to the payment card on file, without further notice, on or after the day following the due date. Balances unpaid more than " +
   DEFAULT_FEES.lateGraceDays + " days past the due date accrue a late charge of " +
-  DEFAULT_FEES.latePct + "% per month on the outstanding amount. Weight overages ($" +
+  DEFAULT_FEES.latePct + "% per month on the outstanding amount. If no card is on file or the charge is declined, the balance remains due. Weight overages ($" +
   (DEFAULT_FEES.overweightTon / 100) + " per ton), trip fees ($" + (DEFAULT_FEES.dryRun / 100) +
-  "), and prohibited-material fines ($" + (DEFAULT_FEES.prohibitedItem / 100) +
-  " per item) identified after service remain the customer's responsibility. " +
-  "Questions about this invoice? Call 801-564-3164.";
+  "), and prohibited-material fines ($" + (DEFAULT_FEES.prohibitedItem / 100) + " per item) identified after service remain the customer's responsibility and may be charged the same way. Full terms: www.triplerdump.com/terms. Questions? Call 801-564-3164.";
 const DEFAULT_REVIEW_LINK = "https://g.page/r/CbcwSVDRTrtzEAE/review";
 
 export function defaultSettings(env = {}) {

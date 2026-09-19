@@ -1,3 +1,16 @@
+*** AUTO-CHARGE ON LATE INVOICES 2026-09-19 (worker v d3ab2d60) ***
+- /terms "Late Payment & Automatic Charge" + "Payment Authorization" (terms.js) now say: unpaid
+  invoice balance + accrued late fees may be charged to the card on file, without further
+  notice, on/after the day after the due date; if no card / declined, balance still due and
+  may go to collections. Same language in DEFAULT_INVOICE_TERMS (settings.js) AND the live
+  D1 `invoice_terms` row (rewritten - it overrides the default; also fixed the stale $75/ton
+  -> $100/ton there to match D1 fees + /terms).
+- REALITY CHECK: Checkout bookings DO store a card (setup_future_usage=off_session).
+  Invoiced jobs DO NOT (see Invoicing) - the clause is worded "card on file" so it is
+  truthful either way, but Joseph can only actually auto-charge Checkout customers. Charging
+  is still MANUAL from the Stripe dashboard; nothing in the worker charges anyone
+  automatically.
+
 *** INCIDENT 2026-09-18 18:31Z: `git push` TOOK THE BOOKING SYSTEM DOWN FOR ~3 MIN — DO NOT
 PUSH TO KellanLLC/triplerdump UNTIL THE CLOUDFLARE GITHUB APP IS DISCONNECTED ***
 - CAUSE: a Cloudflare GitHub App (Workers Builds) has been connected to the repo since
