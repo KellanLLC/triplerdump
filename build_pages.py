@@ -44,7 +44,7 @@ BIZ = {
     "email": "Joseph.Rodrigues@triplerdump.com",
     "address": "3539 S 4250 W, West Haven, UT 84401",
     "city": "West Haven",
-    "review": "https://g.page/r/CbcwSVDRTrtzEBM/review",
+    "review": "https://g.page/r/CbcwSVDRTrtzEAE/review",
     "instagram": "https://www.instagram.com/triple.r.dump/",
     "facebook": "https://www.facebook.com/profile.php?id=61587229028024",
 }

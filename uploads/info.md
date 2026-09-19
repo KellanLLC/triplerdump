@@ -22,7 +22,7 @@
 | Phone | 801-564-3164 |
 | Email | Joseph.Rodrigues@triplerdump.com |
 | Address | 3539 S 4250 W, West Haven, UT 84401 |
-| Google Review Link | https://g.page/r/CbcwSVDRTrtzEBM/review |
+| Google Review Link | https://g.page/r/CbcwSVDRTrtzEAE/review |
 
 ---
 
@@ -176,7 +176,7 @@ Multi-image grid of on-site truck and dumpster photos. All images saved in `trip
 ### Section 7 — Client Reviews
 
 **Heading:** "Client Reviews"
-**Button:** "Review Us ★" → https://g.page/r/CbcwSVDRTrtzEBM/review
+**Button:** "Review Us ★" → https://g.page/r/CbcwSVDRTrtzEAE/review
 
 | Reviewer | Review |
 |---|---|

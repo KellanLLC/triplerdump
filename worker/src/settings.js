@@ -80,7 +80,7 @@ const DEFAULT_INVOICE_TERMS =
   "), and prohibited-material fines ($" + (DEFAULT_FEES.prohibitedItem / 100) +
   " per item) identified after service remain the customer's responsibility. " +
   "Questions about this invoice? Call 801-564-3164.";
-const DEFAULT_REVIEW_LINK = "https://g.page/r/CbcwSVDRTrtzEBM/review";
+const DEFAULT_REVIEW_LINK = "https://g.page/r/CbcwSVDRTrtzEAE/review";
 
 export function defaultSettings(env = {}) {
   return {

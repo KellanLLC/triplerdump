@@ -1,3 +1,34 @@
+*** INCIDENT 2026-09-18 18:31Z: `git push` TOOK THE BOOKING SYSTEM DOWN FOR ~3 MIN — DO NOT
+PUSH TO KellanLLC/triplerdump UNTIL THE CLOUDFLARE GITHUB APP IS DISCONNECTED ***
+- CAUSE: a Cloudflare GitHub App (Workers Builds) has been connected to the repo since
+  ~2026-06-11 (bot branch origin/cloudflare/workers-autoconfig, author
+  cloudflare-workers-and-pages[bot]). Nobody had pushed since (28 local commits sat
+  unpushed), so it never fired. The first push (schema commit cf6184f) triggered a build
+  that used the bot's root wrangler.jsonc — assets:"." and NO main script — and deployed
+  it as version 5824dd69 (18:31:51Z): no fetch/scheduled handler, no DB/ASSETS/SITE_ORIGIN
+  bindings, no secrets, compat date = build day. Static pages kept serving; /book /admin
+  /terms /booked and every /api/* went 404 on both the custom domain and workers.dev.
+- FIX: `npx wrangler rollback 9dcf9d99-00ad-4887-92c2-060ec38af098` at 18:34:22Z (the
+  version deployed+verified at 18:25). Rollback re-points traffic at that version WITH its
+  bindings. Verified after: /book /terms /admin /contact/ /booked?ref=bogus 200, bad admin
+  pw 401, /api/availability returns live D1 caps, /api/promo ok, cron `0 * * * *` still
+  attached, both custom domains still bound, `wrangler versions secret list` shows all 6
+  secrets on the 100% version (ADMIN_PASSWORD ADMIN_SECRET CALENDAR_TOKEN
+  GHL_SMS_WEBHOOK_URL STRIPE_SECRET_KEY STRIPE_SECRET_KEY_LIVE). D1: zero bookings created
+  2026-09-18, last real row 09-11 — no customer was mid-checkout.
+- GOTCHA: `wrangler secret list` and GET /workers/scripts/triplerdump/settings read the
+  LATEST UPLOADED version (= the bad shell -> "[]", bindings []), NOT the deployed one.
+  Use `wrangler deployments status`, `wrangler versions view <id>` and
+  `wrangler versions secret list` — those are authoritative. Secrets inherit from previous
+  DEPLOYMENTS on upload ("secrets are never deleted by deployments"), so a normal
+  `wrangler deploy` from worker/ keeps them. ADMIN_PASSWORD/ADMIN_SECRET exist ONLY in the
+  deployed version (not on disk anywhere) — never let a deploy drop them.
+- TODO (Boston): (1) disconnect the git integration — Cloudflare dash > Workers & Pages >
+  triplerdump > Settings > Build (or GitHub > Settings > Applications > "Cloudflare Workers
+  & Pages" > remove this repo); (2) `git push origin --delete cloudflare/workers-autoconfig`;
+  (3) only then is `git push` safe again. Deploys stay MANUAL: `cd worker && npx wrangler
+  deploy`.
+
 *** HOMEPAGE LocalBusiness JSON-LD 2026-09-18 (worker v 9dcf9d99; worker SOURCE UNCHANGED) ***
 - Every generated page's JSON-LD points provider/about at https://www.triplerdump.com/#business
   but index.html had ZERO structured data, so that @id resolved to nothing. Added one
@@ -28,11 +59,17 @@
   04459485155888013557, CID 8339345795908710583, owner Joseph.Rodrigues@triplerdump.com,
   managers boston@getkellan.com + bkthueson@gmail.com. Category "Dumpster rental service",
   hours 9-5, public on Maps as of Sep 10.
-- NEW REVIEW LINK = https://g.page/r/CbcwSVDRTrtzEBM/review (verified signed-out). Written
+- NEW REVIEW LINK = https://g.page/r/CbcwSVDRTrtzEAE/review (verified signed-out). Written
   to D1 settings review_link, index.html footer, build_pages.py, settings.js default,
   uploads/info.md. The old g.page/r/CcTKEv0Yu0gPEBM + placeid ChIJc1Zhse8j7AcRxMoS_Ri7SA8
   are DEAD - never reintroduce them.
-- STILL OPEN: getting the ~15 old reviews merged onto the new profile. Two Google cases:
+- RESOLVED 2026-09-19: Google merged the old reviews onto Joseph's profile (Boston got
+  access to the source via Michael's brand-account invite on case 0-4342, Sep 15). REVIEW
+  LINK CHANGED AGAIN to https://g.page/r/CbcwSVDRTrtzEAE/review (direct write-review form,
+  placeid ChIJ31PA2IU4wmIRtzBJUNFOu3M) - in D1 + all 4 source files, worker v 8057a86c.
+  Manually re-texted the 3 customers who got a dead link (TRD-SVRDWY/8PQ9KH/9YTGEX) via
+  the GHL relay; noted on their bookings.
+- (historical) getting the ~15 old reviews merged onto the new profile. Two Google cases:
   9-0753000040917 (ownership/merge - Michael promised an automatic merge on Sep 7) and
   0-4342000042082 (review-transfer team; insists requester be on BOTH profiles, which is
   impossible since nobody on our side is on the source). Joseph was emailed the
