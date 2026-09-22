@@ -56,6 +56,35 @@ function setLine(form, i, { unit, qty, productId, name }) {
   else form.set(`line_items[${i}][price_data][product_data][name]`, name);
 }
 
+// One-off amount_off coupon so Checkout shows the promo as a real discount row
+// ("MILITARY10 −$37.50") while the service line keeps its full price AND its live
+// product id. amount_off (not percent_off) on purpose: a percent coupon would
+// also discount the tax and deposit LINES — our tax is already computed on the
+// discounted subtotal server-side, and the deposit is never discounted.
+// Returns the coupon id, or null on any failure (caller falls back).
+async function createDiscountCoupon(key, booking) {
+  try {
+    const form = new URLSearchParams({
+      amount_off: String(booking.discount_cents),
+      currency: "usd",
+      duration: "once",
+      name: String(booking.promo_code || "Discount").slice(0, 40),
+      "metadata[booking_id]": booking.id,
+    });
+    const res = await fetch("https://api.stripe.com/v1/coupons", {
+      method: "POST",
+      headers: { authorization: `Bearer ${key}`, "content-type": "application/x-www-form-urlencoded" },
+      body: form,
+    });
+    const c = await res.json().catch(() => null);
+    if (!res.ok) { console.error("[stripe] coupon create failed:", c && c.error ? c.error.message : res.status); return null; }
+    return (c && c.id) || null;
+  } catch (e) {
+    console.error("[stripe] coupon fetch error", e && e.message ? e.message : e);
+    return null;
+  }
+}
+
 // Picks the Stripe key for the CMS's current mode. `isLive` is derived from the KEY
 // PREFIX, not the CMS toggle, so a mode flip with a missing key can never make us bind
 // live-catalog product ids under a test key. Shared with invoice.js so the two money
@@ -96,18 +125,32 @@ export async function createCheckout(env, S, booking) {
   form.set("customer_creation", "always");
   form.set("payment_intent_data[setup_future_usage]", "off_session");
 
+  // Promo discount: preferred as a Stripe coupon (its own visible discount row).
+  // If the coupon can't be created the discount MUST NOT be lost — fall back to
+  // charging the already-discounted amount directly on the service line.
+  let lineDiscount = 0;
+  if ((booking.discount_cents || 0) > 0) {
+    const couponId = await createDiscountCoupon(key, booking);
+    if (couponId) form.set("discounts[0][coupon]", couponId);
+    else lineDiscount = booking.discount_cents;
+  }
+
   let i = 0;
   const liveProduct = isLive ? productIdFor(booking) : null;
 
   // Service line. Trailer = 1-day product × days; everything else qty 1 at subtotal.
+  // On the coupon-less discount fallback the line is always qty 1 at the net
+  // amount (a per-day unit could drift by rounding when the discount splits).
   const isTrailer = booking.service_type === "trailer";
   const days = Math.max(1, Number(booking.rental_days) || 1);
-  setLine(form, i++, {
-    unit: isTrailer ? Math.round(booking.subtotal_cents / days) : booking.subtotal_cents,
-    qty: isTrailer ? days : 1,
-    productId: liveProduct,
-    name: lineName(booking),
-  });
+  setLine(form, i++, lineDiscount > 0
+    ? { unit: booking.subtotal_cents - lineDiscount, qty: 1, productId: liveProduct, name: lineName(booking) }
+    : {
+        unit: isTrailer ? Math.round(booking.subtotal_cents / days) : booking.subtotal_cents,
+        qty: isTrailer ? days : 1,
+        productId: liveProduct,
+        name: lineName(booking),
+      });
 
   // Sales tax (computed server-side; deposit is untaxed). Inline product in both
   // modes. TODO(pre-live polish): swap to a dedicated "UT Sales Tax" product id to

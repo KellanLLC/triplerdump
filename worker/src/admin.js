@@ -285,6 +285,7 @@ export function renderPanel(S, data) {
     '<p class="what">Change anything here and it\'s live on the website immediately &mdash; no one needs to redeploy anything.</p>' +
     '<ul style="margin:0;padding-left:20px;line-height:1.75">' +
       '<li><b>Extra fees</b> rewrites your Terms page automatically.</li>' +
+      '<li><b>Discounts</b> makes promo codes (like MILITARY10) customers type at checkout. They work on invoices too.</li>' +
       '<li>In <b>Texts</b>, keep the bits in {curly braces} &mdash; they become real details. <b>Never leave a message box empty</b>; empty means that text stops sending.</li>' +
       '<li><b>Leave Advanced alone.</b> That\'s plumbing.</li>' +
     '</ul>' +
@@ -322,6 +323,67 @@ export function renderPanel(S, data) {
       '<div><label>20 yard</label><input name="tons_20" inputmode="decimal" value="' + esc(f.tons20) + '"></div>' +
       '<div><label>25 yard</label><input name="tons_25" inputmode="decimal" value="' + esc(f.tons25) + '"></div></div>' +
     '<p class="muted" style="margin-top:14px"><a href="/terms" target="_blank" rel="noopener" style="color:#116DFF;font-weight:600;text-decoration:none">See your Terms page &rarr;</a></p></div>');
+
+  // Discount codes. Indexed field names (dc_code_0 …) because the whole panel
+  // posts as ONE form and formObj() keeps only the last of any repeated name.
+  // Every row has a Remove button; "+ Add another code" appends fresh rows.
+  {
+    const dcs = Array.isArray(S.discountCodes) ? S.discountCodes : [];
+    // No placeholder text in the inputs: grey "MILITARY10" in an empty row reads
+    // as a saved code at a glance. The intro carries the example instead, and an
+    // empty box looks empty.
+    const dcRow = (i, d) => '<div class="row dcrow" data-i="' + i + '" style="margin-bottom:2px">' +
+      '<div style="flex:2"><label>Code</label><input name="dc_code_' + i + '" value="' + esc(d ? d.code : "") + '" autocapitalize="characters" style="text-transform:uppercase"></div>' +
+      '<div><label>Percent off</label><input name="dc_pct_' + i + '" inputmode="decimal" value="' + esc(d && d.pct != null ? d.pct : "") + '"></div>' +
+      '<div style="flex:0 0 auto"><label>Working?</label><label style="font-weight:400;margin-top:10px"><input type="checkbox" name="dc_on_' + i + '" style="width:auto"' + (!d || d.active !== false ? " checked" : "") + '> On</label></div>' +
+      '<div style="flex:0 0 auto"><button type="button" class="dcdel" style="margin-top:auto;background:#64748b;padding:10px 14px;font-size:14px">Remove</button></div>' +
+      '</div><p class="muted dcex" data-i="' + i + '" style="margin:2px 0 12px"></p>';
+    let dcHtml = '<div class="card"><h2>Discount codes</h2>' +
+      '<p class="what">Codes customers type on the booking page for money off &mdash; e.g. <b>MILITARY10</b> for a 10% military discount. The percent comes off the price <b>before tax</b>. Anyone who has the code can use it. Untick <b>On</b> to pause a code without losing it. Nothing changes until you press <b>Save changes</b>.</p>' +
+      '<div id="dcrows">';
+    for (let i = 0; i < dcs.length; i++) dcHtml += dcRow(i, dcs[i]);
+    // One clearly-empty spare row so there is always somewhere to type a new
+    // code even with no JS; the button below adds more.
+    dcHtml += dcRow(dcs.length, null);
+    dcHtml += '</div>' +
+      '<button type="button" id="dcAdd" style="background:#64748b;padding:9px 14px;font-size:14px">+ Add another code</button>' +
+      '<p class="muted" style="margin-top:12px">These same codes can be applied to an invoice &mdash; there\'s a Discount box on the New Invoice page.</p></div>' +
+      // Live example under each row (the 25yd 1-3 price run through the percent)
+      // so Joseph SEES what "10% off" does to a real number before he saves it.
+      // Rows pair with their example line by data-i, never by position — removed
+      // rows leave gaps in the numbering.
+      '<script>(function(){var P=' + ((S.bins["25"] && S.bins["25"].prices["1-3"]) || 40000) + ',T=' + (Number(S.taxRate) || 0) + ';' +
+      'function money(c){return "$"+(c/100).toFixed(2);}' +
+      'function upd(){var rows=document.querySelectorAll("#p-discounts .dcrow");[].forEach.call(rows,function(row){' +
+      'var i=row.getAttribute("data-i");var codeEl=row.querySelector("input[name^=dc_code]"),pctEl=row.querySelector("input[name^=dc_pct]");' +
+      'var ex=document.querySelector(".dcex[data-i=\\""+i+"\\"]");if(!ex)return;' +
+      'var code=(codeEl&&codeEl.value||"").trim().toUpperCase();var pct=parseFloat(pctEl&&pctEl.value);' +
+      'if(!code||!isFinite(pct)||pct<=0||pct>100){ex.textContent="";return;}' +
+      'var d=Math.round(P*pct/100),s=P-d,t=Math.round(s*T);' +
+      'ex.textContent="Example \\u2014 "+code+" on a 25 yard bin (1\\u20133 day): "+money(P)+" \\u2212 "+money(d)+" = "+money(s)+", or "+money(s+t)+" with tax.";});}' +
+      'var panel=document.getElementById("p-discounts");if(!panel)return;' +
+      'panel.addEventListener("input",upd);upd();' +
+      // Remove = clear the row and hide it (a blank code is dropped on Save).
+      'panel.addEventListener("click",function(e){var del=e.target.closest?e.target.closest(".dcdel"):null;if(!del)return;' +
+      'var row=del.closest(".dcrow");if(!row)return;' +
+      'var c=row.querySelector("input[name^=dc_code]"),p2=row.querySelector("input[name^=dc_pct]");if(c)c.value="";if(p2)p2.value="";' +
+      'var ex=document.querySelector(".dcex[data-i=\\""+row.getAttribute("data-i")+"\\"]");if(ex)ex.style.display="none";' +
+      'row.style.display="none";});' +
+      // Add = append a fresh empty row with the next unused index.
+      'var add=document.getElementById("dcAdd"),wrap=document.getElementById("dcrows");' +
+      'if(add&&wrap){add.addEventListener("click",function(){var n=0;' +
+      '[].forEach.call(wrap.querySelectorAll(".dcrow"),function(r){var v=parseInt(r.getAttribute("data-i"),10);if(v>=n)n=v+1;});' +
+      'wrap.insertAdjacentHTML("beforeend",' +
+      '\'<div class="row dcrow" data-i="\'+n+\'" style="margin-bottom:2px">\'+' +
+      '\'<div style="flex:2"><label>Code</label><input name="dc_code_\'+n+\'" autocapitalize="characters" style="text-transform:uppercase"></div>\'+' +
+      '\'<div><label>Percent off</label><input name="dc_pct_\'+n+\'" inputmode="decimal"></div>\'+' +
+      '\'<div style="flex:0 0 auto"><label>Working?</label><label style="font-weight:400;margin-top:10px"><input type="checkbox" name="dc_on_\'+n+\'" style="width:auto" checked> On</label></div>\'+' +
+      '\'<div style="flex:0 0 auto"><button type="button" class="dcdel" style="margin-top:auto;background:#64748b;padding:10px 14px;font-size:14px">Remove</button></div>\'+' +
+      '\'</div><p class="muted dcex" data-i="\'+n+\'" style="margin:2px 0 12px"></p>\');' +
+      'var nf=wrap.querySelector(\'input[name="dc_code_\'+n+\'"]\');if(nf)nf.focus();});}' +
+      '})();</script>';
+    sec("discounts", "Discounts", dcHtml);
+  }
 
   sec("bins", "Bins", '<div class="card"><h2>How many bins you have</h2>' +
     '<p class="what">Stops the website from booking a bin you don\'t have free that day.</p>' +
@@ -410,7 +472,7 @@ export function renderPanel(S, data) {
   sec("activity", "Bookings", activity, true);
 
   // Tab order is what he reaches for most, first. "Advanced" is deliberately last.
-  const ORDER = ["guide", "prices", "fees", "bins", "invoices", "alerts", "reviews", "texts", "activity", "advanced"];
+  const ORDER = ["guide", "prices", "fees", "discounts", "bins", "invoices", "alerts", "reviews", "texts", "activity", "advanced"];
   panels.sort((a, b) => ORDER.indexOf(a.id) - ORDER.indexOf(b.id));
 
   // Tab bar, then every panel. The panels all live inside ONE form, so Save writes
@@ -467,6 +529,20 @@ export async function saveSettings(env, form) {
   await saveSetting(env, "notify_owner_bookings", form.notify_owner_bookings === "on" || form.notify_owner_bookings === "true");
   await saveSetting(env, "notify_owner_reminders", form.notify_owner_reminders === "on" || form.notify_owner_reminders === "true");
   await saveSetting(env, "owner_phone", String(form.owner_phone || ""));
+  // Discount codes: indexed rows (dc_code_0 …). Blank code = row deleted; percent
+  // clamps to 0–100; codes normalize to uppercase A–Z/0–9/dash; dupes keep the first.
+  {
+    const codes = [];
+    for (let i = 0; i < 50; i++) {
+      if (form["dc_code_" + i] === undefined && form["dc_pct_" + i] === undefined) continue;
+      const code = String(form["dc_code_" + i] || "").trim().toUpperCase().replace(/[^A-Z0-9-]/g, "").slice(0, 20);
+      const pct = parseFloat(form["dc_pct_" + i]);
+      if (!code || !Number.isFinite(pct) || pct <= 0) continue;
+      if (codes.some((c) => c.code === code)) continue;
+      codes.push({ code, pct: Math.min(100, Math.round(pct * 100) / 100), active: form["dc_on_" + i] === "on" || form["dc_on_" + i] === "true" });
+    }
+    await saveSetting(env, "discount_codes", codes);
+  }
   // Fees are entered in whole dollars and stored in cents. A blank box must NOT
   // silently become $0 (that would quietly zero out a real charge on the Terms
   // page), so each falls back to the value already in settings.
@@ -535,7 +611,7 @@ export function renderBookingDetail(S, b, flash) {
   body += '<div class="card">';
   body += r("Status", b.status) + r("Account", b.account_type) + r("Service", b.service_type) + r("Bin size", b.bin_size ? b.bin_size + "yd" : "") + r("Rental", b.rental_tier ? b.rental_tier + " day" : (b.rental_days ? b.rental_days + " days" : "")) + r("Customer", b.customer_name) + r("Phone", b.phone) + r("Email", b.email) + r("Company", b.company);
   body += r("Delivery", b.delivery_date + (b.delivery_time ? " " + b.delivery_time : "")) + r("Pickup", b.pickup_date) + r("Address", b.address) + r("Ground", b.ground_condition) + r("Customer note", b.message);
-  body += r("Subtotal", money(b.subtotal_cents)) + r("Tax", money(b.tax_cents)) + r("Total", money(b.amount_cents)) + (b.deposit_cents ? r("Deposit", money(b.deposit_cents)) : "") + r("Payment", b.payment_type) + r("Paid at", b.paid_at) + r("Review", reviewState) + r("Stripe session", b.stripe_session_id);
+  body += r("Subtotal", money(b.subtotal_cents)) + (b.discount_cents ? r("Discount" + (b.promo_code ? " (" + b.promo_code + ")" : ""), "-" + money(b.discount_cents)) : "") + r("Tax", money(b.tax_cents)) + r("Total", money(b.amount_cents)) + (b.deposit_cents ? r("Deposit", money(b.deposit_cents)) : "") + r("Payment", b.payment_type) + r("Paid at", b.paid_at) + r("Review", reviewState) + r("Stripe session", b.stripe_session_id);
   body += '<div style="margin-top:12px"><a href="' + gmap + '" target="_blank" rel="noopener" style="color:#116DFF;font-weight:600;text-decoration:none">Open in Google Maps</a> &nbsp;·&nbsp; <a href="' + amap + '" target="_blank" rel="noopener" style="color:#116DFF;font-weight:600;text-decoration:none">Apple Maps</a></div>';
   body += '</div>';
   body += '<div class="card"><h2>Notes</h2><form method="POST" action="/admin/booking/' + esc(b.id) + '/notes"><textarea name="notes" placeholder="Internal notes — pickup details, gate code, etc.">' + esc(b.notes || "") + '</textarea><div style="margin-top:8px"><button>Save notes</button></div></form></div>';
@@ -572,7 +648,7 @@ export function renderBookingDetail(S, b, flash) {
 
 // ----- Invoices (auth-gated in index.js) -------------------------------------
 
-const invMoney = (c) => "$" + ((c || 0) / 100).toFixed(2);
+const invMoney = (c) => (c < 0 ? "-$" + (Math.abs(c) / 100).toFixed(2) : "$" + ((c || 0) / 100).toFixed(2));
 const STATUS_COLOR = { paid: "#16a34a", sent: "#b45309", void: "#64748b", draft: "#64748b" };
 const statusPill = (s) =>
   '<b style="color:' + (STATUS_COLOR[s] || "#0b1b2b") + '">' + esc(s || "—") + '</b>';
@@ -620,6 +696,16 @@ export function renderInvoiceNew(S, prefill, error) {
   }
   body += '<div id="more"></div><button type="button" id="addRow" style="background:#64748b;padding:8px 12px;font-size:13px">+ Add another line</button>';
 
+  // Discount: saved codes from the Discounts tab, or a one-off percent. Applied
+  // server-side as a negative line item before tax.
+  const dcOpts = (S.discountCodes || [])
+    .filter((d) => d && d.active !== false && d.code)
+    .map((d) => '<option value="' + esc(d.code) + '">' + esc(d.code) + ' &mdash; ' + esc(d.pct) + '% off</option>').join("");
+  body += '<h2>Discount <span class="muted">(optional)</span></h2>' +
+    '<div class="row"><div><label>Money off<span class="hint">Comes off before tax and shows as its own line on the invoice.</span></label>' +
+    '<select name="discount_code" id="dcSel"><option value="">No discount</option>' + dcOpts + '<option value="custom">Custom percent&hellip;</option></select></div>' +
+    '<div id="dcPctWrap"><label>Percent off<span class="hint">Only used with &ldquo;Custom percent&rdquo;.</span></label><input name="discount_pct" inputmode="decimal" placeholder="10"></div></div>';
+
   body += '<h2>Terms</h2>' +
     '<div class="row"><div><label>Due date</label><input type="date" name="due_date" value="' + esc(due) + '"></div>' +
     '<div><label>Sales tax</label><label style="font-weight:400;margin-top:9px"><input type="checkbox" name="taxable" style="width:auto"' + (S.invoiceTaxDefault !== false ? " checked" : "") + '> Add ' + esc(((S.taxRate || 0) * 100).toFixed(3).replace(/\.?0+$/, "")) + '% sales tax</label></div></div>' +
@@ -633,7 +719,12 @@ export function renderInvoiceNew(S, prefill, error) {
   body += '<script>document.getElementById("addRow").addEventListener("click",function(){' +
     'var d=document.createElement("div");d.className="row";d.style.marginBottom="6px";' +
     'd.innerHTML=\'<div style="flex:3"><input name="li_desc" placeholder="Description"></div><div style="flex:0 0 72px"><input name="li_qty" placeholder="Qty"></div><div style="flex:0 0 110px"><input name="li_price" placeholder="$ each"></div>\';' +
-    'document.getElementById("more").appendChild(d);});</script>';
+    'document.getElementById("more").appendChild(d);});' +
+    // Custom-percent box only matters when "Custom percent…" is picked; hide it
+    // otherwise. No-JS just shows both fields, which still works.
+    'var dcSel=document.getElementById("dcSel"),dcW=document.getElementById("dcPctWrap");' +
+    'if(dcSel&&dcW){var dcT=function(){dcW.style.display=dcSel.value==="custom"?"":"none";};dcSel.addEventListener("change",dcT);dcT();}' +
+    '</script>';
   return page(body);
 }
 

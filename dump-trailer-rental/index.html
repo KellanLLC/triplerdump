@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dump Trailer Rental in West Haven &amp; Weber County, UT</title>
-  <meta name="description" content="Rent a dump trailer by the day in West Haven, UT: $200 a day, 1 to 14 days, with a $300 refundable deposit. Haul it yourself, dump it yourself. Book online or call 801-564-3164.">
+  <meta name="description" content="Rent a dump trailer by the day in West Haven, UT: ${{TRD:trailer_day}} a day, 1 to 14 days, with a ${{TRD:trailer_dep}} refundable deposit. Haul it yourself, dump it yourself. Book online or call 801-564-3164.">
   <link rel="canonical" href="https://www.triplerdump.com/dump-trailer-rental/">
   <link rel="icon" href="/favicon.ico" sizes="any">
   <link rel="icon" href="/assets/favicon-32x32.png" type="image/png" sizes="32x32">
@@ -14,7 +14,7 @@
   <meta property="og:site_name" content="Triple R Dump">
   <meta property="og:url" content="https://www.triplerdump.com/dump-trailer-rental/">
   <meta property="og:title" content="Dump Trailer Rental in West Haven &amp; Weber County, UT">
-  <meta property="og:description" content="Rent a dump trailer by the day in West Haven, UT: $200 a day, 1 to 14 days, with a $300 refundable deposit. Haul it yourself, dump it yourself. Book online or call 801-564-3164.">
+  <meta property="og:description" content="Rent a dump trailer by the day in West Haven, UT: ${{TRD:trailer_day}} a day, 1 to 14 days, with a ${{TRD:trailer_dep}} refundable deposit. Haul it yourself, dump it yourself. Book online or call 801-564-3164.">
   <meta property="og:image" content="https://www.triplerdump.com/uploads/triplerdump_photos/triplerdump_photos/14_gallery_photo_4.jpg">
   <meta name="twitter:card" content="summary_large_image">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -27,7 +27,7 @@
   "@type": "Service",
   "name": "Dump Trailer Rental",
   "serviceType": "Dump Trailer Rental",
-  "description": "Rent a dump trailer by the day in West Haven, UT: $200 a day, 1 to 14 days, with a $300 refundable deposit. Haul it yourself, dump it yourself. Book online or call 801-564-3164.",
+  "description": "Rent a dump trailer by the day in West Haven, UT: ${{TRD:trailer_day}} a day, 1 to 14 days, with a ${{TRD:trailer_dep}} refundable deposit. Haul it yourself, dump it yourself. Book online or call 801-564-3164.",
   "provider": {
     "@type": "LocalBusiness",
     "@id": "https://www.triplerdump.com/#business",
@@ -43,7 +43,7 @@
   ],
   "offers": {
     "@type": "Offer",
-    "price": "200",
+    "price": "{{TRD:trailer_day}}",
     "priceCurrency": "USD",
     "url": "https://www.triplerdump.com/book?service=trailer"
   },
@@ -57,7 +57,7 @@
       "name": "What is the deposit for?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "It is $300, refundable, and it covers the trailer coming back on time and in one piece. It is returned to your card once the trailer is checked in."
+        "text": "It is ${{TRD:trailer_dep}}, refundable, and it covers the trailer coming back on time and in one piece. It is returned to your card once the trailer is checked in."
       }
     },
     {
@@ -138,9 +138,9 @@
   <div class="page-hero-bg" style="background-image:url('/uploads/triplerdump_photos/triplerdump_photos/14_gallery_photo_4.jpg')" aria-hidden="true"></div>
   <div class="hero-overlay" aria-hidden="true"></div>
   <div class="page-hero-content">
-    <p class="label">$200 per day</p>
+    <p class="label">${{TRD:trailer_day}} per day</p>
     <h1>Dump trailer.<br><em>By the day.</em></h1>
-    <p class="hero-sub">If you have the truck and the time, a dump trailer is the cheapest way to move a lot of material: your own runs to the dump, a move, hauling gravel or branches. $200 a day, one to fourteen days, with a $300 deposit that comes back when the trailer does.</p>
+    <p class="hero-sub">If you have the truck and the time, a dump trailer is the cheapest way to move a lot of material: your own runs to the dump, a move, hauling gravel or branches. ${{TRD:trailer_day}} a day, one to fourteen days, with a ${{TRD:trailer_dep}} deposit that comes back when the trailer does.</p>
     <div class="hero-actions">
       <a href="/book?service=trailer" class="btn btn-fill">Book it online</a>
       <a href="tel:8015643164" class="btn btn-ghost">Call 801-564-3164</a>
@@ -153,10 +153,10 @@
     <div class="prose"><div class="prose-block"><h2>How it works</h2><p>Book the days online, pay the rental plus the refundable deposit, and pick the trailer up from us in West Haven. Haul whatever you need, dump it yourself, bring it back clean on the last day. The deposit comes back to your card once it is checked in.</p></div><div class="prose-block"><h2>When it is the right call</h2><p>Moving house with a pickup. Your own dump runs at your own pace. Gravel, mulch, soil in. Branches and yard waste out. Anything where you would rather do the driving than pay for a bin to sit.</p></div><div class="prose-block"><h2>What you need</h2><p>A truck with a hitch rated for it and a driver comfortable towing. The trailer comes with the tie-downs; you bring the muscle. Damage and overages are covered by the card on file, same as every rental, and it is all on the terms page.</p></div></div>
     <aside class="side-card">
       <p class="label">At a glance</p>
-      <p class="big-price">$200<small>per day</small></p>
+      <p class="big-price">${{TRD:trailer_day}}<small>per day</small></p>
       <ul class="checks">
         
-        <li>1 to 14 days</li><li>$300 refundable deposit</li><li>Pick up and return in West Haven</li>
+        <li>1 to 14 days</li><li>${{TRD:trailer_dep}} refundable deposit</li><li>Pick up and return in West Haven</li>
         
       </ul>
       <a href="/book?service=trailer" class="btn btn-fill">Book it online</a>
@@ -168,7 +168,7 @@
 <section class="sec">
   <div class="wrap">
     <header class="sec-head"><p class="label">Straight answers</p><h2>Questions people ask</h2></header>
-    <div class="faq-grid"><div class="faq-item"><h3>What is the deposit for?</h3><p>It is $300, refundable, and it covers the trailer coming back on time and in one piece. It is returned to your card once the trailer is checked in.</p></div><div class="faq-item"><h3>Can I keep it longer than I booked?</h3><p>Call before the last day and we extend it at the daily rate if it is not booked behind you. Bringing it back late without a call runs into the late fee on the terms page, so call.</p></div><div class="faq-item"><h3>Is the dump fee included?</h3><p>No. With the trailer you are doing your own dump runs and paying the dump directly. The bins include the dump fee; the trailer is the do-it-yourself option, which is why it is cheaper per day.</p></div></div>
+    <div class="faq-grid"><div class="faq-item"><h3>What is the deposit for?</h3><p>It is ${{TRD:trailer_dep}}, refundable, and it covers the trailer coming back on time and in one piece. It is returned to your card once the trailer is checked in.</p></div><div class="faq-item"><h3>Can I keep it longer than I booked?</h3><p>Call before the last day and we extend it at the daily rate if it is not booked behind you. Bringing it back late without a call runs into the late fee on the terms page, so call.</p></div><div class="faq-item"><h3>Is the dump fee included?</h3><p>No. With the trailer you are doing your own dump runs and paying the dump directly. The bins include the dump fee; the trailer is the do-it-yourself option, which is why it is cheaper per day.</p></div></div>
   </div>
 </section>
 <section class="sec">
@@ -180,8 +180,8 @@
         <p class="rate-size">15<small>yard</small></p>
         <p class="rate-best"><strong>Garage cleanouts, small remodels, yard waste, moving.</strong> Fits in a standard driveway without blocking the garage.</p>
         <div class="rate-prices-m">
-          <p class="rate-price">$300<small>1–3 days</small></p>
-          <p class="rate-price">$325<small>4–7 days</small></p>
+          <p class="rate-price">${{TRD:d15_13}}<small>1–3 days</small></p>
+          <p class="rate-price">${{TRD:d15_47}}<small>4–7 days</small></p>
         </div>
         <a href="/book?size=15" class="btn btn-fill">Book 15 yd</a>
       </div>
@@ -190,8 +190,8 @@
         <p class="rate-size">20<small>yard</small></p>
         <p class="rate-best"><strong>Kitchen remodels, landscaping, flooring, estate cleanouts.</strong> Still driveway-sized. The right answer when you are not sure.</p>
         <div class="rate-prices-m">
-          <p class="rate-price">$350<small>1–3 days</small></p>
-          <p class="rate-price">$375<small>4–7 days</small></p>
+          <p class="rate-price">${{TRD:d20_13}}<small>1–3 days</small></p>
+          <p class="rate-price">${{TRD:d20_47}}<small>4–7 days</small></p>
         </div>
         <a href="/book?size=20" class="btn btn-fill">Book 20 yd</a>
       </div>
@@ -200,8 +200,8 @@
         <p class="rate-size">25<small>yard</small></p>
         <p class="rate-best"><strong>Construction, roofing, full-home cleanouts, commercial jobs.</strong> Needs a longer space: a long driveway, a job site, or the street with a permit.</p>
         <div class="rate-prices-m">
-          <p class="rate-price">$400<small>1–3 days</small></p>
-          <p class="rate-price">$425<small>4–7 days</small></p>
+          <p class="rate-price">${{TRD:d25_13}}<small>1–3 days</small></p>
+          <p class="rate-price">${{TRD:d25_47}}<small>4–7 days</small></p>
         </div>
         <a href="/book?size=25" class="btn btn-fill">Book 25 yd</a>
       </div></div>
@@ -236,6 +236,9 @@
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
         </a>
       </div>
+      <a class="foot-bbb" href="https://www.bbb.org/us/ut/west-haven/profile/dumpster-rentals/triple-r-dump-1126-1000181920/#sealclick" target="_blank" rel="noopener nofollow">
+        <img src="https://seal-central-northern-western-arizona.bbb.org/seals/blue-seal-250-52-bbb-1000181920.png" alt="Triple R Dump BBB Business Review" width="250" height="52" loading="lazy">
+      </a>
     </div>
     <div class="foot-col">
       <h3>Services</h3>
@@ -243,7 +246,7 @@
     </div>
     <div class="foot-col">
       <h3>Service Area</h3>
-      <ul><li><a href="/service-area/west-haven/">West Haven</a></li><li><a href="/service-area/roy/">Roy</a></li><li><a href="/service-area/hooper/">Hooper</a></li><li><a href="/service-area/ogden/">Ogden</a></li><li><a href="/service-area/riverdale/">Riverdale</a></li><li><a href="/service-area/south-ogden/">South Ogden</a></li><li><a href="/service-area/washington-terrace/">Washington Terrace</a></li><li><a href="/service-area/north-ogden/">North Ogden</a></li><li><a href="/service-area/">Every city we serve</a></li></ul>
+      <ul><li><a href="/service-area/west-haven/">West Haven</a></li><li><a href="/service-area/roy/">Roy</a></li><li><a href="/service-area/hooper/">Hooper</a></li><li><a href="/service-area/ogden/">Ogden</a></li><li><a href="/service-area/plain-city/">Plain City</a></li><li><a href="/service-area/syracuse/">Syracuse</a></li><li><a href="/service-area/clearfield/">Clearfield</a></li><li><a href="/service-area/layton/">Layton</a></li><li><a href="/service-area/">Every city we serve</a></li></ul>
     </div>
     <div class="foot-col">
       <h3>Contact</h3>
@@ -253,13 +256,15 @@
         <li>3539 S 4250 W, West Haven, UT 84401</li>
         <li><a href="/faq/">Questions &amp; answers</a></li>
         <li><a href="/terms">Terms &amp; fees</a></li>
+        <li><a href="/bbb/">BBB accredited</a></li>
+        <li><a href="/contact/">Contact page</a></li>
       </ul>
     </div>
   </div>
   <div class="foot-bottom wrap">
     <p>© 2026 J. Rodrigues · Triple R Dump · Family owned &amp; operated</p>
     <p>Sustainable solutions for all</p>
-    <p>Made by <a href="https://getkellan.com" target="_blank" rel="noopener">Kellan</a></p>
+    <p class="foot-made"><a href="https://getkellan.com" target="_blank" rel="noopener">Made by Kellan</a></p>
   </div>
 </footer>
 <a class="call-pill hidden" href="tel:8015643164" aria-label="Call Triple R Dump, 801-564-3164">

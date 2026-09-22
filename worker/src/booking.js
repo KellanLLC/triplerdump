@@ -1,5 +1,5 @@
 import { todayISO, addDays, isISODate } from "./util.js";
-import { quoteService, fillTemplate, itemLabel, lengthLabel, chargedCents } from "./settings.js";
+import { quoteService, fillTemplate, itemLabel, lengthLabel, chargedCents, findDiscountCode } from "./settings.js";
 import { sendBookingWebhook, sendCommercialLead } from "./sms.js";
 import { createCheckout, markPaid } from "./stripe.js";
 
@@ -127,6 +127,7 @@ function validate(input, S) {
       existingRef,
       company: String(input.company || "").trim(),
       message: String(input.message || "").trim(),
+      promoCode: String(input.promo_code || "").trim(),
       smsConsent: smsConsent ? 1 : 0,
       accountType,
     },
@@ -551,6 +552,24 @@ export async function createBooking(env, S, input) {
 
   if (!q) return { ok: false, errors: ["Pricing unavailable for that selection."] };
 
+  // Promo code: percent off the PRE-TAX subtotal, tax recomputed on the
+  // discounted amount, deposit untouched. An unrecognized code refuses loudly —
+  // silently charging full price against what the customer expected is worse
+  // than making them fix a typo (or clear the box).
+  let promo = null;
+  if (clean.promoCode) {
+    promo = findDiscountCode(S, clean.promoCode);
+    if (!promo) {
+      return { ok: false, errors: [
+        `That promo code (${clean.promoCode}) isn't valid. Check the spelling, clear the box to book without it, or call ${bizPhone(S)}.`,
+      ] };
+    }
+    const disc = Math.min(q.subtotal_cents, Math.round(q.subtotal_cents * promo.pct / 100));
+    const tax = Math.round((q.subtotal_cents - disc) * S.taxRate);
+    q = { ...q, discount_cents: disc, tax_cents: tax, amount_cents: q.subtotal_cents - disc + tax };
+  }
+  const discountVal = (promo && q.discount_cents) || 0;
+
   // binswitch: fold the optional existing-booking ref into notes (only).
   let notes = "";
   const message = clean.message;
@@ -577,13 +596,13 @@ export async function createBooking(env, S, input) {
        (id, created_at, status, account_type, service_type, customer_name, phone, email, company, message,
         bin_size, rental_tier, delivery_date, delivery_time, pickup_date, rental_days,
         address, pickup_address, ground_condition, permit_needed, permit_obtainable,
-        agreed_terms, subtotal_cents, tax_cents, amount_cents, deposit_cents, payment_type, notes)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
+        agreed_terms, subtotal_cents, tax_cents, amount_cents, deposit_cents, promo_code, discount_cents, payment_type, notes)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
   ).bind(
     id, now, status, clean.accountType, svcType, clean.name, clean.phone, clean.email, clean.company, message,
     clean.size, tierVal, clean.date, clean.deliveryTime, pickup, rentalDays,
     clean.dropAddress, clean.pickupAddress, groundVal, permitVal, permitObtVal,
-    1, q.subtotal_cents, q.tax_cents, q.amount_cents, depositVal, paymentType, notes || null
+    1, q.subtotal_cents, q.tax_cents, q.amount_cents, depositVal, promo ? promo.code : null, discountVal, paymentType, notes || null
   ).run();
 
   const booking = {
@@ -594,6 +613,8 @@ export async function createBooking(env, S, input) {
     pickup_address: clean.pickupAddress, ground_condition: groundVal,
     subtotal_cents: q.subtotal_cents, tax_cents: q.tax_cents, amount_cents: q.amount_cents,
     deposit_cents: depositVal,
+    promo_code: promo ? promo.code : null,
+    discount_cents: discountVal,
     payment_type: paymentType,
   };
 
@@ -617,7 +638,7 @@ export async function createBooking(env, S, input) {
     booking,
     payment_type: paymentType,
     checkout_url: checkout && checkout.url ? checkout.url : null,
-    totals: { subtotal_cents: q.subtotal_cents, tax_cents: q.tax_cents, amount_cents: q.amount_cents },
+    totals: { subtotal_cents: q.subtotal_cents, discount_cents: discountVal, tax_cents: q.tax_cents, amount_cents: q.amount_cents },
     message: checkout && checkout.url
       ? "Redirecting to secure checkout..."
       : "Booked! You're confirmed - we'll be in touch with details.",

@@ -66,6 +66,20 @@ export function parseLineItems(descs, qtys, prices) {
   return out;
 }
 
+// Applies a percent discount to the invoice as a NEGATIVE line item (Stripe
+// invoiceitems accept negative amounts as credits). Pushed BEFORE totalsFor runs,
+// so the tax, the stored totals, and the customer's PDF all reflect it with no
+// special-casing anywhere else. Mutates `items`; returns the discount in cents.
+export function applyPercentDiscount(items, pct, label) {
+  const p = Number(pct);
+  if (!Number.isFinite(p) || p <= 0 || !items || !items.length) return 0;
+  const sub = items.reduce((n, it) => n + it.unit_cents * it.qty, 0);
+  const disc = Math.min(sub, Math.round(sub * Math.min(100, p) / 100));
+  if (disc <= 0) return 0;
+  items.push({ description: label || "Discount", qty: 1, unit_cents: -disc });
+  return disc;
+}
+
 export function totalsFor(items, taxRate, taxable) {
   const subtotal_cents = items.reduce((n, it) => n + it.unit_cents * it.qty, 0);
   const tax_cents = taxable ? Math.round(subtotal_cents * (Number(taxRate) || 0)) : 0;

@@ -1,5 +1,5 @@
 // Triple R Dump - one worker: static site (via assets) + booking + CMS + review.
-import { loadSettings, itemLabel } from "./settings.js";
+import { loadSettings, itemLabel, findDiscountCode } from "./settings.js";
 import { todayISO } from "./util.js";
 import { createBooking, getAvailability, expireStaleHolds, cancelAbandonedCheckout } from "./booking.js";
 import { handleStripeWebhook, confirmPaidByRedirect } from "./stripe.js";
@@ -11,7 +11,8 @@ import { renderBookingPage } from "./page.js";
 import { renderTermsPage } from "./terms.js";
 import { renderReviewLanding, handleReviewRate, handleReviewFeedback } from "./reviewpage.js";
 import { isAuthed, loginCookie, clearCookie, renderLogin, renderPanel, saveSettings, renderBookingsList, renderBookingDetail, renderInvoiceList, renderInvoiceNew, renderInvoiceDetail } from "./admin.js";
-import { createInvoice, refreshInvoiceStatus, voidInvoice, resendInvoice, parseLineItems } from "./invoice.js";
+import { createInvoice, refreshInvoiceStatus, voidInvoice, resendInvoice, parseLineItems, applyPercentDiscount } from "./invoice.js";
+import { isMarketingPath, marketingRedirect, serveMarketingPage } from "./marketing.js";
 
 const cors = () => ({ "access-control-allow-origin": "*", "access-control-allow-methods": "GET,POST,OPTIONS", "access-control-allow-headers": "content-type" });
 const json = (d, s = 200) => new Response(JSON.stringify(d), { status: s, headers: { "content-type": "application/json; charset=utf-8", ...cors() } });
@@ -47,14 +48,48 @@ async function verifyTurnstile(env, token, ip) {
   }
 }
 
+// workers.dev and per-version preview hosts serve the same pages as www. They
+// are normally switched OFF (duplicate content), but deploy.mjs turns previews
+// on for its smoke test; noindex keeps any such host out of Google regardless.
+async function noindexOffDomain(request, res) {
+  if (!new URL(request.url).hostname.endsWith(".workers.dev")) return res;
+  const out = new Response(res.body, res);
+  out.headers.set("X-Robots-Tag", "noindex, nofollow");
+  return out;
+}
+
 export default {
   async fetch(request, env) {
+    return noindexOffDomain(request, await handle(request, env));
+  },
+  async scheduled(event, env, ctx) {
+    return scheduledTick(event, env, ctx);
+  },
+};
+
+async function handle(request, env) {
+  {
     const url = new URL(request.url);
     const p = url.pathname;
     const m = request.method;
+    // http:// answered 200 alongside https://, so Google indexed both spellings
+    // ("Alternate page with proper canonical tag"). One origin, https only.
+    if (url.protocol === "http:" && url.hostname.endsWith("triplerdump.com")) {
+      url.protocol = "https:";
+      return Response.redirect(url.toString(), 301);
+    }
     if (m === "OPTIONS") return new Response(null, { headers: cors() });
 
     try {
+      // ----- Marketing pages (static assets + live CMS prices) -----
+      // wrangler.toml run_worker_first routes these here instead of serving the
+      // asset directly; serveMarketingPage substitutes current prices.
+      if ((m === "GET" || m === "HEAD") && isMarketingPath(p)) {
+        const to = marketingRedirect(p);
+        if (to) return Response.redirect(url.origin + to + url.search, 301);
+        return serveMarketingPage(env, request);
+      }
+
       // ----- Admin / CMS -----
       if (p === "/admin" && m === "GET") {
         const S = await loadSettings(env);
@@ -204,6 +239,21 @@ export default {
         // Object.fromEntries would keep only the last of each.
         const fd = await request.formData();
         const items = parseLineItems(fd.getAll("li_desc"), fd.getAll("li_qty"), fd.getAll("li_price"));
+        // Optional discount: a saved code from the Discounts tab, or a one-off
+        // custom percent. Lands as a negative line item BEFORE tax.
+        {
+          const dsel = String(fd.get("discount_code") || "");
+          if (dsel === "custom") {
+            const cp = parseFloat(fd.get("discount_pct"));
+            if (Number.isFinite(cp) && cp > 0) {
+              const pct = Math.min(100, Math.round(cp * 100) / 100);
+              applyPercentDiscount(items, pct, "Discount (" + pct + "% off)");
+            }
+          } else if (dsel) {
+            const d = findDiscountCode(S, dsel);
+            if (d) applyPercentDiscount(items, d.pct, d.code + " (" + d.pct + "% off)");
+          }
+        }
         const r = await createInvoice(env, S, {
           customer_name: String(fd.get("customer_name") || "").trim(),
           email: String(fd.get("email") || "").trim(),
@@ -273,6 +323,13 @@ export default {
       if (p === "/api/availability" && m === "GET") {
         const S = await loadSettings(env);
         return json(await getAvailability(env, S, url.searchParams.get("size"), url.searchParams.get("date"), url.searchParams.get("tier") || "1-3"));
+      }
+      // Promo code check for the /book form's live summary. Reveals nothing but
+      // whether a code exists and its percent — the server re-validates on booking.
+      if (p === "/api/promo" && m === "GET") {
+        const S = await loadSettings(env);
+        const d = findDiscountCode(S, url.searchParams.get("code"));
+        return json(d ? { ok: true, valid: true, code: d.code, pct: d.pct } : { ok: true, valid: false });
       }
       if (p === "/api/book" && m === "POST") {
         const S = await loadSettings(env);
@@ -375,14 +432,15 @@ export default {
       console.error("[fetch]", err && err.stack ? err.stack : err);
       return json({ ok: false, error: "Server error" }, 500);
     }
-  },
+  }
+}
 
   // Runs HOURLY. The review follow-up ladder needs finer resolution than a daily
   // tick (+24h/+24h/+48h from whenever the previous message went out), and freeing
   // stale unpaid holds hourly is strictly better than daily. The reminder sweep is
   // the one job that must fire at a civilised hour, so it is gated to 10:00 local
   // rather than run every pass.
-  async scheduled(event, env, ctx) {
+async function scheduledTick(event, env, ctx) {
     ctx.waitUntil((async () => {
       const S = await loadSettings(env);
       // Run the sweeps independently so one failing can't abort the others.
@@ -398,5 +456,4 @@ export default {
         await runReminderSweep(env, S).catch((e) => console.error("[cron reminder]", e));
       }
     })());
-  },
-};
+}

@@ -34,7 +34,7 @@ import re
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 SITE = "https://www.triplerdump.com"
-TODAY = "2026-08-22"
+TODAY = "2026-09-22"
 
 BIZ = {
     "name": "Triple R Dump",
@@ -197,6 +197,128 @@ CITIES = [
      "body": ["Salt Lake City is the far end of the four counties we serve, and we do deliver there: commercial jobs, remodels, cleanouts. Call first with the address so we can confirm the date and the placement, and whether the street needs a permit.", "Prices are the same as West Haven. Forty minutes from the shop."]},
 ]
 
+# ── City pages, consolidated 2026-09-22 ──────────────────────────────────────
+# 19 near-identical city pages (85% the same text) sat in GSC "Discovered -
+# currently not indexed". Only KEPT_CITIES get a page now, each with its own
+# long-form copy + FAQ below; the rest are listed (unlinked) on the hub and
+# their old URLs 301 to /service-area/ in worker/src/marketing.js
+# (RETIRED_CITIES there must match). Keep claims to what is true of the
+# business: no invented job counts, reviews or city-specific rules.
+KEPT_CITIES = ["west-haven", "roy", "hooper", "ogden", "plain-city", "syracuse", "clearfield", "layton"]
+RETIRED_CITIES = [c["slug"] for c in CITIES if c["slug"] not in KEPT_CITIES]
+
+PRICE_ANSWER = ("Same prices as everywhere we serve: 15 yard ${{TRD:d15_13}} for 1 to 3 days (${{TRD:d15_47}} for 4 to 7), "
+                "20 yard ${{TRD:d20_13}} (${{TRD:d20_47}}), 25 yard ${{TRD:d25_13}} (${{TRD:d25_47}}). Delivery, pickup and the dump fee "
+                "are included; Utah sales tax is added at checkout.")
+
+def price_q(city):
+    return (f"How much does a dumpster rental cost in {city}, UT?", PRICE_ANSWER)
+
+def permit_q(city):
+    return (f"Do I need a permit for a dumpster in {city}?",
+            f"Not for a bin on your own driveway, yard or private lot. If it has to sit on the public street or sidewalk, "
+            f"{city} can require a right-of-way permit, so check with the city before delivery. The booking form asks where "
+            f"the bin goes, and in most cases a driveway placement avoids the question entirely.")
+
+CITY_EXTRA = {
+    "west-haven": {
+        "zips": "84401", "covers": [],
+        "more": [
+            "West Haven has grown fast, and the jobs follow: landscaping on new builds, basement finishes in homes a few years old, garage cleanouts after a move. A 15 handles a garage; a 20 is the usual pick for a basement finish or a yard tear-out; the 25 is for a whole-house cleanout or a roof.",
+            "Because the trucks start here, West Haven is also where a bin switch is quickest to arrange: call when the bin is full and we swap it for an empty one in the same trip.",
+        ],
+        "faq": [
+            ("Can I get a dumpster the same day in West Haven?", "Often, yes. The trucks are parked in West Haven, so a same-day delivery here is the easiest one to fit in. Book online or call {phone} early in the day for the best chance."),
+            price_q("West Haven"),
+            permit_q("West Haven"),
+        ],
+    },
+    "roy": {
+        "zips": "84067", "covers": [],
+        "more": [
+            "Roy is mostly established single-family streets, so the jobs are household-sized: a garage that finally gets emptied, a kitchen or bathroom remodel, new flooring, an old deck or fence coming out. The 15 fits most of those; step up to a 20 when a remodel includes drywall and cabinets.",
+            "Roy is close enough to the shop that pickups are easy to move. Finished early? Call and we come get it. Need longer? Extensions are ${{TRD:ext_day}} a day; call before the pickup date.",
+        ],
+        "faq": [
+            price_q("Roy"),
+            ("Do you do junk removal in Roy?", "Yes, on weekends, ${{TRD:junk}} flat: we bring the truck and the crew, load it, haul it away and pay the dump. On a weekday, a 15 yard bin in the driveway is usually the cheaper way to clear the same pile."),
+            permit_q("Roy"),
+        ],
+    },
+    "hooper": {
+        "zips": "84315", "covers": [],
+        "more": [
+            "On acreage the question is where to put the bin, not whether it fits. Pick a spot the truck can back up to on firm ground; soft fields and wet lawns can rut under a loaded truck, so a gravel drive or pad is the best place in spring.",
+            "Brush and yard waste are light and bulky, which is why a 20 or 25 makes sense for clearing fence lines and tree trimmings. Dirt, rock and concrete are the opposite: heavy for their size, with weight limits, so call before you load them.",
+        ],
+        "faq": [
+            ("Can you put a dumpster in a field or behind a barn?", "Yes, as long as the truck can reach the spot on firm, level ground with room to back in and set the bin down. Tell us where you want it when you book and the driver will place it there if it is safe to."),
+            ("Can I put branches and yard waste in the dumpster?", "Yes. Branches, brush, sod and general yard waste are fine. Keep out hazardous waste, liquids, propane and fuel, and call first for dirt, rock or concrete."),
+            price_q("Hooper"),
+        ],
+    },
+    "ogden": {
+        "zips": "84401, 84403, 84404", "covers": ["South Ogden", "Washington Terrace", "Riverdale", "North Ogden"],
+        "more": [
+            "Older homes make heavier debris: plaster and lath, several layers of roofing, brick. Those are dense, so a bin can reach its weight limit before it looks full. For a plaster tear-out or a multi-layer roof, say so when you book and we will suggest a size that stays under the weight allowance.",
+            "We cover the neighborhoods around the city at the same prices: South Ogden and Washington Terrace on the bench, Riverdale to the south, and North Ogden up against the mountain. Steep bench driveways are fine; tell us about the slope and the driver brings boards.",
+        ],
+        "faq": [
+            permit_q("Ogden"),
+            price_q("Ogden"),
+            ("Do you serve South Ogden, Riverdale and North Ogden?", "Yes. South Ogden, Washington Terrace, Riverdale and North Ogden are all on our regular run from West Haven, at the same prices as Ogden itself."),
+        ],
+    },
+    "plain-city": {
+        "zips": "84404", "covers": ["Farr West"],
+        "more": [
+            "The new subdivisions produce construction and landscaping debris: framing offcuts, drywall scraps, sod, and the packaging that comes with finishing a house. The older properties produce the rest: sheds coming down, fences, and years of stored equipment.",
+            "Farr West, just east, is covered at the same prices, and so are the lots and shops along the west side between the two.",
+        ],
+        "faq": [
+            price_q("Plain City"),
+            ("Can builders and contractors book a dumpster in Plain City?", "Yes. Contractor and commercial jobs are quoted rather than booked at the online price: use the commercial option on the booking page or call {phone}, and Joseph will set it up."),
+            ("Do you deliver to Farr West?", "Yes. Farr West is about ten minutes from the shop, same prices, dump fee included."),
+        ],
+    },
+    "syracuse": {
+        "zips": "84075", "covers": ["West Point", "Clinton"],
+        "more": [
+            "Many Syracuse homes are at the stage of finishing basements and building out yards. Those jobs make a steady mix of drywall, framing lumber, carpet pad, sod and landscape rock. Keep rock and dirt out of the bin or tell us first: they are heavy and have weight limits.",
+            "West Point and Clinton are next door and covered at the same prices.",
+        ],
+        "faq": [
+            price_q("Syracuse"),
+            ("What size dumpster do I need for a basement finish?", "A 20 yard handles most basement finishes: drywall scraps, framing offcuts, packaging and flooring. A small one-room finish fits in a 15; a full basement gut with old carpet and walls coming out is a 25."),
+            ("Do you serve West Point and Clinton?", "Yes, both are a few minutes from Syracuse and covered at the same prices."),
+        ],
+    },
+    "clearfield": {
+        "zips": "84015", "covers": ["Sunset"],
+        "more": [
+            "For a landlord turning over a rental, a 15 is usually enough for one unit's carpet, broken furniture and left-behind trash. Mattresses, tires and appliances with refrigerant can go in but carry a handling fee, so mention them when you book.",
+            "If the bin goes in an apartment or complex lot, get the manager's OK first and tell us exactly where to set it, so the driver is not guessing on a crowded lot.",
+        ],
+        "faq": [
+            price_q("Clearfield"),
+            ("Can a landlord book a dumpster for a rental property?", "Yes. Book with the property's address and your own phone and email; the confirmation, reminders and pickup texts come to you, not the tenant."),
+            ("Do you deliver to Sunset?", "Yes. Sunset is right next to Clearfield and covered at the same prices."),
+        ],
+    },
+    "layton": {
+        "zips": "84040, 84041", "covers": ["Kaysville", "Farmington"],
+        "more": [
+            "On a long remodel, a bin switch keeps the job moving: we pick up the full bin and drop an empty one in the same trip, so the crew never stops for want of a place to throw things. It is ${{TRD:binswitch}} flat.",
+            "We also run south to Kaysville and Farmington at the same prices. The farther south, the more a day or two of notice helps with scheduling.",
+        ],
+        "faq": [
+            price_q("Layton"),
+            ("Can I swap a full dumpster for an empty one?", "Yes. That is a bin switch: ${{TRD:binswitch}} flat, we take the full bin and leave an empty one in the same trip. Call {phone} when the bin is full."),
+            ("Do you serve Kaysville and Farmington?", "Yes. Both are on our Davis County run at the same prices; book a day or two ahead if you can."),
+        ],
+    },
+}
+
 FAQ = [
     ("What size dumpster do I need?", "Three sizes: 15 yard (about five pickup loads; garage cleanouts, small remodels, yard waste), 20 yard (about seven loads; kitchens, flooring, landscaping, estate cleanouts; our most-rented), and 25 yard (about nine loads; construction, roofing, whole-home cleanouts). Not sure? Call and describe the job; we will fit the bin to it."),
     ("What does the price include?", "Delivery, pickup, the rental period and the dump fee. The 1 to 3 day and 4 to 7 day prices are on the home page for every size. Utah sales tax is added at checkout. Extra days, overweight loads and prohibited items are the only other charges, and they are spelled out on the terms page."),
@@ -278,7 +400,7 @@ def nav():
 def footer():
     sizes = "".join(f'<li><a href="/dumpster-rental/{s["slug"]}/">{s["yd"]} yd dumpster</a></li>' for s in SIZES)
     svcs = "".join(f'<li><a href="/{s["slug"]}/">{s["name"]}</a></li>' for s in SERVICES)
-    cities = "".join(f'<li><a href="/service-area/{c["slug"]}/">{c["name"]}</a></li>' for c in CITIES[:8])
+    cities = "".join(f'<li><a href="/service-area/{c["slug"]}/">{c["name"]}</a></li>' for c in CITIES if c["slug"] in KEPT_CITIES)
     return f'''
 <footer>
   <div class="foot-grid wrap">
@@ -571,6 +693,8 @@ for s in SERVICES:
 # service area hub
 def city_card(c):
     mins = "the shop" if c["min"] == 0 else f"~{c['min']} min"
+    if c["slug"] in RETIRED_CITIES:
+        return f'''<li><div class="city"><span class="city-name">{esc(c["name"])}</span><span class="city-min">{mins}</span><span class="city-line">{esc(c["line"])}</span></div></li>'''
     return f'''<li><a href="/service-area/{c["slug"]}/" class="city"><span class="city-name">{esc(c["name"])}</span><span class="city-min">{mins}</span><span class="city-line">{esc(c["line"])}</span></a></li>'''
 
 hub_groups = []
@@ -609,9 +733,12 @@ write("service-area/index.html", page(
 urls.append(("/service-area/", "0.8"))
 
 # city pages
-for c in CITIES:
+for c in [x for x in CITIES if x["slug"] in KEPT_CITIES]:
     path = f"/service-area/{c['slug']}/"
-    near = sorted([x for x in CITIES if x["slug"] != c["slug"]], key=lambda x: abs(x["min"] - c["min"]))[:5]
+    x = CITY_EXTRA[c["slug"]]
+    city_faq = [(q, a.replace("{phone}", BIZ["phone"])) for q, a in x["faq"]]
+    covers = f" We also cover {', '.join(x['covers'][:-1]) + ' and ' + x['covers'][-1] if len(x['covers']) > 1 else x['covers'][0]} from here." if x["covers"] else ""
+    near = sorted([n for n in CITIES if n["slug"] != c["slug"] and n["slug"] in KEPT_CITIES], key=lambda n: abs(n["min"] - c["min"]))[:5]
     dist = "minutes from the shop" if c["min"] == 0 else f"about {c['min']} minutes from our shop in West Haven"
     title = f"Dumpster Rental in {c['name']}, UT | 15, 20 & 25 Yard Bins, Dump Fee Included"
     desc = f"Roll-off dumpster rental in {c['name']}, Utah from Triple R Dump, {dist}. 15, 20 and 25 yard bins from ${T('d15_13')}, dump fee included, same-day delivery available. Book online or call {BIZ['phone']}."
@@ -628,7 +755,8 @@ for c in CITIES:
   <div class="wrap two">
     <div class="prose">
       <header class="sec-head"><p class="label">{esc(c["name"])}</p><h2>What we haul <em>here</em>.</h2></header>
-      {"".join(f"<p>{esc(p)}</p>" for p in c["body"])}
+      {"".join(f"<p>{esc(p)}</p>" for p in c["body"] + x["more"])}
+      <p>ZIP codes: {esc(x["zips"])}.{esc(covers)}</p>
       <p>Same prices as West Haven, dump fee included. Utah sales tax at checkout. <a href="/faq/">Questions answered here.</a></p>
     </div>
     <aside class="side-card">
@@ -652,10 +780,11 @@ for c in CITIES:
     <p class="area-note">Also serving {", ".join(f'<a href="/service-area/{n["slug"]}/">{esc(n["name"])}</a>' for n in near)}, and <a href="/service-area/">the rest of the four counties</a>.</p>
   </div>
 </section>
-''' + cta()
+''' + faq_block(city_faq, title=f"Dumpster rental in {esc(c['name'])}: <em>questions</em>") + cta()
     schemas = [
         ld({"@context": "https://schema.org", "@type": "Service", "name": f"Dumpster rental in {c['name']}, UT", "serviceType": "Roll-off dumpster rental", "provider": PROVIDER,
             "areaServed": {"@type": "City", "name": c["name"], "containedInPlace": {"@type": "AdministrativeArea", "name": f"{c['county']} County, Utah"}}, "url": SITE + path}),
+        faq_ld(city_faq),
         breadcrumbs([("Home", "/"), ("Service area", "/service-area/"), (c["name"], path)]),
     ]
     write(f"service-area/{c['slug']}/index.html", page(path, title, desc, body, schemas, og_image=AREA_IMG))

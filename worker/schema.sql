@@ -30,8 +30,10 @@ CREATE TABLE IF NOT EXISTS bookings (
 
   subtotal_cents INTEGER,
   tax_cents INTEGER,
-  amount_cents INTEGER,                -- subtotal + tax
+  amount_cents INTEGER,                -- subtotal - discount + tax
   deposit_cents INTEGER,               -- refundable deposit (trailer); untaxed, not in amount
+  promo_code TEXT,                     -- discount code used (uppercase; NULL = none)
+  discount_cents INTEGER,              -- dollars off the pre-tax subtotal (tax computed on the net)
   payment_type TEXT,                   -- checkout|invoice
   stripe_session_id TEXT,
   stripe_payment_intent TEXT,

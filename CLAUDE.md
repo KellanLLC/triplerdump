@@ -1,3 +1,75 @@
+*** SEO SITE FIXES 2026-09-22 (worker v 0266ad90, deployed via deploy.mjs, checkout probe OK) ***
+- CITY PAGES 19 -> 8: KEPT_CITIES in build_pages.py (west-haven roy hooper ogden plain-city
+  syracuse clearfield layton), each with extra copy (CITY_EXTRA: ZIPs, neighbours covered,
+  2 paragraphs) + a 3-question city FAQ (+FAQPage JSON-LD). Main-content similarity 85% -> ~64%.
+  The 11 retired cities are still LISTED (unlinked div.city cards) on /service-area/ and their
+  URLs 301 to /service-area/ (marketing.js RETIRED_CITIES - must match build_pages.py). The
+  retired folders were deleted from the repo root. Sitemap now 21 URLs, lastmod 2026-09-22.
+- marketing.js marketingRedirect(): every marketing URL is now ONE URL - slashless -> slash
+  (/contact -> /contact/, /faq -> /faq/ ...), /index.html -> /. Query string preserved.
+- /book: meta description + canonical (/book, or /book?service=<svc> for the others).
+- index.js: fetch now = noindexOffDomain(handle()) - any *.workers.dev host gets
+  X-Robots-Tag: noindex. scheduled() -> scheduledTick() (same body).
+- workers.dev + preview URLs are OFF ON PURPOSE (Boston: duplicate-content SEO). deploy.mjs
+  NEEDS a preview URL, so each deploy: POST .../workers/scripts/triplerdump/subdomain
+  {"enabled":false,"previews_enabled":true} -> run deploy.mjs -> set previews_enabled back
+  to false. (Uploaded-but-never-deployed version 439b3e71 from the first failed try: ignore.)
+- index.html: footer Morgan/Salt Lake County links -> /service-area/ (were retired pages).
+- GSC DONE same day (via Chrome "Browser 1" = this PC; "Browser 2" is NOT on this machine):
+  sitemap resubmitted (read 9/22, 21 pages), junk "sitemap.xm" removed, Request indexing on
+  /book, /service-area/, /service-area/{ogden,roy,layton,syracuse}/, /dumpster-rental/20-yard/.
+  STILL TO REQUEST (daily quota): west-haven, hooper, plain-city, clearfield, 15/25-yard,
+  /junk-removal/, /contact/, /faq/. Inspection showed "Referring page: None detected" on every
+  unindexed page - Google has not crawled the homepage links to them yet. NOT COMMITTED.
+
+*** GBP LOST VERIFICATION + SEO AUDIT 2026-09-22 (read-only; nothing changed) ***
+- Joseph's GBP (listing 4556821476581406756) shows "Verification required" in Business Profile
+  Manager: "Google requires additional info... Your edits will be visible after you're verified."
+  Only method offered = BUSINESS VIDEO (Joseph must record it: location, equipment/truck+bins,
+  proof of management). Still PUBLIC on Maps (5.0/14), but the 09-19 edits (2nd category,
+  services, description, first post) are NOT live, Posts shows "No posts yet", Performance is
+  locked. Likely triggered by the big 09-19 edit batch - do NOT make more GBP edits until verified.
+- GBP website button = https://triplerdump.com/ (APEX) -> so apex impressions in GSC = map-pack.
+  Apex: 20-120 imp/day Aug 21-Sep 4 at pos 2-5, ZERO Sep 5-7, then 2-16/day at pos ~10-12.
+  That is the whole "average position got worse" story: map pack lost, not organic decline.
+- GSC: 3/38 indexed; 30 "Discovered - currently not indexed" (all size/service/city pages,
+  /book, /contact/, /faq/, /bbb/). City pages are ~85% identical text (difflib) - consolidate
+  to ~6-8 unique pages. No manual actions; CWV = not enough data; Links = still processing.
+  Junk sitemap entry "sitemap.xm" (Couldn't fetch) can be deleted. /contact (no slash) returns
+  200 and Google's snippet for it is the stale Wix "1234 Main Street" placeholder - 301 it to
+  /contact/ + request reindex.
+
+*** INCIDENT 2026-09-19 -> 09-21: SITE RAN WITH ZERO SECRETS FOR ~2 DAYS. RESOLVED 2026-09-21,
+worker v 4dd97a62 live with all 6 secrets (terms auto-charge wording + review link now live). ***
+- CAUSE: after the 09-18 rollback, the 09-19 `wrangler deploy`s (8057a86c, d3ab2d60) inherited
+  secrets from the LATEST UPLOADED version (= bot shell 5824dd69, 0 secrets), NOT the deployed
+  one. Inheritance is ALWAYS from the latest upload; rollback never changes "latest". Result:
+  checkout "couldn't start secure checkout" (safety path, nothing charged) + admin 401 for
+  every password, for ~2 days. Fixed by `wrangler rollback 9dcf9d99`, then rebuilding the
+  secret chain with `versions secret bulk` (JSON file) and a guarded deploy.
+- SECRET VALUES NOW: ADMIN_PASSWORD = the same password Joseph/Boston always used (in .env
+  `ADMIN_PASSWORD` / `current-admin-password`); ADMIN_SECRET = new random (.env; only
+  invalidated old cookies); STRIPE_SECRET_KEY_LIVE = NEW restricted key "TRD Work live FIX"
+  (.env `current-stripe-api`, 107 ch, ends azcc; all 6 needed permissions verified). The old
+  .env `new-stripe-token` (184 ch, ends 69af6) is DEAD - Stripe rejects it; the previous
+  working key lives only inside old version 9dcf9d99 and can be deleted in Stripe once
+  nobody plans to roll back past 4dd97a62. CALENDAR_TOKEN + STRIPE_SECRET_KEY (sandbox) from
+  worker/.dev.vars, GHL_SMS_WEBHOOK_URL = the D1 settings value.
+- GOTCHA: `echo -n "v" | wrangler versions secret put NAME` MANGLES the value on this
+  Windows/Git-Bash setup. ALWAYS `versions secret bulk <file.json>` (then delete the file).
+- *** DEPLOY COMMAND IS NOW `cd worker && node deploy.mjs "message"` - NEVER plain
+  `wrangler deploy` again. *** It uploads a version (no traffic), verifies all 6 secrets +
+  DB/ASSETS/SITE_ORIGIN, runs the full smoke test INCLUDING a real booking -> Stripe Checkout
+  session against the version's PREVIEW URL (<id>-triplerdump.bkthueson.workers.dev; hold
+  released + test row deleted), only then `versions deploy`, then re-checks live with
+  auto-rollback to the previous version. Proven 2026-09-21: refused a 5-secret version
+  (exit 2) and a dead-Stripe-key version (exit 3) with live untouched; then shipped 4dd97a62
+  clean. Rejected/short-lived uploads that day (5f0293ee 7731da6f 7f756e90 1e55f6b7 e68fe4c3
+  a84aae79 a62fbf7b c23890eb...) can be ignored.
+- STILL OPEN: (1) disconnect the Cloudflare GitHub app before any `git push` (see 09-18
+  incident); (2) Boston wants an hourly live checkout monitor that texts him on failure -
+  not built yet.
+
 *** GBP OPTIMIZATION PASS 2026-09-19 (profile only; no code change) ***
 - Reviews MERGED: Joseph's profile now shows 5.0 / 14 reviews, 6 photos. Joseph had already
   replied to all 14 himself (Unreplied filter = empty). Review link g.page/r/CbcwSVDRTrtzEAE.
@@ -804,4 +876,4 @@ domain/DNS until the final cutover (the last step in the whole project).
 - Never commit secrets (.env, worker/.dev.vars, and live keys/passwords stay out of repo).
 - Build/test in isolation; clean up test rows after testing the live worker.
 - Stripe test/sandbox mode first, always.
-- Deploy: `cd worker && npx wrangler deploy` (export CLOUDFLARE_API_TOKEN + ACCOUNT_ID).
+- Deploy: `cd worker && node deploy.mjs "msg"` (guarded; reads the token from ../.env). NEVER plain `wrangler deploy`.

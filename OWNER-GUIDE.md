@@ -159,6 +159,21 @@ Your payment terms and late fee print at the bottom of every invoice
 automatically. If you're invoicing a job that's already in the system, open the
 job and use "Create an invoice for this booking" so it fills in their details.
 
+### Discount codes
+
+Admin → **Discounts**. Make a code (say `MILITARY10`), give it a percent, and
+save. As you type, it shows you an example of what that percent does to a
+25-yard bin so you can sanity-check the number before it goes live.
+
+- **On the website:** customers type the code in the "Promo code" box when they
+  book. The discount comes off before tax, they see it on the price summary and
+  on the Stripe payment page, and it's recorded on the booking.
+- **On invoices:** the New Invoice page has a Discount box — pick one of your
+  saved codes, or type a one-off percent for just that invoice. It shows as its
+  own line on the bill.
+- Untick **On** to pause a code without deleting it. Anyone who has the code
+  can use it, so only hand it out where you mean to.
+
 ---
 
 ## 5. Things the website does on its own
@@ -189,6 +204,7 @@ You can change these yourself, no developer needed. Changes go live instantly.
 |---|---|
 | **Prices** | Bin prices and sales tax |
 | **Extra fees** | Dry run, overweight, extra day, banned items. **These rewrite your Terms page automatically** |
+| **Discounts** | Promo codes (like `MILITARY10`) customers type at checkout; usable on invoices too |
 | **Bins** | How many of each size you own, and how far you'll deliver |
 | **Invoices** | Default due date and the terms printed on invoices |
 | **Alerts** | Your phone number and which texts you want |

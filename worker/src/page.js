@@ -68,10 +68,15 @@ export function renderBookingPage(S, service) {
   const biz = S.business || {};
   const phone = biz.phone || "";
   const telHref = "tel:" + String(phone).replace(/[^\d+]/g, "");
+  const attr = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
   return '<!DOCTYPE html><html lang="en"><head>' +
 '<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
 '<title>Book ' + svcLabels[svc] + ' - ' + biz.name + '</title>' +
+// /book is a money page Google had never indexed: give it a description and
+// one canonical URL per service (the ?canceled= / tracking variants fold in).
+'<meta name="description" content="Book ' + attr(svcLabels[svc]) + ' online with ' + attr(biz.name || "") + ' in West Haven, Utah. Pick your dates, see the full price up front, pay securely. Serving Weber, Davis, Morgan and Salt Lake County.">' +
+'<link rel="canonical" href="https://www.triplerdump.com/book' + (svc === "dumpster" ? "" : "?service=" + svc) + '">' +
 '<meta name="theme-color" content="#116DFF">' +
 '<link rel="icon" href="/favicon.ico" sizes="any">' +
 '<link rel="icon" href="/assets/favicon-32x32.png" type="image/png" sizes="32x32">' +
@@ -251,7 +256,11 @@ export function renderBookingPage(S, service) {
 '<div data-svc="trailer" class="hidden">' +
 '<label class="f">Rental days<input type="number" name="rental_days" min="1" max="14" step="1" value="1"></label>' +
 '</div>' +
+// No placeholder here on purpose: showing an example code ("MILITARY10") hands
+// every visitor a string that is probably a REAL working discount.
+'<label class="f">Promo code (optional)<input type="text" name="promo_code" autocomplete="off" autocapitalize="characters" spellcheck="false"><span class="mut" id="promomsg" style="display:block;margin-top:3px"></span></label>' +
 '<div class="sumbox"><div class="sumrow"><span id="sumlabel">Select options</span><span id="sumsub">-</span></div>' +
+'<div class="sumrow" id="sumdiscrow" style="display:none"><span id="sumdisclabel">Discount</span><span id="sumdisc">-</span></div>' +
 '<div class="sumrow"><span>Utah sales tax</span><span id="sumtax">-</span></div>' +
 '<div class="sumrow" id="sumdeprow" style="display:none"><span>Refundable deposit</span><span id="sumdep">-</span></div>' +
 '<div class="sumrow tot"><span>Total</span><span id="sumtot">-</span></div></div>' +
@@ -358,13 +367,22 @@ export function renderBookingPage(S, service) {
 'else{btn.textContent="Book it";switchSvc(curSvc());}}' +
 'function recalc(){var svc=curSvc();var lab=document.getElementById("sumlabel"),sub=document.getElementById("sumsub"),tx=document.getElementById("sumtax"),to=document.getElementById("sumtot");' +
 'var depRow=document.getElementById("sumdeprow"),depEl=document.getElementById("sumdep");depRow.style.display="none";' +
+'var discRow=document.getElementById("sumdiscrow");discRow.style.display="none";' +
 'var p=null,label="",deposit=0;' +
 'if(svc==="dumpster"){var s=sel("bin_size"),trr=sel("rental_tier");if(!s||!trr){lab.textContent="Select size + length";sub.textContent="-";tx.textContent="-";to.textContent="-";return;}p=PRICING.bins[s].prices[trr];label=PRICING.bins[s].label+" - "+PRICING.tiers[trr].label;}' +
 'else if(svc==="trailer"){var days=parseInt(f.rental_days.value,10);var sd=PRICING.services.trailer;if(!days||days<sd.minDays||days>sd.maxDays){lab.textContent="Enter rental days ("+sd.minDays+"-"+sd.maxDays+")";sub.textContent="-";tx.textContent="-";to.textContent="-";return;}p=sd.dayRate_cents*days;label=money(sd.dayRate_cents)+"/day x "+days+" day"+(days>1?"s":"");deposit=sd.deposit_cents;}' +
 'else if(svc==="junk"){p=PRICING.services.junk.flat_cents;label=(SVC_LABELS.junk||"Junk Removal")+" (flat)";}' +
 'else if(svc==="binswitch"){p=PRICING.services.binswitch.flat_cents;label=(SVC_LABELS.binswitch||"Bin Switch")+" (flat)";}' +
-'var tax=Math.round(p*PRICING.taxRate);lab.textContent=label;sub.textContent=money(p);tx.textContent=money(tax);to.textContent=money(p+tax);' +
+'var disc=0;if(PROMO){disc=Math.min(p,Math.round(p*PROMO.pct/100));if(disc>0){discRow.style.display="";document.getElementById("sumdisclabel").textContent=PROMO.code+" ("+PROMO.pct+"% off)";document.getElementById("sumdisc").textContent="\\u2212"+money(disc);}}' +
+'var tax=Math.round((p-disc)*PRICING.taxRate);lab.textContent=label;sub.textContent=money(p);tx.textContent=money(tax);to.textContent=money(p-disc+tax);' +
 'if(deposit>0){depRow.style.display="";depEl.textContent=money(deposit)+" (refundable)";}}' +
+// ---- promo code: live check against /api/promo; the server re-validates on booking ----
+'var PROMO=null;var promoIn=f.querySelector("[name=promo_code]"),promoMsg=document.getElementById("promomsg"),promoT=null,promoSeq=0;' +
+'if(promoIn){promoIn.addEventListener("input",function(){var q=promoIn.value.trim();if(promoT)clearTimeout(promoT);var seq=++promoSeq;' +
+'if(!q){PROMO=null;promoMsg.textContent="";recalc();return;}' +
+'promoT=setTimeout(function(){fetch("/api/promo?code="+encodeURIComponent(q)).then(function(r){return r.json();}).then(function(j){if(seq!==promoSeq)return;' +
+'if(j&&j.valid){PROMO={code:j.code,pct:j.pct};promoMsg.textContent=j.code+" applied: "+j.pct+"% off";promoMsg.style.color="var(--ok)";}' +
+'else{PROMO=null;promoMsg.textContent="Code not recognized";promoMsg.style.color="var(--err)";}recalc();}).catch(function(){if(seq!==promoSeq)return;PROMO=null;promoMsg.textContent="";recalc();});},350);});}' +
 // ---- reusable custom dropdown: drives a backing hidden <input> with the EXACT
 //      name/value the backend expects; native-select-free. opts=[{value,label}].
 //      placeholder shown when value is "" and no opt has value "". onChange(value) fires after a pick. ----
@@ -444,6 +462,7 @@ export function renderBookingPage(S, service) {
 'if(b.pickup_date&&b.pickup_date!==b.delivery_date){rows+="<li><span class=\\"k\\">Pickup date</span><span class=\\"v\\">"+esc(fmtDisplay(b.pickup_date))+"</span></li>";}' +
 'rows+="<li><span class=\\"k\\">Drop-off</span><span class=\\"v\\">"+esc(b.address)+"</span></li>";' +
 'rows+="<li><span class=\\"k\\">Subtotal</span><span class=\\"v\\">"+money(b.subtotal_cents)+"</span></li>";' +
+'if(b.discount_cents>0){rows+="<li><span class=\\"k\\">Discount"+(b.promo_code?(" ("+esc(b.promo_code)+")"):"")+"</span><span class=\\"v\\">\\u2212"+money(b.discount_cents)+"</span></li>";}' +
 'rows+="<li><span class=\\"k\\">Utah sales tax</span><span class=\\"v\\">"+money(b.tax_cents)+"</span></li>";' +
 'rows+="<li class=\\"tot\\"><span class=\\"k\\">Total</span><span class=\\"v\\">"+money(b.amount_cents)+"</span></li>";' +
 'if(b.deposit_cents>0){rows+="<li class=\\"dep\\"><span class=\\"k\\">Refundable deposit</span><span class=\\"v\\">"+money(b.deposit_cents)+"</span></li>";}' +

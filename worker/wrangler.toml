@@ -6,8 +6,13 @@ workers_dev = true
 # Static marketing site (built into ../deploy by build_deploy.py).
 # Requests matching a file are served as static assets; everything else
 # (/book, /api/*, /admin, /r/*, /calendar) runs the Worker below.
+# run_worker_first: the HTML marketing pages go THROUGH the worker so it can
+# substitute live CMS prices ({{TRD:*}} tokens / data-trd markers) — see
+# src/marketing.js. Images/CSS/uploads stay on the fast asset path.
 [assets]
 directory = "../deploy"
+binding = "ASSETS"
+run_worker_first = ["/", "/index.html", "/dumpster-rental", "/dumpster-rental/*", "/junk-removal", "/junk-removal/*", "/dump-trailer-rental", "/dump-trailer-rental/*", "/bin-switch", "/bin-switch/*", "/service-area", "/service-area/*", "/faq", "/faq/*", "/bbb", "/bbb/*", "/contact", "/contact/*"]
 
 [[d1_databases]]
 binding = "DB"

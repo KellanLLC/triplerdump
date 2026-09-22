@@ -32,8 +32,12 @@ refs = sorted(
 )
 
 if os.path.exists(DST):
-    shutil.rmtree(DST)
-os.makedirs(DST)
+    # An open handle on the deploy/ folder itself (Explorer, a shell cwd) makes
+    # the final rmdir fail even after the contents are gone — emptying it is enough.
+    for entry in os.listdir(DST):
+        p = os.path.join(DST, entry)
+        shutil.rmtree(p) if os.path.isdir(p) else os.remove(p)
+os.makedirs(DST, exist_ok=True)
 
 shutil.copy2(os.path.join(ROOT, "index.html"), DST)
 shutil.copy2(os.path.join(ROOT, "tokens.css"), DST)
@@ -79,7 +83,7 @@ for ref in refs:
 # /uploads/...) so one page works from any depth; the scan below resolves that
 # leading slash against the repo root and ships anything index.html did not
 # already cover, through the same recompression path.
-PAGE_DIRS = ["dumpster-rental", "junk-removal", "dump-trailer-rental", "bin-switch", "service-area", "faq"]
+PAGE_DIRS = ["dumpster-rental", "junk-removal", "dump-trailer-rental", "bin-switch", "service-area", "faq", "bbb", "contact"]
 PAGE_FILES = ["pages.css", "sitemap.xml", "robots.txt"]
 page_refs = set()
 for d in PAGE_DIRS:
