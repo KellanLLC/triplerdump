@@ -18,8 +18,10 @@
 - GSC DONE same day (via Chrome "Browser 1" = this PC; "Browser 2" is NOT on this machine):
   sitemap resubmitted (read 9/22, 21 pages), junk "sitemap.xm" removed, Request indexing on
   /book, /service-area/, /service-area/{ogden,roy,layton,syracuse}/, /dumpster-rental/20-yard/.
-  STILL TO REQUEST (daily quota): west-haven, hooper, plain-city, clearfield, 15/25-yard,
-  /junk-removal/, /contact/, /faq/. Inspection showed "Referring page: None detected" on every
+  2026-09-23: requested the other 9 too (west-haven, hooper, plain-city, clearfield,
+  15/25-yard, /junk-removal/, /contact/, /faq/) - ALL 16 key URLs now requested. Hooper +
+  /junk-removal/ were "URL is unknown to Google" before the request. Avg pos 9.3 (24h) and
+  still 3 indexed on 09-23 = expected lag; nothing further to do until Joseph verifies GBP. Inspection showed "Referring page: None detected" on every
   unindexed page - Google has not crawled the homepage links to them yet. NOT COMMITTED.
 
 *** GBP LOST VERIFICATION + SEO AUDIT 2026-09-22 (read-only; nothing changed) ***
