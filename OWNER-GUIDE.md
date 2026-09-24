@@ -171,6 +171,13 @@ someone twice: anyone who already rated you, or was asked in the last 30 days,
 is skipped. **Untick it for deposits or jobs you haven't done yet.** Invoices
 made before Sep 24, 2026 never send a review text.
 
+**Late payers:** once an invoice is past its due date, the customer gets a text
+with the pay link at 10am, then every 48 hours, until they pay (up to 5 texts).
+It re-checks with Stripe first, so nobody who already paid gets chased. After the
+5th, it stops and texts **you** to give them a call. Paying or voiding the invoice
+stops it. Admin → Invoices has the on/off switch, the 48 hours and the 5; the
+wording is in Admin → Texts ("Late-payment text" and "Invoice still unpaid").
+
 ### Discount codes
 
 Admin → **Discounts**. Make a code (say `MILITARY10`), give it a percent, and

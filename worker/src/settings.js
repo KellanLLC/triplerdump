@@ -45,6 +45,11 @@ const DEFAULT_TEMPLATES = {
   // Owner text when an invoice gets paid. Tokens: {number} {name} {company} {total}
   // {customer_phone} {admin_link}.
   owner_invoice_paid: "Paid! Invoice {number}: ${total} from {name}. Details: {admin_link}",
+  // Late-payment texts (sent at the daily reminder hour, every invoiceReminderHours
+  // after the due date, up to invoiceReminderMax). Adds {days_late}.
+  invoice_overdue: "Hi {name}, a reminder from Triple R Dump: invoice {number} for {total} was due {due} ({days_late} days ago). Pay here: {invoice_link} Questions? {phone}",
+  // Owner heads-up once the customer has had every reminder and still hasn't paid.
+  owner_invoice_overdue: "{name} still hasn't paid invoice {number} ({total}, {days_late} days late) after {count} reminder texts. Worth a call: {customer_phone}. {admin_link}",
 };
 
 // Fee schedule. Joseph's supplied policy text quoted TWO different prices for the
@@ -121,6 +126,9 @@ export function defaultSettings(env = {}) {
     invoiceTerms: DEFAULT_INVOICE_TERMS,
     invoiceDueDays: 14,
     invoiceTaxDefault: true,
+    invoiceRemindersOn: true,   // late-payment texts to the customer
+    invoiceReminderHours: 48,   // gap between late-payment texts
+    invoiceReminderMax: 5,      // then stop and text the owner instead
     // Promo codes (CMS "Discounts" tab): [{code, pct, active}]. Empty = feature
     // dormant — the /book field still renders but no code ever matches.
     discountCodes: [],
@@ -159,6 +167,9 @@ export async function loadSettings(env) {
   if (o.invoice_terms !== undefined) s.invoiceTerms = o.invoice_terms;
   if (o.invoice_due_days !== undefined) s.invoiceDueDays = num(o.invoice_due_days, s.invoiceDueDays);
   if (o.invoice_tax_default !== undefined) s.invoiceTaxDefault = o.invoice_tax_default === true;
+  if (o.invoice_reminders_on !== undefined) s.invoiceRemindersOn = o.invoice_reminders_on === true;
+  if (o.invoice_reminder_hours !== undefined) s.invoiceReminderHours = num(o.invoice_reminder_hours, s.invoiceReminderHours);
+  if (o.invoice_reminder_max !== undefined) s.invoiceReminderMax = num(o.invoice_reminder_max, s.invoiceReminderMax);
   if (Array.isArray(o.discount_codes)) s.discountCodes = o.discount_codes;
   if (o.sms_templates) s.templates = { ...s.templates, ...o.sms_templates };
   return s;

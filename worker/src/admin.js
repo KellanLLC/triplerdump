@@ -437,8 +437,10 @@ export function renderPanel(S, data) {
     '<label>Commercial quote request <span class="muted">(adds {company} {interest} {timeframe} {email} {details})</span></label><textarea name="tpl_commercial">' + esc(t.commercial) + '</textarea>' +
     '<label>Low rating alert <span class="muted">(adds {rating} {feedback}; use {admin_link})</span></label><textarea name="tpl_low_rating">' + esc(t.low_rating) + '</textarea>' +
     '<label>Invoice paid <span class="muted">(adds {number} {total}; use {admin_link})</span></label><textarea name="tpl_owner_invoice_paid">' + esc(t.owner_invoice_paid) + '</textarea>' +
+    '<label>Invoice still unpaid <span class="muted">(after the last late-payment text; adds {days_late} {count}; use {admin_link})</span></label><textarea name="tpl_owner_invoice_overdue">' + esc(t.owner_invoice_overdue) + '</textarea>' +
     '<h3>Invoices</h3>' +
     '<label>Invoice text <span class="muted">(adds {number} {total} {due}; use {invoice_link})</span></label><textarea name="tpl_invoice">' + esc(t.invoice) + '</textarea>' +
+    '<label>Late-payment text <span class="muted">(past the due date; adds {days_late}; use {invoice_link})</span></label><textarea name="tpl_invoice_overdue">' + esc(t.invoice_overdue) + '</textarea>' +
     '</div>');
 
   // Everything that breaks the site if guessed at, kept out of the way but reachable.
@@ -459,7 +461,13 @@ export function renderPanel(S, data) {
     '<div><label>Sales tax</label><label style="font-weight:400;margin-top:10px"><input type="checkbox" name="invoice_tax_default" style="width:auto"' + (S.invoiceTaxDefault !== false ? " checked" : "") + '> Add tax automatically</label></div></div>' +
     '<label>Wording at the bottom of every invoice<span class="hint">Your payment terms and late fee. This prints under the line items.</span></label>' +
     '<textarea name="invoice_terms" style="min-height:120px">' + esc(S.invoiceTerms) + '</textarea>' +
-    '<p class="muted">If you change the late charge above, update this wording to match.</p></div>');
+    '<p class="muted">If you change the late charge above, update this wording to match.</p>' +
+    '<h2 style="margin-top:22px">Late-payment texts</h2>' +
+    '<p class="what">Once an invoice is past its due date, the customer gets a text with the pay link, then again every few days, until they pay. After the last one, you get a text instead so you can call them. The wording is in the Texts tab.</p>' +
+    '<label style="font-weight:400"><input type="checkbox" name="invoice_reminders_on" style="width:auto"' + (S.invoiceRemindersOn !== false ? " checked" : "") + '> Send late-payment texts</label>' +
+    '<div class="row"><div><label>Every<span class="hint">Hours between texts. 48 = every other day.</span></label><input name="invoice_reminder_hours" inputmode="numeric" value="' + esc(S.invoiceReminderHours) + '"></div>' +
+    '<div><label>Stop after<span class="hint">Texts per invoice, then you get told.</span></label><input name="invoice_reminder_max" inputmode="numeric" value="' + esc(S.invoiceReminderMax) + '"></div></div>' +
+    '</div>');
 
   // Read-only tab: the save bar is hidden here, since there is nothing to save.
   let activity = '<div class="card"><div class="top"><h2 style="border:0;margin:0">Recent bookings</h2><span><a href="/admin/invoices" style="color:#116DFF;font-weight:600;text-decoration:none">Invoices</a> &nbsp;&middot;&nbsp; <a href="/admin/bookings" style="color:#116DFF;font-weight:600;text-decoration:none">Manage all &rarr;</a></span></div><table><tr><th>Ref</th><th>Status</th><th>Size</th><th>Drop</th><th>Customer</th><th>Total</th></tr>';
@@ -571,7 +579,10 @@ export async function saveSettings(env, form) {
   await saveSetting(env, "invoice_terms", String(form.invoice_terms || ""));
   await saveSetting(env, "invoice_due_days", parseInt(form.invoice_due_days, 10) || 14);
   await saveSetting(env, "invoice_tax_default", form.invoice_tax_default === "on" || form.invoice_tax_default === "true");
-  await saveSetting(env, "sms_templates", { confirmation: String(form.tpl_confirmation || ""), reminder_sms: String(form.tpl_reminder_sms || ""), pickup_reminder: String(form.tpl_pickup_reminder || ""), review: String(form.tpl_review || ""), review_followup_1: String(form.tpl_review_followup_1 || ""), review_followup_2: String(form.tpl_review_followup_2 || ""), review_followup_3: String(form.tpl_review_followup_3 || ""), owner: String(form.tpl_owner || ""), owner_reminder: String(form.tpl_owner_reminder || ""), owner_pickup_reminder: String(form.tpl_owner_pickup_reminder || ""), owner_complete_nudge: String(form.tpl_owner_complete_nudge || ""), commercial: String(form.tpl_commercial || ""), low_rating: String(form.tpl_low_rating || ""), invoice: String(form.tpl_invoice || ""), owner_invoice_paid: String(form.tpl_owner_invoice_paid || "") });
+  await saveSetting(env, "invoice_reminders_on", form.invoice_reminders_on === "on" || form.invoice_reminders_on === "true");
+  await saveSetting(env, "invoice_reminder_hours", Math.max(24, parseInt(form.invoice_reminder_hours, 10) || 48));
+  await saveSetting(env, "invoice_reminder_max", Math.min(10, Math.max(1, parseInt(form.invoice_reminder_max, 10) || 5)));
+  await saveSetting(env, "sms_templates", { confirmation: String(form.tpl_confirmation || ""), reminder_sms: String(form.tpl_reminder_sms || ""), pickup_reminder: String(form.tpl_pickup_reminder || ""), review: String(form.tpl_review || ""), review_followup_1: String(form.tpl_review_followup_1 || ""), review_followup_2: String(form.tpl_review_followup_2 || ""), review_followup_3: String(form.tpl_review_followup_3 || ""), owner: String(form.tpl_owner || ""), owner_reminder: String(form.tpl_owner_reminder || ""), owner_pickup_reminder: String(form.tpl_owner_pickup_reminder || ""), owner_complete_nudge: String(form.tpl_owner_complete_nudge || ""), commercial: String(form.tpl_commercial || ""), low_rating: String(form.tpl_low_rating || ""), invoice: String(form.tpl_invoice || ""), owner_invoice_paid: String(form.tpl_owner_invoice_paid || ""), invoice_overdue: String(form.tpl_invoice_overdue || ""), owner_invoice_overdue: String(form.tpl_owner_invoice_overdue || "") });
   // Follow-up ladder timing. Stored as a 3-slot array; a 0 ends the ladder there.
   await saveSetting(env, "review_followup_hours", [form.fu_1, form.fu_2, form.fu_3].map((v) => {
     const n = Number(String(v == null ? "" : v).trim());
@@ -744,6 +755,7 @@ export function renderInvoiceDetail(S, inv, flash) {
   body += r("Customer", inv.customer_name) + r("Email", inv.email) + r("Phone", inv.phone) + r("Company", inv.company) +
     (inv.booking_id ? '<div style="display:flex;border-bottom:1px solid #eef2f7;padding:5px 0"><div style="flex:0 0 42%;color:#5a6b7d">Booking</div><div style="flex:1"><a href="/admin/booking/' + esc(inv.booking_id) + '" style="color:#116DFF;font-weight:600">' + esc(inv.booking_id) + '</a></div></div>' : "") +
     r("Due", inv.due_date) + r("Sent", (inv.sent_at || "").slice(0, 10)) + r("Paid at", inv.paid_at) +
+    r("Late-payment texts", (inv.overdue_reminders_sent || 0) + " sent" + (inv.overdue_last_sent_at ? " (last " + String(inv.overdue_last_sent_at).slice(0, 10) + ")" : "") + (inv.overdue_owner_alerted_at ? " · you were told to call" : "")) +
     r("Review", !inv.ask_review ? "not requested for this invoice" : inv.review_rating != null ? inv.review_rating + " stars" : inv.review_sms_sent_at ? "asked " + String(inv.review_sms_sent_at).slice(0, 10) + (inv.review_clicked_at ? " · they opened the link" : "") : inv.review_checked_at ? "skipped (no phone, already reviewed, or asked recently / via the booking)" : "will be asked when paid");
   body += '</div>';
 

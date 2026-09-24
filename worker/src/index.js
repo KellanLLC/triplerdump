@@ -1,17 +1,17 @@
 // Triple R Dump - one worker: static site (via assets) + booking + CMS + review.
 import { loadSettings, itemLabel, findDiscountCode } from "./settings.js";
 import { todayISO } from "./util.js";
-import { createBooking, getAvailability, expireStaleHolds, cancelAbandonedCheckout } from "./booking.js";
+import { createBooking, getAvailability, cancelAbandonedCheckout } from "./booking.js";
 import { handleStripeWebhook, confirmPaidByRedirect } from "./stripe.js";
 import { renderBookedPage } from "./booked.js";
 import { buildICalFeed } from "./ical.js";
-import { startReview, runReviewFollowups, markReviewClicked, findReviewSubject } from "./review.js";
-import { runReminderSweep } from "./reminders.js";
+import { startReview, markReviewClicked, findReviewSubject } from "./review.js";
+import { runScheduled } from "./cron.js";
 import { renderBookingPage } from "./page.js";
 import { renderTermsPage } from "./terms.js";
 import { renderReviewLanding, handleReviewRate, handleReviewFeedback } from "./reviewpage.js";
 import { isAuthed, loginCookie, clearCookie, renderLogin, renderPanel, saveSettings, renderBookingsList, renderBookingDetail, renderInvoiceList, renderInvoiceNew, renderInvoiceDetail } from "./admin.js";
-import { createInvoice, sweepInvoices, refreshInvoiceStatus, voidInvoice, resendInvoice, parseLineItems, applyPercentDiscount } from "./invoice.js";
+import { createInvoice, refreshInvoiceStatus, voidInvoice, resendInvoice, parseLineItems, applyPercentDiscount } from "./invoice.js";
 import { isMarketingPath, marketingRedirect, serveMarketingPage } from "./marketing.js";
 
 const cors = () => ({ "access-control-allow-origin": "*", "access-control-allow-methods": "GET,POST,OPTIONS", "access-control-allow-headers": "content-type" });
@@ -437,26 +437,8 @@ async function handle(request, env) {
   }
 }
 
-  // Runs HOURLY. The review follow-up ladder needs finer resolution than a daily
-  // tick (+24h/+24h/+48h from whenever the previous message went out), and freeing
-  // stale unpaid holds hourly is strictly better than daily. The reminder sweep is
-  // the one job that must fire at a civilised hour, so it is gated to 10:00 local
-  // rather than run every pass.
+// Timed jobs (hourly + the daily reminder hour) live in cron.js.
 async function scheduledTick(event, env, ctx) {
-    ctx.waitUntil((async () => {
-      const S = await loadSettings(env);
-      // Run the sweeps independently so one failing can't abort the others.
-      // NOTE: the FIRST review ask is still owner-triggered (startReview on "mark
-      // complete"). Only the follow-ups to an unanswered ask run on the cron.
-      await expireStaleHolds(env, S).catch((e) => console.error("[cron expire]", e));
-      await sweepInvoices(env, S).catch((e) => console.error("[cron invoices]", e));
-      await runReviewFollowups(env, S).catch((e) => console.error("[cron review followup]", e));
-
-      const localHour = Number(new Intl.DateTimeFormat("en-US", {
-        timeZone: S.business.timezone, hour: "numeric", hour12: false,
-      }).format(new Date()));
-      if (localHour === (Number(S.reminderHourLocal) || 10)) {
-        await runReminderSweep(env, S).catch((e) => console.error("[cron reminder]", e));
-      }
-    })());
+  ctx.waitUntil(runScheduled(env));
 }
+

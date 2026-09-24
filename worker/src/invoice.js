@@ -12,7 +12,7 @@
 // from Stripe (on admin view + the daily cron) instead of trusting a callback.
 import { stripeKey } from "./stripe.js";
 import { fillTemplate } from "./settings.js";
-import { sendInvoiceSms, sendOwnerInvoicePaid } from "./sms.js";
+import { sendInvoiceSms, sendOwnerInvoicePaid, sendOwnerInvoiceOverdue } from "./sms.js";
 import { startReview } from "./review.js";
 
 const API = "https://api.stripe.com/v1/";
@@ -351,4 +351,63 @@ export async function resendInvoice(env, S, id) {
   if (!row.phone || !message) return { ok: false, error: "No customer phone (or the invoice SMS template is blank)." };
   await sendInvoiceSms(S, row.phone, message);
   return { ok: true };
+}
+
+// Late-payment texts. Runs once a day at the reminder hour (see cron.js). For every
+// open invoice past its due date that has a phone: re-check Stripe first (never
+// chase someone who just paid), then text the pay link if the last reminder was at
+// least invoiceReminderHours ago. After invoiceReminderMax texts it stops for good
+// and texts the owner once instead. Paying or voiding ends it automatically, since
+// only status='sent' rows are picked up.
+export async function runInvoiceOverdueReminders(env, S) {
+  if (S.invoiceRemindersOn === false) return { skipped: "off" };
+  const tz = (S.business && S.business.timezone) || "America/Denver";
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(new Date()); // YYYY-MM-DD
+  const every = Math.max(24, Number(S.invoiceReminderHours) || 48);
+  const max = Math.min(10, Math.max(1, Number(S.invoiceReminderMax) || 5));
+  // 2h of slack so a daily tick that lands a few minutes early still counts.
+  const cutoff = new Date(Date.now() - (every - 2) * 3600 * 1000).toISOString();
+  const { results } = await env.DB.prepare(
+    "SELECT id FROM invoices WHERE status='sent' AND due_date <> '' AND due_date < ?1" +
+    " AND overdue_owner_alerted_at IS NULL" +
+    " AND (overdue_last_sent_at IS NULL OR overdue_last_sent_at <= ?2) LIMIT 50"
+  ).bind(today, cutoff).all();
+
+  const base = (S.publicBaseUrl || "").replace(/\/+$/, "");
+  let sent = 0, alerted = 0;
+  for (const { id } of results || []) {
+    try {
+      const row = await refreshInvoiceStatus(env, S, id); // paid since? stop here
+      if (!row || row.status !== "sent") continue;
+      const daysLate = Math.max(1, Math.round((Date.parse(today) - Date.parse(row.due_date)) / 864e5));
+      const count = Number(row.overdue_reminders_sent || 0);
+      const vals = {
+        name: String(row.customer_name || "").split(/\s+/)[0] || row.customer_name || "",
+        number: row.number || row.id, total: money(row.total_cents), due: row.due_date,
+        days_late: daysLate, count, invoice_link: base + "/inv/" + row.id,
+        phone: (S.business && S.business.phone) || "", customer_phone: row.phone || "",
+        admin_link: base + "/admin/invoice/" + row.id,
+      };
+      if (count >= max || !row.phone) {
+        // Out of reminders (or nobody to text): tell the owner once, then stop.
+        await env.DB.prepare("UPDATE invoices SET overdue_owner_alerted_at=?1 WHERE id=?2").bind(new Date().toISOString(), row.id).run();
+        await sendOwnerInvoiceOverdue(S, { ...vals, name: row.customer_name || "" });
+        alerted++;
+        continue;
+      }
+      const msg = fillTemplate((S.templates && S.templates.invoice_overdue) || "", vals);
+      if (!msg.trim()) continue; // template blanked in the CMS = feature off
+      const r = await sendInvoiceSms(S, row.phone, msg);
+      if (r && (r.ok || r.skipped)) {
+        await env.DB.prepare(
+          "UPDATE invoices SET overdue_reminders_sent=COALESCE(overdue_reminders_sent,0)+1, overdue_last_sent_at=?1 WHERE id=?2"
+        ).bind(new Date().toISOString(), row.id).run();
+        sent++;
+      }
+    } catch (e) {
+      console.error("[invoice overdue]", id, e && e.message);
+    }
+  }
+  console.log(`[invoice overdue] due ${(results || []).length}, texted ${sent}, owner alerted ${alerted}`);
+  return { due: (results || []).length, sent, alerted };
 }

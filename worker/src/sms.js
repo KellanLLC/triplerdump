@@ -103,6 +103,12 @@ export async function sendOwnerInvoicePaid(S, inv) {
   return sendSms(S, S.ownerPhone, fillTemplate((S.templates && S.templates.owner_invoice_paid) || "", vals));
 }
 
+// Owner text when a customer has had every late-payment reminder and still owes.
+export async function sendOwnerInvoiceOverdue(S, vals) {
+  if (!S.ownerPhone) return { skipped: true };
+  return sendSms(S, S.ownerPhone, fillTemplate((S.templates && S.templates.owner_invoice_overdue) || "", { ...vals, link: vals.admin_link }));
+}
+
 // Commercial "request a quote" lead -> texts the owner. All details in the message.
 export async function sendCommercialLead(S, lead) {
   if (!lead) return { skipped: true };

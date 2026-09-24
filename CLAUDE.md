@@ -1,3 +1,20 @@
+*** LATE-PAYMENT TEXTS + cron.js + HOW-IT-WORKS.md 2026-09-24 (worker v 922242c9) ***
+- invoice.js runInvoiceOverdueReminders(): at the daily reminder hour (10:00 Denver), for
+  status='sent' invoices with due_date < today: refreshInvoiceStatus first (paid -> stop),
+  then text template invoice_overdue if last text >= (invoiceReminderHours-2)h ago; after
+  invoiceReminderMax texts (or no phone) text the owner ONCE (owner_invoice_overdue) and
+  stop forever (overdue_owner_alerted_at). Settings keys invoice_reminders_on (default ON)
+  / invoice_reminder_hours (48, min 24) / invoice_reminder_max (5, 1-10) in the Invoices
+  tab; both templates in the Texts tab (wholesale-save trap satisfied). Migration 0008
+  APPLIED live (overdue_reminders_sent, overdue_last_sent_at, overdue_owner_alerted_at).
+  Taylor Nix (TRD-INV-CC4L8T, due 9/10) gets the first one at the next 10:00 Denver tick.
+- SIMPLIFICATION: every timed job now lives in src/cron.js (header lists them); index.js
+  scheduled() just calls runScheduled(). worker/HOW-IT-WORKS.md = plain-English map of
+  files, timed jobs, EVERY text (who/when), tables, deploy rule. Keep it current.
+- VERIFIED: 12/12 offline asserts (node:sqlite + mocked Stripe/SMS) + live: real admin pw
+  302, wrong 401, 6 secrets on 922242c9, admin fields render, 4/4 live Checkout sessions,
+  bookings 13 rows unchanged, invoices 15 (1 open).
+
 *** CLOUDFLARE GIT BUILDS DISCONNECTED 2026-09-24 -> `git push` IS SAFE AGAIN ***
 - Deleted via API both Workers Builds triggers on script tag 48abc415... ("Deploy default
   branch" = `npx wrangler deploy` on main, the 09-18 culprit; "Deploy non-production
