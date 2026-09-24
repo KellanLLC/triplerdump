@@ -106,7 +106,7 @@ SERVICES = [
         "book": "/book?service=junk", "img": P + "06_bin_rental_3.jpeg",
         "title": "Junk Removal in West Haven & Weber County, UT",
         "description": "Full-service junk removal on the Wasatch Front: we bring the truck and the crew, load it, haul it and pay the dump. ${{TRD:junk}} flat, weekends only. Book online or call 801-564-3164.",
-        "h1": "Junk removal.<br><em>We do the lifting.</em>",
+        "h1": "Junk removal in<br>West Haven &amp; Ogden.<br><em>We do the lifting.</em>",
         "lead": "Some jobs do not want a bin sitting there for three days; they want it gone by lunch. That is junk removal. We bring the truck and the hands, load it, haul it and pay the dump. One flat rate. Weekends only, so the weekday fleet stays on the bins.",
         "sections": [
             ("What the flat rate covers", ["The truck, the crew, the loading, the hauling and the dump fee, for one load. Furniture, appliances, the pile in the garage, the shed that finally came down, the leftovers after a move or an estate. If you have more than a load, call and we will price it straight before anyone drives over."]),
@@ -124,7 +124,7 @@ SERVICES = [
         "book": "/book?service=trailer", "img": P + "14_gallery_photo_4.jpg",
         "title": "Dump Trailer Rental in West Haven & Weber County, UT",
         "description": "Rent a dump trailer by the day in West Haven, UT: ${{TRD:trailer_day}} a day, 1 to 14 days, with a ${{TRD:trailer_dep}} refundable deposit. Haul it yourself, dump it yourself. Book online or call 801-564-3164.",
-        "h1": "Dump trailer.<br><em>By the day.</em>",
+        "h1": "Dump trailer rental<br>in West Haven, UT.<br><em>By the day.</em>",
         "lead": "If you have the truck and the time, a dump trailer is the cheapest way to move a lot of material: your own runs to the dump, a move, hauling gravel or branches. ${{TRD:trailer_day}} a day, one to fourteen days, with a ${{TRD:trailer_dep}} deposit that comes back when the trailer does.",
         "sections": [
             ("How it works", ["Book the days online, pay the rental plus the refundable deposit, and pick the trailer up from us in West Haven. Haul whatever you need, dump it yourself, bring it back clean on the last day. The deposit comes back to your card once it is checked in."]),
@@ -142,7 +142,7 @@ SERVICES = [
         "book": "/book?service=binswitch", "img": P + "13_gallery_photo_3.jpeg",
         "title": "Bin Switch, Same-Trip Dumpster Swap in Weber County, UT",
         "description": "Filled the dumpster before the job is done? A bin switch hauls the full one and drops a fresh one in the same trip, ${{TRD:binswitch}}. Serving West Haven, Ogden, Roy and the Wasatch Front. Call 801-564-3164.",
-        "h1": "Full bin?<br><em>Swap it, same trip.</em>",
+        "h1": "Dumpster swap-out in<br>West Haven &amp; Ogden.<br><em>Full bin? Same trip.</em>",
         "lead": "A remodel that found another wall. A roof with one more layer than anyone thought. A cleanout that kept going. When the bin fills before the job ends, a switch hauls the full one away and drops a fresh one in the same trip, so nothing sits and nobody waits.",
         "sections": [
             ("How it works", ["Book the switch online or call, and tell us the job you are on. The driver pulls the full bin, runs it to the dump, and sets an empty one in the same spot, same visit. The switch is ${{TRD:binswitch}}; the new bin's rental and dump fee are billed like any other rental."]),
@@ -593,7 +593,7 @@ for s in SIZES:
     others = [x for x in SIZES if x["slug"] != s["slug"]]
     body = hero(
         f"{s['tag']} · {s['loads']}",
-        f"{s['yd']} yard<br><em>dumpster rental</em>",
+        f"{s['yd']} yard dumpster rental<br><em>in West Haven, UT</em>",
         esc(s["lead"]),
         s["img"],
         f"/book?size={s['yd']}",
