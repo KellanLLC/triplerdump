@@ -1,3 +1,14 @@
+*** CLOUDFLARE GIT BUILDS DISCONNECTED 2026-09-24 -> `git push` IS SAFE AGAIN ***
+- Deleted via API both Workers Builds triggers on script tag 48abc415... ("Deploy default
+  branch" = `npx wrangler deploy` on main, the 09-18 culprit; "Deploy non-production
+  branches" = `wrangler versions upload` on every other branch, which would also have
+  poisoned the latest-upload secret chain) AND repo connection f3f06491 (KellanLLC/
+  triplerdump). GET .../builds/workers/<tag>/triggers now returns 0. Last build ever:
+  2026-09-18T18:31Z. Live stayed on c40a67b5. The GitHub App may still be installed on
+  the GitHub side (harmless with no triggers; remove in GitHub > Settings > Applications
+  if wanted). Bot branch origin/cloudflare/workers-autoconfig not deleted yet.
+  Deploys remain MANUAL via deploy.mjs only.
+
 *** INVOICE PAID -> OWNER TEXT + REVIEW ASK 2026-09-24 (worker v b245339b; guide-tab text in the next version) ***
 - invoice.js onInvoicePaid(): runs from refreshInvoiceStatus whenever a row is/turns paid.
   (1) owner SMS (template owner_invoice_paid, respects notify_owner_bookings), claimed via
