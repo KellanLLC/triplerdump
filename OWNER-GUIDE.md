@@ -159,6 +159,18 @@ Your payment terms and late fee print at the bottom of every invoice
 automatically. If you're invoicing a job that's already in the system, open the
 job and use "Create an invoice for this booking" so it fills in their details.
 
+**When an invoice gets paid** you get a text ("Paid! Invoice 1042: $450.00 from
+Mike Smith") within about an hour, with a link to it. The wording is in
+Admin → Texts → "Invoice paid".
+
+**Review texts for invoiced jobs:** on the New invoice screen, "Text a review
+request when this invoice is paid" is ticked by default. When they pay, the
+customer gets the same review text (and the same polite follow-ups) as a
+picked-up job. It needs their phone number on the invoice, and it never asks
+someone twice: anyone who already rated you, or was asked in the last 30 days,
+is skipped. **Untick it for deposits or jobs you haven't done yet.** Invoices
+made before Sep 24, 2026 never send a review text.
+
 ### Discount codes
 
 Admin → **Discounts**. Make a code (say `MILITARY10`), give it a percent, and

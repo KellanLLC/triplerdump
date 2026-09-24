@@ -12,7 +12,8 @@
 // from Stripe (on admin view + the daily cron) instead of trusting a callback.
 import { stripeKey } from "./stripe.js";
 import { fillTemplate } from "./settings.js";
-import { sendInvoiceSms } from "./sms.js";
+import { sendInvoiceSms, sendOwnerInvoicePaid } from "./sms.js";
+import { startReview } from "./review.js";
 
 const API = "https://api.stripe.com/v1/";
 
@@ -191,14 +192,14 @@ export async function createInvoice(env, S, data) {
     await env.DB.prepare(
       "INSERT INTO invoices (id, created_at, booking_id, customer_name, phone, email, company," +
       " line_items, subtotal_cents, tax_cents, total_cents, due_date, status, terms," +
-      " stripe_invoice_id, stripe_customer_id, number, hosted_url, pdf_url, sent_at, notes)" +
-      " VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,'sent',?13,?14,?15,?16,?17,?18,?19,?20)"
+      " stripe_invoice_id, stripe_customer_id, number, hosted_url, pdf_url, sent_at, notes, ask_review)" +
+      " VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,'sent',?13,?14,?15,?16,?17,?18,?19,?20,?21)"
     ).bind(
       id, now, data.booking_id || null, data.customer_name, data.phone || "", data.email || "",
       data.company || "", JSON.stringify(items), subtotal_cents, tax_cents, total_cents,
       data.due_date || "", data.terms || "", stripeInvoiceId, customerId,
       sent.data.number || "", sent.data.hosted_invoice_url || "", sent.data.invoice_pdf || "",
-      now, data.notes || ""
+      now, data.notes || "", data.ask_review ? 1 : 0
     ).run();
   } catch (e) {
     // The customer HAS been billed by now. Surface it loudly rather than pretending
@@ -240,7 +241,11 @@ export async function refreshInvoiceStatus(env, S, id) {
   try { row = await env.DB.prepare("SELECT * FROM invoices WHERE id=?1").bind(id).first(); }
   catch (e) { console.error("[invoice] lookup failed", e); return null; }
   if (!row || !row.stripe_invoice_id) return row || null;
-  if (row.status === "paid" || row.status === "void") return row;
+  if (row.status === "void") return row;
+  if (row.status === "paid") {
+    try { await onInvoicePaid(env, S, row); } catch (e) { console.error("[invoice] paid hook failed", id, e && e.message); }
+    return row;
+  }
 
   const { key } = stripeKey(env, S);
   if (!key) return row;
@@ -261,7 +266,57 @@ export async function refreshInvoiceStatus(env, S, id) {
     row.status = mapped;
     if (paidAt) row.paid_at = paidAt;
   }
+  if (row.status === "paid") {
+    try { await onInvoicePaid(env, S, row); } catch (e) { console.error("[invoice] paid hook failed", id, e && e.message); }
+  }
   return row;
+}
+
+// Runs once per paid invoice (both steps are claimed with a guarded UPDATE, so a
+// cron pass and an admin page view racing each other can't double-text anyone):
+//  1. text the owner "invoice paid";
+//  2. if the invoice was created with "ask for a review", start the review ask —
+//     through the linked booking when there is one (same guards as a picked-up
+//     job), else on the invoice row itself (needs a phone).
+// Invoices that existed before 2026-09-24 were backfilled as already handled.
+export async function onInvoicePaid(env, S, row) {
+  const now = new Date().toISOString();
+  if (!row.owner_paid_notified_at) {
+    const claim = await env.DB.prepare(
+      "UPDATE invoices SET owner_paid_notified_at=?1 WHERE id=?2 AND owner_paid_notified_at IS NULL"
+    ).bind(now, row.id).run();
+    if (claim.meta && claim.meta.changes === 1) {
+      row.owner_paid_notified_at = now;
+      await sendOwnerInvoicePaid(S, row);
+    }
+  }
+  if (row.ask_review && !row.review_checked_at) {
+    const claim = await env.DB.prepare(
+      "UPDATE invoices SET review_checked_at=?1 WHERE id=?2 AND review_checked_at IS NULL"
+    ).bind(now, row.id).run();
+    if (!(claim.meta && claim.meta.changes === 1)) return;
+    row.review_checked_at = now;
+    let subject = null;
+    if (row.booking_id) subject = await env.DB.prepare("SELECT * FROM bookings WHERE id=?1").bind(row.booking_id).first();
+    if (!subject) subject = await env.DB.prepare("SELECT * FROM invoices WHERE id=?1").bind(row.id).first();
+    const r = await startReview(env, S, subject);
+    console.log("[invoice] review ask for", row.id, "via", subject && subject.id, JSON.stringify(r));
+  }
+}
+
+// Hourly cron: ask Stripe about every open invoice (the same check the admin page
+// does), so a payment is noticed within the hour even if nobody opens /admin.
+// Also retries paid rows whose owner text never went out.
+export async function sweepInvoices(env, S) {
+  const { results } = await env.DB.prepare(
+    "SELECT id FROM invoices WHERE stripe_invoice_id IS NOT NULL AND (status='sent'" +
+    " OR (status='paid' AND (owner_paid_notified_at IS NULL OR (ask_review=1 AND review_checked_at IS NULL))))" +
+    " ORDER BY created_at DESC LIMIT 50"
+  ).all();
+  for (const r of results || []) {
+    try { await refreshInvoiceStatus(env, S, r.id); } catch (e) { console.error("[invoice sweep]", r.id, e && e.message); }
+  }
+  return { checked: (results || []).length };
 }
 
 // Voids an OPEN invoice in Stripe (a paid one cannot be voided — refund instead).

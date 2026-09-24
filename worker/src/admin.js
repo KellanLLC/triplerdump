@@ -286,6 +286,7 @@ export function renderPanel(S, data) {
     '<ul style="margin:0;padding-left:20px;line-height:1.75">' +
       '<li><b>Extra fees</b> rewrites your Terms page automatically.</li>' +
       '<li><b>Discounts</b> makes promo codes (like MILITARY10) customers type at checkout. They work on invoices too.</li>' +
+      '<li><b>Invoices</b> text you when one gets paid (within the hour). Leave &ldquo;Text a review request when paid&rdquo; ticked and the customer gets the same review text as a picked-up job; untick it for deposits.</li>' +
       '<li>In <b>Texts</b>, keep the bits in {curly braces} &mdash; they become real details. <b>Never leave a message box empty</b>; empty means that text stops sending.</li>' +
       '<li><b>Leave Advanced alone.</b> That\'s plumbing.</li>' +
     '</ul>' +
@@ -435,6 +436,7 @@ export function renderPanel(S, data) {
     '<label>Job never closed <span class="muted">(day after pickup, only if you forgot to mark it done; use {admin_link})</span></label><textarea name="tpl_owner_complete_nudge">' + esc(t.owner_complete_nudge) + '</textarea>' +
     '<label>Commercial quote request <span class="muted">(adds {company} {interest} {timeframe} {email} {details})</span></label><textarea name="tpl_commercial">' + esc(t.commercial) + '</textarea>' +
     '<label>Low rating alert <span class="muted">(adds {rating} {feedback}; use {admin_link})</span></label><textarea name="tpl_low_rating">' + esc(t.low_rating) + '</textarea>' +
+    '<label>Invoice paid <span class="muted">(adds {number} {total}; use {admin_link})</span></label><textarea name="tpl_owner_invoice_paid">' + esc(t.owner_invoice_paid) + '</textarea>' +
     '<h3>Invoices</h3>' +
     '<label>Invoice text <span class="muted">(adds {number} {total} {due}; use {invoice_link})</span></label><textarea name="tpl_invoice">' + esc(t.invoice) + '</textarea>' +
     '</div>');
@@ -569,7 +571,7 @@ export async function saveSettings(env, form) {
   await saveSetting(env, "invoice_terms", String(form.invoice_terms || ""));
   await saveSetting(env, "invoice_due_days", parseInt(form.invoice_due_days, 10) || 14);
   await saveSetting(env, "invoice_tax_default", form.invoice_tax_default === "on" || form.invoice_tax_default === "true");
-  await saveSetting(env, "sms_templates", { confirmation: String(form.tpl_confirmation || ""), reminder_sms: String(form.tpl_reminder_sms || ""), pickup_reminder: String(form.tpl_pickup_reminder || ""), review: String(form.tpl_review || ""), review_followup_1: String(form.tpl_review_followup_1 || ""), review_followup_2: String(form.tpl_review_followup_2 || ""), review_followup_3: String(form.tpl_review_followup_3 || ""), owner: String(form.tpl_owner || ""), owner_reminder: String(form.tpl_owner_reminder || ""), owner_pickup_reminder: String(form.tpl_owner_pickup_reminder || ""), owner_complete_nudge: String(form.tpl_owner_complete_nudge || ""), commercial: String(form.tpl_commercial || ""), low_rating: String(form.tpl_low_rating || ""), invoice: String(form.tpl_invoice || "") });
+  await saveSetting(env, "sms_templates", { confirmation: String(form.tpl_confirmation || ""), reminder_sms: String(form.tpl_reminder_sms || ""), pickup_reminder: String(form.tpl_pickup_reminder || ""), review: String(form.tpl_review || ""), review_followup_1: String(form.tpl_review_followup_1 || ""), review_followup_2: String(form.tpl_review_followup_2 || ""), review_followup_3: String(form.tpl_review_followup_3 || ""), owner: String(form.tpl_owner || ""), owner_reminder: String(form.tpl_owner_reminder || ""), owner_pickup_reminder: String(form.tpl_owner_pickup_reminder || ""), owner_complete_nudge: String(form.tpl_owner_complete_nudge || ""), commercial: String(form.tpl_commercial || ""), low_rating: String(form.tpl_low_rating || ""), invoice: String(form.tpl_invoice || ""), owner_invoice_paid: String(form.tpl_owner_invoice_paid || "") });
   // Follow-up ladder timing. Stored as a 3-slot array; a 0 ends the ladder there.
   await saveSetting(env, "review_followup_hours", [form.fu_1, form.fu_2, form.fu_3].map((v) => {
     const n = Number(String(v == null ? "" : v).trim());
@@ -709,6 +711,7 @@ export function renderInvoiceNew(S, prefill, error) {
   body += '<h2>Terms</h2>' +
     '<div class="row"><div><label>Due date</label><input type="date" name="due_date" value="' + esc(due) + '"></div>' +
     '<div><label>Sales tax</label><label style="font-weight:400;margin-top:9px"><input type="checkbox" name="taxable" style="width:auto"' + (S.invoiceTaxDefault !== false ? " checked" : "") + '> Add ' + esc(((S.taxRate || 0) * 100).toFixed(3).replace(/\.?0+$/, "")) + '% sales tax</label></div></div>' +
+    '<label style="font-weight:400;margin-top:12px"><input type="checkbox" name="ask_review" style="width:auto" checked> Text a review request when this invoice is paid <span class="muted">(needs a phone number; untick for deposits or jobs not done yet)</span></label>' +
     '<label>Terms printed at the bottom <span class="muted">(from settings; edit for this one invoice if needed)</span></label>' +
     '<textarea name="terms" style="min-height:110px">' + esc(S.invoiceTerms || "") + '</textarea>' +
     '<label>Internal note <span class="muted">(not shown to the customer)</span></label><input name="notes" value="">';
@@ -740,7 +743,8 @@ export function renderInvoiceDetail(S, inv, flash) {
   body += '<div style="display:flex;border-bottom:1px solid #eef2f7;padding:5px 0"><div style="flex:0 0 42%;color:#5a6b7d">Status</div><div style="flex:1">' + statusPill(inv.status) + '</div></div>';
   body += r("Customer", inv.customer_name) + r("Email", inv.email) + r("Phone", inv.phone) + r("Company", inv.company) +
     (inv.booking_id ? '<div style="display:flex;border-bottom:1px solid #eef2f7;padding:5px 0"><div style="flex:0 0 42%;color:#5a6b7d">Booking</div><div style="flex:1"><a href="/admin/booking/' + esc(inv.booking_id) + '" style="color:#116DFF;font-weight:600">' + esc(inv.booking_id) + '</a></div></div>' : "") +
-    r("Due", inv.due_date) + r("Sent", (inv.sent_at || "").slice(0, 10)) + r("Paid at", inv.paid_at);
+    r("Due", inv.due_date) + r("Sent", (inv.sent_at || "").slice(0, 10)) + r("Paid at", inv.paid_at) +
+    r("Review", !inv.ask_review ? "not requested for this invoice" : inv.review_rating != null ? inv.review_rating + " stars" : inv.review_sms_sent_at ? "asked " + String(inv.review_sms_sent_at).slice(0, 10) + (inv.review_clicked_at ? " · they opened the link" : "") : inv.review_checked_at ? "skipped (no phone, already reviewed, or asked recently / via the booking)" : "will be asked when paid");
   body += '</div>';
 
   body += '<div class="card"><h2>Line items</h2><table><tr><th>Description</th><th>Qty</th><th>Each</th><th>Amount</th></tr>';

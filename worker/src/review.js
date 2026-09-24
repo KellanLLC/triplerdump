@@ -17,6 +17,33 @@ import { sendReviewSms } from "./sms.js";
 
 function mintToken() { return (crypto.randomUUID ? crypto.randomUUID().replace(/-/g, "") : Math.random().toString(36).slice(2) + Date.now().toString(36)); }
 const nowIso = () => new Date().toISOString();
+
+// A review "subject" is a booking OR a paid invoice (2026-09-24: invoiced jobs get
+// the same ask + ladder). Both tables carry the same review_* columns; the id
+// prefix says which table a row lives in, so every caller can stay id-driven.
+const SUBJECT_TABLES = ["bookings", "invoices"];
+export const reviewTable = (id) => (String(id || "").startsWith("TRD-INV-") ? "invoices" : "bookings");
+
+// Digits only, last 10 — invoice phones are typed by hand ("(801) 555-1234"),
+// booking phones are normalized, so compare on digits.
+const PHONE_SQL = (col) => `substr(replace(replace(replace(replace(replace(replace(${col},'-',''),' ',''),'(',''),')',''),'+',''),'.',''), -10)`;
+const digits10 = (p) => String(p || "").replace(/\D/g, "").slice(-10);
+
+export async function findReviewSubject(env, token) {
+  for (const table of SUBJECT_TABLES) {
+    const row = await env.DB.prepare(`SELECT * FROM ${table} WHERE review_token=?1`).bind(token).first();
+    if (row) return { table, row };
+  }
+  return null;
+}
+
+// {item} for an invoice: best guess from its line items, else "dumpster".
+function invoiceItem(b) {
+  const txt = String(b.line_items || "").toLowerCase();
+  if (txt.includes("trailer")) return "dump trailer";
+  if (txt.includes("junk")) return "junk removal";
+  return "dumpster";
+}
 const isoInHours = (h) => new Date(Date.now() + h * 3600 * 1000).toISOString();
 
 // Hours until follow-up `step` (1-3), or null once the ladder is spent. A blank
@@ -32,7 +59,7 @@ function reviewVals(S, b, link) {
   return {
     name: String(b.customer_name || "").split(/\s+/)[0] || b.customer_name || "",
     review_link: link, link,
-    bin: b.bin_size, item: itemLabel(b), id: b.id,
+    bin: b.bin_size || "", item: reviewTable(b.id) === "invoices" ? invoiceItem(b) : itemLabel(b), id: b.id,
     phone: S.business.phone, customer_phone: b.phone || "", note: b.message || "",
   };
 }
@@ -41,7 +68,7 @@ function reviewVals(S, b, link) {
 // pass can never overwrite "clicked" with "exhausted".
 export async function stopReviewLadder(env, id, reason) {
   await env.DB.prepare(
-    `UPDATE bookings
+    `UPDATE ${reviewTable(id)}
         SET review_next_due_at = NULL,
             review_stopped_at = COALESCE(review_stopped_at, ?2),
             review_stop_reason = COALESCE(review_stop_reason, ?3)
@@ -52,11 +79,10 @@ export async function stopReviewLadder(env, id, reason) {
 // Called when someone opens /r/<token>. Tapping the link means they heard us,
 // so stop chasing even if they wander off without picking a star.
 export async function markReviewClicked(env, token) {
-  const b = await env.DB.prepare(
-    "SELECT id, review_clicked_at FROM bookings WHERE review_token=?1"
-  ).bind(token).first();
+  const s = await findReviewSubject(env, token);
+  const b = s && s.row;
   if (!b || b.review_clicked_at) return;
-  await env.DB.prepare("UPDATE bookings SET review_clicked_at=?1 WHERE id=?2").bind(nowIso(), b.id).run();
+  await env.DB.prepare(`UPDATE ${s.table} SET review_clicked_at=?1 WHERE id=?2`).bind(nowIso(), b.id).run();
   await stopReviewLadder(env, b.id, "clicked");
 }
 
@@ -66,13 +92,24 @@ export async function markReviewClicked(env, token) {
 // already left a rating on any other booking ("already reviewed before").
 export async function startReview(env, S, b) {
   if (!b || b.review_sms_sent_at || b.review_rating != null) return { skipped: "already-sent" };
-  const prior = await env.DB.prepare(
-    "SELECT COUNT(*) AS n FROM bookings WHERE phone=?1 AND review_rating IS NOT NULL AND id<>?2"
-  ).bind(b.phone, b.id).first();
-  if (prior && prior.n > 0) return { skipped: "client-already-reviewed" };
+  const table = reviewTable(b.id);
+  const ph = digits10(b.phone);
+  if (!ph) return { skipped: "no-phone" };
+  // Per-client guards, across BOTH tables: already rated us, or already asked in
+  // the last 30 days (a booking + its invoice must not produce two asks).
+  const since = new Date(Date.now() - 30 * 864e5).toISOString();
+  for (const tb of SUBJECT_TABLES) {
+    const prior = await env.DB.prepare(
+      `SELECT SUM(CASE WHEN review_rating IS NOT NULL THEN 1 ELSE 0 END) AS rated,
+              SUM(CASE WHEN review_sms_sent_at >= ?3 THEN 1 ELSE 0 END) AS recent
+         FROM ${tb} WHERE ${PHONE_SQL("phone")} = ?1 AND id <> ?2`
+    ).bind(ph, b.id, since).first();
+    if (prior && prior.rated > 0) return { skipped: "client-already-reviewed" };
+    if (prior && prior.recent > 0) return { skipped: "client-asked-recently" };
+  }
 
   let tok = b.review_token;
-  if (!tok) { tok = mintToken(); await env.DB.prepare("UPDATE bookings SET review_token=?1 WHERE id=?2").bind(tok, b.id).run(); }
+  if (!tok) { tok = mintToken(); await env.DB.prepare(`UPDATE ${table} SET review_token=?1 WHERE id=?2`).bind(tok, b.id).run(); }
   const link = (S.publicBaseUrl || "").replace(/\/+$/, "") + "/r/" + tok;
   const msg = fillTemplate(S.templates.review, reviewVals(S, b, link));
   const r = await sendReviewSms(S, { phone: b.phone, message: msg, name: b.customer_name, booking: b });
@@ -81,7 +118,7 @@ export async function startReview(env, S, b) {
     // finished immediately rather than leaving a row the sweep keeps picking up.
     const h = followupHours(S, 1);
     await env.DB.prepare(
-      `UPDATE bookings
+      `UPDATE ${table}
           SET review_sms_sent_at = ?1, review_step = 0, review_next_due_at = ?2,
               review_stopped_at = ?3, review_stop_reason = ?4
         WHERE id = ?5`
@@ -93,8 +130,17 @@ export async function startReview(env, S, b) {
 // Cron sweep. Sends at most ONE follow-up per booking per pass, and only to rows
 // that are still running, still unrated, and actually due.
 export async function runReviewFollowups(env, S) {
+  let due = 0, sentAll = 0;
+  for (const table of SUBJECT_TABLES) {
+    const r = await runFollowupsFor(env, S, table);
+    due += r.due; sentAll += r.sent;
+  }
+  return { due, sent: sentAll };
+}
+
+async function runFollowupsFor(env, S, table) {
   const { results } = await env.DB.prepare(
-    `SELECT * FROM bookings
+    `SELECT * FROM ${table}
       WHERE review_stopped_at IS NULL
         AND review_next_due_at IS NOT NULL
         AND review_next_due_at <= ?1
@@ -120,7 +166,7 @@ export async function runReviewFollowups(env, S) {
       sent++;
       const next = followupHours(S, step + 1);
       await env.DB.prepare(
-        `UPDATE bookings
+        `UPDATE ${table}
             SET review_step = ?2, review_next_due_at = ?3,
                 review_stopped_at = ?4, review_stop_reason = ?5
           WHERE id = ?1`
@@ -131,6 +177,6 @@ export async function runReviewFollowups(env, S) {
       console.error("[review followup] step", step, "failed for", b.id, e && e.message);
     }
   }
-  console.log(`[review followup] due ${(results || []).length}, sent ${sent}`);
+  console.log(`[review followup ${table}] due ${(results || []).length}, sent ${sent}`);
   return { due: (results || []).length, sent };
 }

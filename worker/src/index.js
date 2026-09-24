@@ -5,13 +5,13 @@ import { createBooking, getAvailability, expireStaleHolds, cancelAbandonedChecko
 import { handleStripeWebhook, confirmPaidByRedirect } from "./stripe.js";
 import { renderBookedPage } from "./booked.js";
 import { buildICalFeed } from "./ical.js";
-import { startReview, runReviewFollowups, markReviewClicked } from "./review.js";
+import { startReview, runReviewFollowups, markReviewClicked, findReviewSubject } from "./review.js";
 import { runReminderSweep } from "./reminders.js";
 import { renderBookingPage } from "./page.js";
 import { renderTermsPage } from "./terms.js";
 import { renderReviewLanding, handleReviewRate, handleReviewFeedback } from "./reviewpage.js";
 import { isAuthed, loginCookie, clearCookie, renderLogin, renderPanel, saveSettings, renderBookingsList, renderBookingDetail, renderInvoiceList, renderInvoiceNew, renderInvoiceDetail } from "./admin.js";
-import { createInvoice, refreshInvoiceStatus, voidInvoice, resendInvoice, parseLineItems, applyPercentDiscount } from "./invoice.js";
+import { createInvoice, sweepInvoices, refreshInvoiceStatus, voidInvoice, resendInvoice, parseLineItems, applyPercentDiscount } from "./invoice.js";
 import { isMarketingPath, marketingRedirect, serveMarketingPage } from "./marketing.js";
 
 const cors = () => ({ "access-control-allow-origin": "*", "access-control-allow-methods": "GET,POST,OPTIONS", "access-control-allow-headers": "content-type" });
@@ -265,6 +265,7 @@ async function handle(request, env) {
           taxable: fd.get("taxable") === "on",
           terms: String(fd.get("terms") || ""),
           notes: String(fd.get("notes") || ""),
+          ask_review: fd.get("ask_review") === "on",
         });
         if (!r.ok) {
           const back = "/admin/invoice/new?error=" + encodeURIComponent(r.error || "Could not create the invoice.");
@@ -403,7 +404,8 @@ async function handle(request, env) {
       const rr = p.match(/^\/r\/([^/]+)$/);
       if (rr && m === "GET") {
         const S = await loadSettings(env);
-        const b = await env.DB.prepare("SELECT customer_name FROM bookings WHERE review_token=?1").bind(rr[1]).first();
+        const sub = await findReviewSubject(env, rr[1]);
+        const b = sub && sub.row;
         const first = b ? String(b.customer_name || "").split(/\s+/)[0] : "";
         // Opening the link is the strongest signal we get that they heard us —
         // stop the follow-up ladder even if they never pick a star. Never let a
@@ -447,6 +449,7 @@ async function scheduledTick(event, env, ctx) {
       // NOTE: the FIRST review ask is still owner-triggered (startReview on "mark
       // complete"). Only the follow-ups to an unanswered ask run on the cron.
       await expireStaleHolds(env, S).catch((e) => console.error("[cron expire]", e));
+      await sweepInvoices(env, S).catch((e) => console.error("[cron invoices]", e));
       await runReviewFollowups(env, S).catch((e) => console.error("[cron review followup]", e));
 
       const localHour = Number(new Intl.DateTimeFormat("en-US", {

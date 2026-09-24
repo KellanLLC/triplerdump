@@ -42,6 +42,9 @@ const DEFAULT_TEMPLATES = {
   low_rating: "{rating}★ from {name} ({id}): \"{feedback}\". {customer_phone}. Details: {admin_link}",
   // Invoice-only tokens: {number} (Stripe invoice no.) {total} {due} {invoice_link}
   invoice: "Triple R Dump invoice {number} for {total} is ready. Due {due}. Pay here: {invoice_link}",
+  // Owner text when an invoice gets paid. Tokens: {number} {name} {company} {total}
+  // {customer_phone} {admin_link}.
+  owner_invoice_paid: "Paid! Invoice {number}: ${total} from {name}. Details: {admin_link}",
 };
 
 // Fee schedule. Joseph's supplied policy text quoted TWO different prices for the

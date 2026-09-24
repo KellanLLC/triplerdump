@@ -1,3 +1,25 @@
+*** INVOICE PAID -> OWNER TEXT + REVIEW ASK 2026-09-24 (worker v b245339b; guide-tab text in the next version) ***
+- invoice.js onInvoicePaid(): runs from refreshInvoiceStatus whenever a row is/turns paid.
+  (1) owner SMS (template owner_invoice_paid, respects notify_owner_bookings), claimed via
+  owner_paid_notified_at; (2) if invoices.ask_review=1 -> startReview on the LINKED BOOKING
+  if booking_id, else on the invoice row itself; claimed via review_checked_at.
+  sweepInvoices() rides the HOURLY cron: re-checks status='sent' rows with Stripe (so paid
+  is noticed within ~1h w/o anyone opening /admin) + retries paid rows not yet handled.
+- review.js now treats bookings AND invoices as review "subjects" (same review_* columns;
+  table picked by id prefix TRD-INV-). findReviewSubject() used by /r/<token>, rate +
+  feedback handlers; runReviewFollowups loops both tables; low-rating link points to
+  /admin/invoice/<id> for invoices. startReview guards are now cross-table + digit-
+  normalized phone: skip if phone ever rated, OR was asked in the last 30 days (new).
+- Migration 0007 APPLIED to live D1 (11 invoice cols + index). Backfill: all 13 paid
+  invoices got owner_paid_notified_at; ask_review DEFAULT 0 so the 15 pre-existing
+  invoices never send review texts. New Invoice form checkbox "ask_review" (default ON).
+  Texts tab has tpl_owner_invoice_paid (WHOLESALE-SAVE TRAP satisfied).
+- VERIFIED: 16/16 offline asserts (node:sqlite stand-in, captured SMS) + live: real admin
+  password still logs in (302 + cookie), wrong pw 401, 6 secrets on the version, admin
+  pages render new fields, 4/4 live Checkout sessions ($349.38 / $645 / $591.25 / $215),
+  bookings table unchanged (13). The one OPEN invoice (TRD-INV-CC4L8T) WILL text Joseph
+  when paid (no review ask - it predates the checkbox).
+
 *** SEO SITE FIXES 2026-09-22 (worker v 0266ad90, deployed via deploy.mjs, checkout probe OK) ***
 - CITY PAGES 19 -> 8: KEPT_CITIES in build_pages.py (west-haven roy hooper ogden plain-city
   syracuse clearfield layton), each with extra copy (CITY_EXTRA: ZIPs, neighbours covered,

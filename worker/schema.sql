@@ -103,7 +103,12 @@ CREATE TABLE IF NOT EXISTS invoices (
   stripe_invoice_id TEXT, stripe_customer_id TEXT,
   number TEXT,                     -- Stripe's human invoice no.
   hosted_url TEXT, pdf_url TEXT,
-  sent_at TEXT, paid_at TEXT, notes TEXT
+  sent_at TEXT, paid_at TEXT, notes TEXT,
+  ask_review INTEGER DEFAULT 0,    -- 1 = text a review ask when paid (0007)
+  owner_paid_notified_at TEXT, review_checked_at TEXT,
+  review_token TEXT, review_sms_sent_at TEXT, review_rating INTEGER, review_step INTEGER,
+  review_next_due_at TEXT, review_stopped_at TEXT, review_stop_reason TEXT, review_clicked_at TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_invoices_booking ON invoices(booking_id);
 CREATE INDEX IF NOT EXISTS idx_invoices_status  ON invoices(status);
+CREATE INDEX IF NOT EXISTS idx_invoices_review_token ON invoices(review_token);

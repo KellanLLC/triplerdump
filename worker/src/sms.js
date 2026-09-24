@@ -80,13 +80,27 @@ export async function sendReviewSms(S, { phone, message }) {
 // misdelivered to the customer.
 export async function notifyOwnerLowRating(S, booking, rating, feedback) {
   if (!S.ownerPhone) return { skipped: true };
-  const adminLink = (S.publicBaseUrl || "").replace(/\/+$/, "") + "/admin/booking/" + booking.id;
+  const adminLink = (S.publicBaseUrl || "").replace(/\/+$/, "") +
+    (String(booking.id).startsWith("TRD-INV-") ? "/admin/invoice/" : "/admin/booking/") + booking.id;
   const vals = {
     rating, name: booking.customer_name, id: booking.id, feedback: feedback || "no comment",
     phone: (S.business && S.business.phone) || "", customer_phone: booking.phone,
     note: booking.message || "", admin_link: adminLink, link: adminLink,
   };
   return sendSms(S, S.ownerPhone, fillTemplate((S.templates && S.templates.low_rating) || "", vals));
+}
+
+// Owner text when an invoice is paid (found by the hourly Stripe sweep or when the
+// invoice is opened in /admin). Respects the "text me about bookings" toggle.
+export async function sendOwnerInvoicePaid(S, inv) {
+  if (S.notifyOwnerBookings === false || !S.ownerPhone) return { skipped: true };
+  const adminLink = (S.publicBaseUrl || "").replace(/\/+$/, "") + "/admin/invoice/" + inv.id;
+  const vals = {
+    number: inv.number || inv.id, id: inv.id, name: inv.customer_name || "", company: inv.company || "",
+    total: ((Number(inv.total_cents) || 0) / 100).toFixed(2), customer_phone: inv.phone || "",
+    phone: (S.business && S.business.phone) || "", admin_link: adminLink, link: adminLink,
+  };
+  return sendSms(S, S.ownerPhone, fillTemplate((S.templates && S.templates.owner_invoice_paid) || "", vals));
 }
 
 // Commercial "request a quote" lead -> texts the owner. All details in the message.

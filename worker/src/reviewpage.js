@@ -2,7 +2,7 @@
 // Gating is enforced server-side: the Google link is only returned by the API
 // when the rating qualifies, so low-rating customers never receive it.
 import { notifyOwnerLowRating } from "./sms.js";
-import { stopReviewLadder } from "./review.js";
+import { stopReviewLadder, findReviewSubject } from "./review.js";
 
 const esc = (s) => String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
@@ -52,7 +52,8 @@ export async function handleReviewRate(env, S, body) {
   const tok = String(body.token || "");
   const rating = parseInt(body.rating, 10);
   if (!tok || !(rating >= 1 && rating <= 5)) return { ok: false, error: "bad request" };
-  const b = await env.DB.prepare("SELECT * FROM bookings WHERE review_token=?1").bind(tok).first();
+  const s = await findReviewSubject(env, tok);
+  const b = s && s.row;
   if (!b) return { ok: false, error: "not found" };
 
   let action, url;
@@ -60,7 +61,7 @@ export async function handleReviewRate(env, S, body) {
   else if (rating >= S.reviewThreshold) { action = "google"; url = S.reviewLink; }
   else { action = "feedback"; }
 
-  await env.DB.prepare("UPDATE bookings SET review_rating=?1 WHERE id=?2").bind(rating, b.id).run();
+  await env.DB.prepare(`UPDATE ${s.table} SET review_rating=?1 WHERE id=?2`).bind(rating, b.id).run();
   // They answered — no more follow-ups, whatever they said.
   await stopReviewLadder(env, b.id, "rated");
   await env.DB.prepare("DELETE FROM reviews WHERE booking_id=?1").bind(b.id).run();
@@ -73,7 +74,8 @@ export async function handleReviewFeedback(env, S, body) {
   const tok = String(body.token || "");
   const fb = String(body.feedback || "").slice(0, 2000);
   if (!tok) return { ok: false };
-  const b = await env.DB.prepare("SELECT * FROM bookings WHERE review_token=?1").bind(tok).first();
+  const s = await findReviewSubject(env, tok);
+  const b = s && s.row;
   if (!b) return { ok: false };
   await env.DB.prepare("UPDATE reviews SET feedback=?1 WHERE booking_id=?2").bind(fb, b.id).run();
   if (fb) { try { await notifyOwnerLowRating(S, b, b.review_rating || "?", fb); } catch (e) { console.error("[review fb notify]", e); } }
