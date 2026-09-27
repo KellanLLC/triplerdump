@@ -1,3 +1,11 @@
+*** SERVICE PRICES IN ADMIN + BIN SWITCH $220 2026-09-27 (worker v b2f01b05) ***
+- Prices tab now has "Other services": bin switch, junk, trailer/day, trailer deposit
+  (svc_* fields). saveSettings writes D1 `services` = ONLY {key:{pricing:{cents}}};
+  loadSettings now DEEP-merges per service so label/caps/minDays stay code defaults.
+  Blank or $0 keeps the current price (deposit may be 0). Joseph asked for bin switch
+  $200 -> $220: D1 services row written (junk 550 / trailer 200+300 unchanged). Verified
+  live: /bin-switch/ + homepage + /book pricing show $220. 7/7 offline asserts.
+
 *** LATE-PAYMENT TEXTS + cron.js + HOW-IT-WORKS.md 2026-09-24 (worker v 922242c9) ***
 - invoice.js runInvoiceOverdueReminders(): at the daily reminder hour (10:00 Denver), for
   status='sent' invoices with due_date < today: refreshInvoiceStatus first (paid -> stop),

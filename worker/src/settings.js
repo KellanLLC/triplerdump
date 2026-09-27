@@ -145,7 +145,17 @@ export async function loadSettings(env) {
   for (const row of rows) { try { o[row.key] = JSON.parse(row.value); } catch { o[row.key] = row.value; } }
 
   if (o.bins) s.bins = o.bins;
-  if (o.services) s.services = { ...s.services, ...o.services };
+  // Per-service DEEP merge: the admin Prices tab saves only { pricing: {...cents} }
+  // per service, so label/caps/limits keep coming from the code defaults.
+  if (o.services && typeof o.services === "object") {
+    const merged = { ...s.services };
+    for (const [k, v] of Object.entries(o.services)) {
+      if (!v || typeof v !== "object") continue;
+      const def = merged[k] || {};
+      merged[k] = { ...def, ...v, pricing: { ...(def.pricing || {}), ...(v.pricing || {}) } };
+    }
+    s.services = merged;
+  }
   if (o.tax_rate !== undefined) s.taxRate = num(o.tax_rate, s.taxRate);
   if (o.total_cap !== undefined) s.totalCap = num(o.total_cap, s.totalCap);
   if (o.ghl_sms_webhook_url) s.ghlSmsUrl = o.ghl_sms_webhook_url;

@@ -203,6 +203,10 @@ function todaySection(S, d) {
   return html + '<div class="quick"><a href="/admin/bookings">All bookings</a><a href="/admin/invoices">Invoices</a></div>';
 }
 
+function svcP(S, key) {
+  return (S.services && S.services[key] && S.services[key].pricing) || {};
+}
+
 function priceField(S, size, tier) {
   const v = (S.bins[size] && S.bins[size].prices[tier] != null) ? (S.bins[size].prices[tier] / 100).toFixed(0) : "";
   return '<div><label>' + size + 'yd ' + tier + ' day ($)</label><input name="p_' + size + '_' + tier.replace("-", "") + '" value="' + esc(v) + '"></div>';
@@ -297,6 +301,14 @@ export function renderPanel(S, data) {
     '<div class="row">' + priceField(S, "15", "1-3") + priceField(S, "15", "4-7") + '</div>' +
     '<div class="row">' + priceField(S, "20", "1-3") + priceField(S, "20", "4-7") + '</div>' +
     '<div class="row">' + priceField(S, "25", "1-3") + priceField(S, "25", "4-7") + '</div>' +
+    '<h3>Other services</h3>' +
+    '<div class="row">' +
+      cashField("svc_binswitch", "Bin switch", svcP(S, "binswitch").flat_cents, "Flat price to swap a full bin for an empty one.") +
+      cashField("svc_junk", "Junk removal", svcP(S, "junk").flat_cents, "Flat price per job (weekends).") +
+    '</div><div class="row">' +
+      cashField("svc_trailer_day", "Dump trailer, per day", svcP(S, "trailer").dayRate_cents, "Charged for each rental day.") +
+      cashField("svc_trailer_dep", "Dump trailer deposit", svcP(S, "trailer").deposit_cents, "Refundable, not taxed. Added at checkout.") +
+    '</div>' +
     '<label>Sales tax<span class="hint">Percent added at checkout. Utah is 7.5.</span></label>' +
     '<input name="tax" inputmode="decimal" value="' + esc((S.taxRate * 100).toFixed(3).replace(/\.?0+$/, "")) + '"></div>');
 
@@ -563,6 +575,18 @@ export async function saveSettings(env, form) {
   // 0 is a legitimate value here (check off), so only blank/garbage falls back.
   const sr = parseFloat(form.service_radius);
   await saveSetting(env, "service_radius_miles", Number.isNaN(sr) ? curS.serviceRadiusMiles : sr);
+  // Non-dumpster prices. Only the cents are stored (settings.js deep-merges them over
+  // the code defaults). Blank/garbage keeps the current price; a rental price of $0
+  // is refused the same way (the deposit alone may legitimately be 0).
+  {
+    const sp = (k) => (curS.services && curS.services[k] && curS.services[k].pricing) || {};
+    const pos = (v, current) => { const c = cents(v, current); return c > 0 ? c : current; };
+    await saveSetting(env, "services", {
+      binswitch: { pricing: { flat_cents: pos(form.svc_binswitch, sp("binswitch").flat_cents) } },
+      junk: { pricing: { flat_cents: pos(form.svc_junk, sp("junk").flat_cents) } },
+      trailer: { pricing: { dayRate_cents: pos(form.svc_trailer_day, sp("trailer").dayRate_cents), deposit_cents: Math.max(0, cents(form.svc_trailer_dep, sp("trailer").deposit_cents)) } },
+    });
+  }
   await saveSetting(env, "fees", {
     dryRun: cents(form.fee_dry_run, cur.dryRun),
     overweightTon: cents(form.fee_overweight_ton, cur.overweightTon),
