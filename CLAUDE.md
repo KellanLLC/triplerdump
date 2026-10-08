@@ -1,3 +1,14 @@
+*** PRICES SET TO JOSEPH'S SEP 30 TEXT 2026-10-08 (D1 only, no deploy; Boston asked) ***
+- Joseph texted Boston on Sep 30: "2t 15yd @ $320, 3t 20yd @ $375, 4t 25yd @ $425, anything over is
+  $70 a ton" (one price per bin, no 1-3 / 4-7 split). Live D1 had $350/$400/$450 (both tiers), tons
+  1/4/5, $100/ton (an /admin Save on Oct 2 by someone - no audit log; same save created MILITARY10).
+- Written to D1: bins 15/20/25 = 32000/37500/42500 for BOTH tiers (inventory 1/3/5 untouched); fees
+  overweightTon 7000, tons15/20/25 = 2/3/4 (other fees untouched); invoice_terms "$100 per ton" ->
+  "$70 per ton". Verified live: homepage, size pages, /book, /social, /terms (2/3/4 tons, $70/ton),
+  llms.txt, and a real 15yd 4-7 day booking -> Stripe Checkout $344.00 (row deleted after).
+- Earlier history: Aug 23 Joseph lowered to 275/300, 325/350, 375/400; before that 300/325, 350/375,
+  400/425. If Joseph's prices change again, he edits them in /admin (Prices tab) - no deploy needed.
+
 *** SITE REDESIGN LIVE 2026-10-08 (worker v ec06fc93 via deploy.mjs; preview + live checks OK) ***
 - New look on the Nichols Tree Removal "bones" (fixed header, photo hero + rate card, tape + trust bar,
   marquee, light paper/stone sections alternating with navy, giant footer signature) in TRD colours
