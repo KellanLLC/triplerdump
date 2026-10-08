@@ -96,6 +96,10 @@ The admin home page also lists it for you: jobs to deliver today, jobs to pick
 up today (each with its own green button), and anything overdue for closing sits
 at the top in its own highlighted box.
 
+Under that, **Website activity** shows how many people looked at the website in
+the last 7 and 30 days, how many tapped Book, Call or Text, how many started a
+checkout and how many paid. It counts taps only; it never records who someone is.
+
 **What happens then:** the customer gets a text asking how it went. If they say
 4 or 5 stars, they go straight to your Google review page. If they say 3 or
 less, it comes privately to you as a text instead, with their comment — so you

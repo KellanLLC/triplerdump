@@ -1,3 +1,37 @@
+*** SITE REDESIGN LIVE 2026-10-08 (worker v ec06fc93 via deploy.mjs; preview + live checks OK) ***
+- New look on the Nichols Tree Removal "bones" (fixed header, photo hero + rate card, tape + trust bar,
+  marquee, light paper/stone sections alternating with navy, giant footer signature) in TRD colours
+  (blue #116DFF, navy, red/white bin tape). Fonts Barlow / Barlow Condensed (+ Anton footer sig).
+  ICONS: Phosphor Icons only (assets/icons/*.svg, MIT) - never hand-draw icons (Boston's rule).
+- index.html = new homepage; links /pages.css (the shared design system, also used by every
+  generated page). Prices are data-trd markers (14), Google rating/count are data-trd-num markers,
+  review cards come from the #trd-reviews JSON the worker fills (reviews.js; 3 seed reviews carry
+  real Google photo + date, verified 2026-10-08; others show an initial and no date).
+- build_pages.py + pages.css restyled (all 18 pages: SEO tags/JSON-LD/copy/{{TRD:}} tokens unchanged)
+  and generate the new /social/ link-in-bio page (noindex, not in sitemap; through the worker).
+- /book (page.js) restyled IN PLACE: 4 steps, service cards, prices on size/length cards, order
+  summary aside (sticky) + phone pay bar, time-of-day options (delivery_time = "Midday (10 AM-2 PM)"
+  etc., free text server-side), "address found" + de-duped autocomplete, missing-fields popup
+  mirroring booking.js validate(), card-on-file note under terms. KEPT: custom dropdowns + calendar
+  (owner dislikes native pickers), every backend field name, Stripe redirect, confirm screens,
+  ?canceled= banner, pageshow re-arm. Residential "company" field removed (optional server-side).
+  Summary total now = amount charged (includes trailer deposit). Icons: src/icons.js (generated).
+- TRACKING: assets/t.js -> POST /api/t -> D1 site_events (migration 0009 APPLIED live); no cookies/
+  IPs; bots skipped. Admin "Website activity" card (7/30 days: views, Book/Call/Text taps, checkouts
+  started, paid, quotes). Pruned >400 days at the reminder hour. Injected into marketing pages by
+  marketing.js addTracking(); index.html + page.js include it directly.
+- deploy.mjs smoke now also checks / /social/ /dumpster-rental/20-yard/ /contact/ and /api/t, and the
+  LIVE re-check RETRIES up to ~2 min (edge takes ~1 min to serve a new version; the first attempt
+  auto-rolled back on a false alarm because /social/ + /api/t did not exist on the old version).
+- build_deploy.py: sms: links are no longer treated as files (crashed the build).
+- VERIFIED: 31/31 tests; live booking on www -> real Stripe Checkout ($430, delivery_time stored),
+  hold released + row deleted (bookings 20 -> 20); payment/SMS/review/reminder/invoice code byte-
+  identical; D1 settings identical to the pre-change baseline (26 keys); 6 secrets on ec06fc93;
+  admin login form + wrong-pw 401 live; right-pw 302 in the offline test (real password not used).
+- OPEN: /terms still promises a full refund 48h+ before delivery - Boston unsure it is true; confirm
+  with Joseph. Google Places API key still not set (review photos/dates for the other 4 cards + auto
+  count). _mock/ (gitignored) holds the approved mocks.
+
 *** LANDER SOCIAL PROOF + MAPS 2026-10-07 (worker v df51bc34 via deploy.mjs, checkout probe OK) ***
 - index.html: "Book Now" (fill) added to desktop nav, mobile drawer and hero (Call is now the
   ghost button; "View Bin Sizes" dropped). Hero proof row: stars + rating + count (links #reviews),

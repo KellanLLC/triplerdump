@@ -19,19 +19,20 @@ const MAX_REVIEWS = 12;
 const REFRESH_HOURS = 20; // hourly cron, so this lands roughly once a day
 
 // Seed list = the cards the homepage has always shown (owner-approved excerpts),
-// plus Connie Collard. `date` only where Google's date was verified; cards with
-// no date just say "Google review".
+// plus Connie Collard. `date` and `photo` (the reviewer's Google profile photo)
+// only where verified on Google Maps 2026-10-08; cards without them show no
+// date line and a coloured initial, as Google does. Verified ones go first.
 export const DEFAULT_GOOGLE_REVIEWS = {
   rating: 5.0,
   count: 18,
   updatedAt: null,
   source: "manual",
   reviews: [
-    { name: "Connie Collard", rating: 5, date: "2026-07", text: "Triple R Dump is amazing! We've used them a couple of times and they are great! Very accommodating and nice to work with! Highly recommend!" },
-    { name: "Greg", rating: 5, text: "Excellent experience! Joe got us set up fast with the perfect dumpster, and delivery, pickup, and hauling were all on time. Great service, highly recommend!" },
-    { name: "Scott", rating: 5, date: "2026-05", text: "Easy booking and they delivered right on time. The driver was professional and careful not to damage the driveway. Smooth pickup, no hidden fees or surprises." },
+    { name: "Connie Collard", rating: 5, date: "2026-07", photo: "https://lh3.googleusercontent.com/a/ACg8ocJie9oenj4e12rCCBpbKGN1dtYf5E-ZrjwKTPn_yOqMwYzPlQ=w72-h72-p-rp-mo-br100", text: "Triple R Dump is amazing! We've used them a couple of times and they are great! Very accommodating and nice to work with! Highly recommend!" },
+    { name: "Scott", rating: 5, date: "2026-05", photo: "https://lh3.googleusercontent.com/a/ACg8ocJ0nzisT5pWRpAgWYCNd-r9-kpYlNx-eNIQqXUnaRhbTn3w-g=w72-h72-p-rp-mo-br100", text: "Easy booking and they delivered right on time. The driver was professional and careful not to damage the driveway. Smooth pickup, no hidden fees or surprises." },
+    { name: "Jorge Martinez", rating: 5, date: "2026-05", photo: "https://lh3.googleusercontent.com/a/ACg8ocLZdnkd70XSTzpmQsKTZxNKiivfqcX_xHQvLlrOnikcWuobDg=w72-h72-p-rp-mo-ba12-br100", text: "Couldn't be happier, everything went smoothly start to finish. Joseph communicated clearly, answered all my questions, and made the whole process incredibly easy." },
     { name: "Nadine Rendon", rating: 5, text: "Dropped off the dumpster exactly when they said, and set it on wooden beams so it wouldn't damage my driveway. Would recommend them to anyone. Great business!!" },
-    { name: "Jorge Martinez", rating: 5, date: "2026-05", text: "Couldn't be happier, everything went smoothly start to finish. Joseph communicated clearly, answered all my questions, and made the whole process incredibly easy." },
+    { name: "Greg", rating: 5, text: "Excellent experience! Joe got us set up fast with the perfect dumpster, and delivery, pickup, and hauling were all on time. Great service, highly recommend!" },
     { name: "Clayton Coombs", rating: 5, text: "Made the whole process easy. Midway through I needed a bigger bin and Joseph switched me from a 15 to a 20 yd, no headache. That kind of service is hard to find." },
     { name: "Jordyn Hill", rating: 5, text: "Such a great experience! Scheduling was a breeze and he delivered right on time. I even asked for same-day pickup on a Saturday and he made it happen!" },
   ],
@@ -62,6 +63,7 @@ function fromPlaces(r) {
     date: r.publishTime ? String(r.publishTime).slice(0, 10) : undefined,
     text: text.length > 260 ? text.slice(0, 257).replace(/\s+\S*$/, "") + "…" : text,
     url: (r.authorAttribution && r.authorAttribution.uri) || undefined,
+    photo: (r.authorAttribution && r.authorAttribution.photoUri) || undefined,
   };
 }
 
@@ -111,6 +113,10 @@ export function reviewNumbers(g) {
 // JSON for <script type="application/json" id="trd-reviews">. "<" escaped so a
 // review containing "</script>" can't break out of the block.
 export function reviewsJson(g) {
-  const cards = g.reviews.map((r) => ({ name: r.name, rating: r.rating, date: r.date || null, text: r.text }));
+  const cards = g.reviews.map((r) => ({
+    name: r.name, rating: r.rating, date: r.date || null, text: r.text,
+    // only Google-hosted profile photos; anything else falls back to an initial
+    photo: /^https:\/\/[a-z0-9.-]*googleusercontent\.com\//i.test(String(r.photo || "")) ? r.photo : null,
+  }));
   return JSON.stringify({ rating: g.rating, count: g.count, url: MAPS_URL, reviews: cards }).replace(/</g, "\\u003c");
 }

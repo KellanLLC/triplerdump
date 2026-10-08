@@ -113,3 +113,12 @@ CREATE TABLE IF NOT EXISTS invoices (
 CREATE INDEX IF NOT EXISTS idx_invoices_booking ON invoices(booking_id);
 CREATE INDEX IF NOT EXISTS idx_invoices_status  ON invoices(status);
 CREATE INDEX IF NOT EXISTS idx_invoices_review_token ON invoices(review_token);
+
+-- Anonymous website activity (migration 0009): page views + Book/Call/Text taps.
+CREATE TABLE IF NOT EXISTS site_events (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  ts TEXT NOT NULL,
+  type TEXT NOT NULL,
+  path TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_site_events_ts ON site_events (ts);

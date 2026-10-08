@@ -12,9 +12,13 @@ Writes, at the repo root (committed, like index.html):
     bin-switch/index.html
     service-area/index.html                 where we haul, city by city
     service-area/<city>/index.html
-    faq/index.html
-    pages.css                               the home page's look, as a stylesheet
+    faq/index.html, bbb/index.html, contact/index.html
+    social/index.html                       link-in-bio page (noindex, not in sitemap)
     sitemap.xml, robots.txt
+
+pages.css (hand-written, NOT generated) is the shared design system: the
+approved homepage kit first, then the inner-page blocks these templates use.
+Icons are Phosphor SVGs from assets/icons/, inlined per page (see sprite()).
 
 Every page is plain static HTML served by Workers Static Assets, exactly like
 index.html. None of these paths collide with a Worker route (/book, /terms,
@@ -362,188 +366,369 @@ def breadcrumbs(items):
 
 PROVIDER = {"@type": "LocalBusiness", "@id": SITE + "/#business", "name": BIZ["name"], "telephone": "+1-" + BIZ["phone"], "url": SITE + "/"}
 
-PHONE_SVG = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.55 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.46 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.09 8.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>'
+# The /social/ page's own stylesheet (inline; the page does not load pages.css).
+SOCIAL_CSS = r"""/* /social on the nicholstreeremoval.com/social bones: built for one thumb on
+   one phone. A moving card of the bins up top with the mark set straight on
+   the footage, three big square keys, one loud button, then the rest as a
+   quiet list, a dashed note and the footer. Light page, Triple R Dump blue
+   where Nichols has orange, the bins' red/white tape drifting on the button. */
+:root{
+  --disp:'Barlow Condensed','Arial Narrow',sans-serif;
+  --body:'Barlow',system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif;
+  --accent:#116dff; --accent-lift:#3d8bff; --accent-deep:#0d56c9; --on-accent:#fff;
+  --sky:#bde9fb; --hazard:#d42a20; --star:#fbbc05;
+  --s-bg:#f4f6f9; --s-bg-2:#e3e9f2;
+  --s-card:rgba(255,255,255,.82); --s-card-hi:#fff;
+  --s-line:rgba(15,23,38,.09); --s-line-hi:rgba(15,23,38,.2);
+  --s-text:#0f1726; --s-text-2:#38445a; --s-text-3:#5f6b80;
+  --s-r:22px; --s-r-sm:16px;
+}
+*,*::before,*::after{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}
+img,svg,video{display:block;max-width:100%}
+:focus-visible{outline:2.5px solid var(--accent-lift);outline-offset:3px}
+
+.page{position:relative;min-height:100svh;overflow:hidden;isolation:isolate;background:var(--s-bg);color:var(--s-text);font-family:var(--body);padding:max(14px,env(safe-area-inset-top)) 16px calc(36px + env(safe-area-inset-bottom))}
+.page::before{content:'';position:absolute;inset:0;z-index:-2;pointer-events:none;background:repeating-linear-gradient(135deg,rgba(17,109,255,.045) 0 70px,rgba(17,109,255,0) 70px 140px)}
+.page::after{content:'';position:absolute;left:50%;top:-120px;width:900px;height:700px;z-index:-1;pointer-events:none;transform:translateX(-50%);background:radial-gradient(closest-side,rgba(17,109,255,.18),transparent 70%)}
+.col{max-width:480px;margin:0 auto;display:grid;gap:14px}
+.side{display:grid;gap:14px;align-content:start}
+.clip,.side>*{animation:s-in .7s cubic-bezier(.16,1,.3,1) both}
+.side>*:nth-child(1){animation-delay:.06s}.side>*:nth-child(2){animation-delay:.12s}.side>*:nth-child(3){animation-delay:.18s}.side>*:nth-child(4){animation-delay:.24s}.side>*:nth-child(5){animation-delay:.3s}
+@keyframes s-in{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+
+/* the moving card */
+.clip{position:relative;border-radius:var(--s-r);overflow:hidden;aspect-ratio:4/5;background:#0d131d;box-shadow:0 18px 44px rgba(15,23,38,.24);isolation:isolate}
+.still,.video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.video{opacity:0;transition:opacity .6s ease}
+.video.is-playing{opacity:1}
+.clip::after{content:'';position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(9,14,22,.6) 0%,rgba(9,14,22,.16) 26%,rgba(9,14,22,0) 42%,rgba(9,14,22,.26) 58%,rgba(9,14,22,.92) 100%)}
+.logo{position:absolute;z-index:1;top:6%;left:50%;width:34%;max-width:160px;height:auto;transform:translateX(-50%);filter:drop-shadow(0 6px 22px rgba(0,0,0,.5));animation:s-drop .9s .2s cubic-bezier(.16,1,.3,1) both}
+@keyframes s-drop{from{opacity:0;transform:translate(-50%,-16px) scale(.92)}to{opacity:1;transform:translateX(-50%)}}
+.txt{position:absolute;z-index:1;left:20px;right:20px;bottom:20px;color:#fff}
+.where{margin:0 0 8px;font-family:var(--disp);font-weight:700;font-size:.74rem;letter-spacing:.22em;text-transform:uppercase;color:var(--sky)}
+.txt h1{margin:0;font-family:var(--disp);font-weight:800;font-size:clamp(2.3rem,11vw,3rem);line-height:.94;letter-spacing:-.01em;text-wrap:balance;color:#fff}
+.txt h1 em{font-style:italic;color:var(--accent-lift)}
+.sub{margin:10px 0 0;font-size:.9rem;line-height:1.45;color:rgba(255,255,255,.84)}
+.rate{display:inline-flex;align-items:center;gap:7px;margin-top:10px;font-size:.86rem;color:rgba(255,255,255,.9)}
+.rate b{font-family:var(--disp);font-size:1.05rem;color:#fff}
+.rate .stars{display:inline-flex;gap:1px;color:var(--star)}
+
+/* the three keys */
+.keys{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.key{display:grid;justify-items:center;gap:8px;padding:16px 6px 14px;border-radius:var(--s-r-sm);background:var(--s-card);border:1px solid var(--s-line);color:var(--s-text);font-family:var(--disp);font-weight:700;font-size:1rem;text-align:center;transition:background-color .2s ease,border-color .2s ease,transform .15s ease}
+.key svg{color:var(--accent-deep)}
+.key:hover{background:var(--s-card-hi);border-color:var(--s-line-hi)}
+.key:active{transform:scale(.97)}
+
+/* the one loud button, the bins' tape drifting across it */
+.go{position:relative;overflow:hidden;display:flex;align-items:center;gap:14px;padding:18px 18px 18px 20px;border-radius:var(--s-r-sm);background:var(--accent);color:var(--on-accent);box-shadow:0 12px 30px rgba(17,109,255,.32);transition:background-color .2s ease,transform .15s ease}
+.go::before{content:'';position:absolute;inset:0;pointer-events:none;opacity:.12;background:repeating-linear-gradient(135deg,#fff 0 16px,transparent 16px 32px);background-size:45.25px 45.25px;animation:s-tape 3s linear infinite}
+@keyframes s-tape{from{background-position:0 0}to{background-position:45.25px 0}}
+.go:hover{background:var(--accent-deep)}
+.go:active{transform:scale(.985)}
+.go>*{position:relative}
+.goT{flex:1;min-width:0}
+.goT b{display:block;font-family:var(--disp);font-weight:800;font-size:1.3rem;line-height:1.1}
+.goT small{display:block;margin-top:3px;font-size:.84rem;font-weight:500;opacity:.88}
+.goArrow{display:grid;place-items:center;width:40px;height:40px;border-radius:99px;background:rgba(255,255,255,.18);flex:none}
+
+/* the list */
+.list{border-radius:var(--s-r-sm);background:var(--s-card);border:1px solid var(--s-line);overflow:hidden}
+.row{display:flex;align-items:center;gap:14px;padding:14px 16px;color:var(--s-text);transition:background-color .2s ease}
+.row+.row{border-top:1px solid var(--s-line)}
+.row:hover{background:var(--s-card-hi)}
+.rowI{display:grid;place-items:center;width:40px;height:40px;flex:none;border-radius:12px;background:var(--s-bg-2);color:var(--accent-deep)}
+.rowT{flex:1;min-width:0}
+.rowT b{display:block;font-family:var(--disp);font-weight:700;font-size:1.08rem;line-height:1.2}
+.rowT small{display:block;margin-top:2px;font-size:.8rem;color:var(--s-text-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rowC{display:grid;color:var(--s-text-3);transition:transform .2s ease,color .2s ease}
+.row:hover .rowC{transform:translateX(3px);color:var(--accent-deep)}
+
+/* the dashed note */
+.badge{display:flex;gap:14px;align-items:center;padding:16px;border-radius:var(--s-r-sm);border:1px dashed var(--s-line-hi);color:var(--s-text-2);font-size:.88rem;line-height:1.45}
+.badge b{color:var(--s-text)}
+.badgeI{display:grid;place-items:center;width:48px;height:48px;flex:none;border-radius:99px;background:var(--accent);color:var(--on-accent)}
+
+.foot{text-align:center;font-size:.78rem;color:var(--s-text-3);display:grid;gap:7px;padding-top:10px}
+.foot p{margin:0}
+.foot a{color:var(--s-text-2);text-decoration:underline;text-underline-offset:4px;text-decoration-color:var(--s-line-hi)}
+.foot a:hover{color:var(--accent-deep)}
+
+@media (max-width:511px){
+  .clip{margin:calc(-1 * max(14px,env(safe-area-inset-top))) -16px 0;border-radius:0;aspect-ratio:auto;height:min(78svh,calc(100vw * 1.3))}
+  .logo{top:calc(5% + env(safe-area-inset-top))}
+}
+@media (min-width:700px){.page{padding-top:40px}}
+/* Desktop: the phone column would sit in a sea of empty page, so the card
+   becomes a tall poster on the left, as tall as the links beside it. Same
+   blocks, same order, two columns. */
+@media (min-width:920px){
+  .page{display:grid;align-items:center;padding:48px 40px}
+  .col{max-width:1040px;width:100%;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:28px;align-items:stretch}
+  .clip{aspect-ratio:auto;height:auto;min-height:620px}
+  .logo{width:30%;max-width:170px;top:7%}
+  .txt{left:32px;right:32px;bottom:32px}
+  .txt h1{font-size:clamp(3rem,4.2vw,3.8rem)}
+  .sub{font-size:1rem;max-width:40ch}
+  .where{font-size:.8rem}
+  .side{gap:16px;padding-top:4px}
+  .key{padding:20px 6px 18px;font-size:1.08rem}
+  .go{padding:22px 22px 22px 24px}
+  .goT b{font-size:1.5rem}
+  .goT small{font-size:.9rem}
+  .row{padding:15px 18px}
+  .foot{text-align:left;padding-top:4px}
+}
+@media (prefers-reduced-motion:reduce){.clip,.side>*,.go::before,.logo{animation:none}}
+
+"""
+
+# ───────────────────────────────────────────────────────────── icons ──────
+# Every icon is a Phosphor Icons 2.1.1 SVG (MIT, assets/icons/LICENSE-phosphor.txt),
+# inlined per page as a <symbol> sprite holding only the icons that page uses.
+# Nothing is hand drawn. The one exception is the multicolour Google "G"
+# (#i-g), which is Google's own mark.
+ICON_DIR = os.path.join(ROOT, "assets", "icons")
+ICONS = {
+    "i-phone": "phone", "i-pin": "map-pin", "i-cal": "calendar-check", "i-dollar": "currency-dollar",
+    "i-user": "user", "i-shield": "shield-check", "i-cam": "camera",
+    "i-star": "star-fill", "i-ext": "arrow-square-out", "i-ig": "instagram-logo", "i-fb": "facebook-logo",
+    "i-web": "globe", "i-bin": "trash", "i-couch": "couch", "i-trailer": "truck-trailer",
+    "i-clock": "clock", "i-chev": "caret-right", "i-check": "check-circle",
+}
+G_SYMBOL = '<symbol id="i-g" viewBox="0 0 48 48"><path fill="#4285F4" d="M44.5 20H24v8.5h11.8C34.7 33.9 29.8 37 24 37c-7.2 0-13-5.8-13-13s5.8-13 13-13c3.1 0 5.9 1.1 8.1 2.9l6.4-6.4C34.6 4.1 29.6 2 24 2 11.8 2 2 11.8 2 24s9.8 22 22 22c11 0 21-8 21-22 0-1.3-.2-2.7-.5-4z"/><path fill="#34A853" d="M6.3 15.7l7 5.1C15 17.1 19.1 14 24 14c3.1 0 5.9 1.1 8.1 2.9l6.4-6.4C34.6 4.1 29.6 2 24 2 15.6 2 8.4 6.6 6.3 15.7z"/><path fill="#FBBC05" d="M24 46c5.5 0 10.4-1.8 14.2-5l-6.6-5.4C29.6 37.1 27 38 24 38c-5.7 0-10.6-3.1-11.8-8.4l-7 5.4C8.3 41.4 15.6 46 24 46z"/><path fill="#EA4335" d="M44.5 20H24v8.5h11.8c-.6 2.8-2.2 5.2-4.4 6.8l6.6 5.4C42.1 37 45 31.1 45 24c0-1.3-.2-2.7-.5-4z"/></symbol>'
+
+def _symbol(sid):
+    if sid == "i-g":
+        return G_SYMBOL
+    svg = open(os.path.join(ICON_DIR, ICONS[sid] + ".svg"), encoding="utf-8").read()
+    inner = re.search(r"<svg[^>]*>(.*)</svg>", svg, re.S).group(1).strip()
+    return f'<symbol id="{sid}" viewBox="0 0 256 256" fill="currentColor">{inner}</symbol>'
+
+def sprite(html):
+    """The hidden <svg> sprite with exactly the icons `html` references."""
+    used = sorted(set(re.findall(r'href="#(i-[a-z]+)"', html)))
+    return '<svg width="0" height="0" style="position:absolute" aria-hidden="true">\n' + "\n".join("  " + _symbol(s) for s in used) + "\n</svg>"
+
+def icon(sid, size=18):
+    return f'<svg width="{size}" height="{size}" aria-hidden="true"><use href="#{sid}"/></svg>'
+
+def stars(size=17):
+    return '<span class="stars" aria-hidden="true">' + icon("i-star", size) * 5 + "</span>"
+
+def rating_line():
+    """Google rating for the head band. The worker fills both data-trd-num numbers."""
+    return (f'<a class="hero__stars" href="{BIZ["gmaps"]}" target="_blank" rel="noopener">{stars()}'
+            f'<b data-trd-num="g_rating">5.0</b><u><span data-trd-num="g_count">18</span> Google reviews</u></a>')
+
+# ──────────────────────────────────────────────────────────── chrome ──────
 
 def nav():
     return f'''
-<nav aria-label="Primary">
-  <div class="nav-row">
-    <a href="/" class="nav-mark" aria-label="Triple R Dump, home">
-      <picture>
-        <source srcset="/assets/triple-r-dump-icon.webp" type="image/webp">
-        <img class="nav-icon" src="/assets/triple-r-dump-icon.png" alt="" width="76" height="76">
-      </picture>
-      <picture>
-        <source srcset="/assets/triple-r-dump-nav.webp" type="image/webp">
-        <img src="/assets/triple-r-dump-nav.png" alt="Triple R Dump" width="454" height="88">
-      </picture>
+<header class="hdr" id="hdr">
+  <div class="hdr__scrim" aria-hidden="true"></div>
+  <nav class="hdr__row" aria-label="Primary">
+    <a class="hdr__mark" href="/" aria-label="Triple R Dump, home">
+      <img src="/assets/triple-r-dump-icon.webp" alt="" width="48" height="48">
+      <span class="hdr__wm">Triple R Dump<b>West Haven, Utah</b></span>
     </a>
-    <ul class="nav-inline">
-      <li><a href="/#rates">Bins &amp; Rates</a></li>
-      <li><a href="/#how">How It Works</a></li>
-      <li><a href="/service-area/">Service Area</a></li>
-      <li><a href="/faq/">FAQ</a></li>
-      <li><a href="/#reviews">Reviews</a></li>
-      <li><a href="{BIZ["tel"]}" class="btn btn-fill">Call {BIZ["phone"]}</a></li>
-    </ul>
-    <button class="nav-toggle" aria-label="Open menu" aria-expanded="false" aria-controls="nav-drawer">
-      <span></span><span></span><span></span>
-    </button>
-  </div>
-</nav>
-<div class="nav-drawer" id="nav-drawer" role="dialog" aria-label="Navigation menu" aria-modal="true">
-  <ul>
-    <li><a href="/#rates" class="drawer-link">Bins &amp; Rates</a></li>
-    <li><a href="/#how" class="drawer-link">How It Works</a></li>
-    <li><a href="/service-area/" class="drawer-link">Service Area</a></li>
-    <li><a href="/faq/" class="drawer-link">FAQ</a></li>
-    <li><a href="/#reviews" class="drawer-link">Reviews</a></li>
-  </ul>
-  <a href="{BIZ["tel"]}" class="btn btn-fill">Call {BIZ["phone"]}</a>
-</div>'''
+    <div class="hdr__nav">
+      <a class="nav-a" href="/#bins">Dumpsters &amp; prices</a>
+      <a class="nav-a" href="/#reviews">Reviews</a>
+      <a class="nav-a" href="/#how">How it works</a>
+      <a class="nav-a" href="/service-area/">Service area</a>
+      <a class="nav-a" href="/faq/">FAQ</a>
+    </div>
+    <div class="hdr__acts">
+      <a class="btn ghost" href="{BIZ["tel"]}">{icon("i-phone", 17)}{BIZ["phone"]}</a>
+      <a class="btn" href="/book">Book a dumpster</a>
+    </div>
+  </nav>
+</header>'''
+
+PAGE_JS = '''<script>
+(function () {
+  var hdr = document.getElementById('hdr');
+  var onScroll = function () { hdr.classList.toggle('is-stuck', window.scrollY > 40); };
+  onScroll(); window.addEventListener('scroll', onScroll, { passive: true });
+  var els = document.querySelectorAll('.rv-in');
+  if (!('IntersectionObserver' in window)) { els.forEach(function (el) { el.classList.add('on'); }); return; }
+  var io = new IntersectionObserver(function (es) {
+    es.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add('on'); io.unobserve(e.target); } });
+  }, { threshold: 0.12 });
+  els.forEach(function (el) { io.observe(el); });
+})();
+</script>'''
 
 def footer():
-    sizes = "".join(f'<li><a href="/dumpster-rental/{s["slug"]}/">{s["yd"]} yd dumpster</a></li>' for s in SIZES)
+    sizes = "".join(f'<li><a href="/dumpster-rental/{s["slug"]}/">{s["yd"]} yard dumpster</a></li>' for s in SIZES)
     svcs = "".join(f'<li><a href="/{s["slug"]}/">{s["name"]}</a></li>' for s in SERVICES)
     cities = "".join(f'<li><a href="/service-area/{c["slug"]}/">{c["name"]}</a></li>' for c in CITIES if c["slug"] in KEPT_CITIES)
     return f'''
-<footer>
-  <div class="foot-grid wrap">
-    <div class="foot-brand">
+<footer class="ft">
+  <div class="ft__grid">
+    <div class="ft__brand">
       <picture>
         <source srcset="/assets/triple-r-dump-foot.webp" type="image/webp">
-        <img class="foot-mark" src="/assets/triple-r-dump-foot.png" alt="Triple R Dump" width="416" height="80" loading="lazy">
+        <img src="/assets/triple-r-dump-foot.png" alt="Triple R Dump" width="416" height="80" loading="lazy">
       </picture>
-      <p>Family-owned roll-off dumpster rental, West Haven, Utah. Sustainable solutions for all.</p>
-      <div class="foot-social">
-        <a href="{BIZ["instagram"]}" target="_blank" rel="noopener" aria-label="Instagram">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
-        </a>
-        <a href="{BIZ["facebook"]}" target="_blank" rel="noopener" aria-label="Facebook">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
-        </a>
-      </div>
+      <p>Family-owned roll-off dumpster rental in West Haven, Utah. Dump fee included on every bin rental.</p>
+      <p class="ft__links"><a href="/faq/">Questions &amp; answers</a><a href="/terms">Terms &amp; fees</a><a href="/bbb/">BBB accredited</a><a href="/contact/">Contact page</a></p>
       <a class="foot-bbb" href="https://www.bbb.org/us/ut/west-haven/profile/dumpster-rentals/triple-r-dump-1126-1000181920/#sealclick" target="_blank" rel="noopener nofollow">
         <img src="https://seal-central-northern-western-arizona.bbb.org/seals/blue-seal-250-52-bbb-1000181920.png" alt="Triple R Dump BBB Business Review" width="250" height="52" loading="lazy">
       </a>
     </div>
-    <div class="foot-col">
-      <h3>Services</h3>
-      <ul>{sizes}{svcs}</ul>
-    </div>
-    <div class="foot-col">
-      <h3>Service Area</h3>
-      <ul>{cities}<li><a href="/service-area/">Every city we serve</a></li></ul>
-    </div>
-    <div class="foot-col">
-      <h3>Contact</h3>
-      <ul>
-        <li><a href="{BIZ["tel"]}">{BIZ["phone"]}</a></li>
-        <li><a href="mailto:{BIZ["email"]}">{BIZ["email"]}</a></li>
-        <li>{BIZ["address"]}</li>
-        <li><a href="/faq/">Questions &amp; answers</a></li>
-        <li><a href="/terms">Terms &amp; fees</a></li>
-        <li><a href="/bbb/">BBB accredited</a></li>
-        <li><a href="/contact/">Contact page</a></li>
-      </ul>
-    </div>
+    <div><h4>Services</h4><ul>{sizes}{svcs}</ul></div>
+    <div><h4>Service area</h4><ul>{cities}<li><a href="/service-area/">Every city we serve</a></li></ul></div>
+    <div><h4>Get in touch</h4><ul>
+      <li><a href="{BIZ["tel"]}">{BIZ["phone"]}</a></li>
+      <li><a href="sms:8015643164">Text a photo</a></li>
+      <li><a href="mailto:{BIZ["email"]}">Email Joseph</a></li>
+      <li>{BIZ["address"]}</li>
+      <li><a href="/social/">Links page</a></li>
+      <li><a href="{BIZ["instagram"]}" target="_blank" rel="noopener">@triple.r.dump</a></li>
+    </ul></div>
   </div>
-  <div class="foot-bottom wrap">
-    <p>© 2026 J. Rodrigues · Triple R Dump · Family owned &amp; operated</p>
-    <p>Sustainable solutions for all</p>
-    <p class="foot-made"><a href="https://getkellan.com" target="_blank" rel="noopener">Made by Kellan</a></p>
-  </div>
+  <div class="ft__bottom"><span>© 2026 J. Rodrigues · Triple R Dump</span><span>West Haven, Utah · Weber, Davis, Morgan &amp; Salt Lake County</span><a href="https://getkellan.com" target="_blank" rel="noopener">Made by Kellan</a></div>
+  <div class="ft__sig" aria-hidden="true">Triple R Dump</div>
 </footer>
-<a class="call-pill hidden" href="{BIZ["tel"]}" aria-label="Call Triple R Dump, {BIZ["phone"]}">
-  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.55 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.46 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.09 8.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-  <span class="call-pill-label">{BIZ["phone"]}<em>Tap to call · same-day available</em></span>
-</a>
-<script>
-  var navEl = document.querySelector('nav');
-  var onNavScroll = function () {{ navEl.classList.toggle('scrolled', window.scrollY > 40); }};
-  onNavScroll(); window.addEventListener('scroll', onNavScroll, {{ passive: true }});
-  var toggle = document.querySelector('.nav-toggle'), drawer = document.getElementById('nav-drawer');
-  function closeDrawer() {{ drawer.classList.remove('open'); toggle.setAttribute('aria-expanded', 'false'); toggle.setAttribute('aria-label', 'Open menu'); document.body.style.overflow = ''; }}
-  toggle.addEventListener('click', function () {{ var o = drawer.classList.toggle('open'); toggle.setAttribute('aria-expanded', String(o)); toggle.setAttribute('aria-label', o ? 'Close menu' : 'Open menu'); document.body.style.overflow = o ? 'hidden' : ''; }});
-  drawer.querySelectorAll('a').forEach(function (l) {{ l.addEventListener('click', closeDrawer); }});
-  drawer.addEventListener('click', function (e) {{ if (e.target === drawer) closeDrawer(); }});
-  document.addEventListener('keydown', function (e) {{ if (e.key === 'Escape') closeDrawer(); }});
-  var pill = document.querySelector('.call-pill');
-  var onPill = function () {{ pill.classList.toggle('hidden', window.scrollY < 300); }};
-  onPill(); window.addEventListener('scroll', onPill, {{ passive: true }});
-</script>'''
+<nav class="callbar" aria-label="Call or book">
+  <a class="btn ghost" href="{BIZ["tel"]}">{icon("i-phone")}Call</a>
+  <a class="btn" href="/book">{icon("i-cal")}Book a dumpster</a>
+</nav>
+''' + PAGE_JS
 
-def hero(label, h1, sub, img, primary, primary_label):
+def hero(label, h1, sub, img, primary, primary_label, crumbs, pin=False):
+    """The inner-page head band: photo, scrims, breadcrumbs, title bottom-left.
+    `crumbs` = [(name, href), ...]; the last one is the current page."""
+    trail = "".join(
+        f'<li><span aria-current="page">{esc(n)}</span></li>' if i == len(crumbs) - 1 else f'<li><a href="{h}">{esc(n)}</a></li>'
+        for i, (n, h) in enumerate(crumbs))
+    eyebrow_icon = icon("i-pin", 16) if pin else ""
     return f'''
-<section class="page-hero">
-  <div class="page-hero-bg" style="background-image:url('{img}')" aria-hidden="true"></div>
-  <div class="hero-overlay" aria-hidden="true"></div>
-  <div class="page-hero-content">
-    <p class="label">{label}</p>
+<section class="ph">
+  <img class="ph__pic" src="{img}" alt="" fetchpriority="high">
+  <div class="hero__scrim" aria-hidden="true"></div><div class="hero__scrim hero__scrim--x" aria-hidden="true"></div>
+  <div class="ph__in">
+    <nav class="crumbs" aria-label="Breadcrumb"><ol>{trail}</ol></nav>
+    <p class="hero__eyebrow">{eyebrow_icon}{label}</p>
     <h1>{h1}</h1>
-    <p class="hero-sub">{sub}</p>
-    <div class="hero-actions">
-      <a href="{primary}" class="btn btn-fill">{primary_label}</a>
-      <a href="{BIZ["tel"]}" class="btn btn-ghost">Call {BIZ["phone"]}</a>
+    <p class="hero__lede">{sub}</p>
+    {rating_line()}
+    <div class="hero__acts">
+      <a class="btn btn--lg" href="{primary}">{icon("i-cal", 19)}{primary_label}</a>
+      <a class="btn btn--lg ghost" href="{BIZ["tel"]}">{icon("i-phone", 19)}Call {BIZ["phone"]}</a>
     </div>
-  </div>
-</section>
-<div class="hazard" aria-hidden="true"></div>'''
-
-def ticker():
-    items = ["Family Owned &amp; Operated", "Weber · Morgan · Davis · Salt Lake", "Same-Day Delivery Available", "Residential &amp; Commercial", "Dump Fee Included"]
-    spans = "".join(f"<span>{i}</span>" for i in items * 2)
-    return f'<div class="ticker" aria-label="Service highlights"><div class="ticker-track">{spans}</div></div>'
-
-def rate_table(only=None, heading=True):
-    rows = []
-    for s in SIZES:
-        if only and s["slug"] != only:
-            continue
-        rows.append(f'''
-      <div class="rate-row">
-        <img class="rate-thumb" src="{s["img"]}" alt="{s["yd"]} yard roll-off bin" loading="lazy">
-        <p class="rate-size">{s["yd"]}<small>yard</small></p>
-        <p class="rate-best"><strong>{esc(s["best"])}</strong> {esc(s["fits"])}</p>
-        <div class="rate-prices-m">
-          <p class="rate-price">${T(f"d{s['yd']}_13")}<small>1–3 days</small></p>
-          <p class="rate-price">${T(f"d{s['yd']}_47")}<small>4–7 days</small></p>
-        </div>
-        <a href="/book?size={s["yd"]}" class="btn btn-fill">Book {s["yd"]} yd</a>
-      </div>''')
-    head = '<div class="rate-head" aria-hidden="true"><span>Bin</span><span></span><span>Best for</span><span>1–3 days</span><span>4–7 days</span><span></span></div>' if heading else ""
-    return f'<div class="rate-table">{head}{"".join(rows)}</div>'
-
-def faq_block(faqs, title="Questions people ask"):
-    items = "".join(f'<div class="faq-item"><h3>{esc(q)}</h3><p>{esc(a)}</p></div>' for q, a in faqs)
-    return f'''
-<section class="sec">
-  <div class="wrap">
-    <header class="sec-head"><p class="label">Straight answers</p><h2>{title}</h2></header>
-    <div class="faq-grid">{items}</div>
   </div>
 </section>'''
+
+MQ_ITEMS = ["15 yard", "20 yard", "25 yard", "Junk removal", "Dump trailer", "Bin switch", "Dump fee included", "Same-day delivery"]
+
+def ticker():
+    run = "".join(f"<span>{i}</span><i></i>" for i in MQ_ITEMS)
+    return f'''
+<div class="tape" aria-hidden="true"></div>
+<div class="mq" aria-hidden="true"><div class="mq__in">{run}{run}</div></div>'''
+
+def sec(tone, inner, sid=None):
+    """One band: tone is paper / stone (light) or dark."""
+    idattr = f' id="{sid}"' if sid else ""
+    return f'''
+<section class="sec sec--{tone}"{idattr}>
+  <div class="wrap">{inner}
+  </div>
+</section>'''
+
+def head(kicker, h2, lede=""):
+    led = f'<p class="lede">{lede}</p>' if lede else ""
+    return f'\n    <div class="head"><div><p class="kicker">{kicker}</p><h2>{h2}</h2></div>{led}</div>'
+
+def checks(items):
+    return '<ul class="checks">' + "".join(f"<li>{icon('i-check')}<span>{i}</span></li>" for i in items) + "</ul>"
+
+def side_card(kicker, big, items, btn_href, btn_label, alt_href, alt_label, extra="", big_cls="", btn_attrs=""):
+    return f'''
+    <aside class="sidec rv-in">
+      <span class="ridge"></span>
+      <p class="kicker">{kicker}</p>
+      {f'<p class="sidec__big{big_cls}">{big}</p>' if big else ""}{extra}
+      {checks(items)}
+      <a href="{btn_href}" class="btn"{btn_attrs}>{btn_label}</a>
+      <a href="{alt_href}" class="sidec__alt">{alt_label}</a>
+    </aside>'''
+
+def bin_card(s, about=False):
+    yd = s["yd"]
+    if about:
+        best = f'<strong>{esc(s["best"])}</strong>'
+        btn = f'<a href="/dumpster-rental/{s["slug"]}/" class="btn btn--block ghost ghost--lt">About the {yd} yd</a>'
+    else:
+        best = f'<strong>{esc(s["best"])}</strong> {esc(s["fits"])}'
+        btn = f'<a href="/book?size={yd}" class="btn btn--block">{icon("i-cal")}Book {yd} yd</a>'
+    return f'''
+      <article class="bin rv-in">
+        <div class="bin__pic"><img src="{s["img"]}" alt="{yd} yard roll-off bin" loading="lazy"><span class="bin__tag">{esc(s["tag"])}</span></div>
+        <div class="bin__b">
+          <h3>{yd}<small>yard</small></h3>
+          <p class="bin__for">{best}</p>
+          <div class="bin__px"><div><b>${T(f"d{yd}_13")}</b><span>1–3 days</span></div><div><b>${T(f"d{yd}_47")}</b><span>4–7 days</span></div></div>
+          {btn}
+        </div>
+        <span class="ridge"></span>
+      </article>'''
+
+def rate_table(only=None):
+    cards = "".join(bin_card(s) for s in SIZES if not only or s["slug"] == only)
+    return f'\n    <div class="bins{" bins--one" if only else ""}">{cards}\n    </div>'
+
+def faq_block(faqs, title="Questions people ask", tone="paper"):
+    items = "".join(f'\n      <div class="faq"><h3>{esc(q)}</h3><p>{esc(a)}</p></div>' for q, a in faqs)
+    return sec(tone, head("Straight answers", title) + f'\n    <div class="faqs">{items}\n    </div>')
 
 def faq_ld(faqs):
     return ld({"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [
         {"@type": "Question", "name": q, "acceptedAnswer": {"@type": "Answer", "text": a}} for q, a in faqs]})
 
-def cta():
+def cta(tone="stone"):
     return f'''
-<section id="contact" class="cta">
-  <div class="wrap">
-    <p class="label">Ready when you are</p>
-    <h2>Book online or<br><em>call the owner.</em></h2>
-    <p>Pick the bin, pick the dates, pay by card. Or call and talk it through; {BIZ["owner"]} picks up.</p>
-    <div class="cta-actions">
-      <a href="/book" class="btn btn-fill">Book online</a>
-      <a href="{BIZ["tel"]}" class="btn btn-ghost">Call {BIZ["phone"]}</a>
+<section id="contact" class="sec sec--{tone}">
+  <div class="wrap pair">
+    <div class="callc rv-in">
+      <p class="kicker">Ready when you are</p>
+      <h2>Book online or<br><em>call the owner.</em></h2>
+      <p>Pick the bin, pick the dates, pay by card. Or call and talk it through; {BIZ["owner"]} picks up.</p>
+      <a class="callc__num" href="{BIZ["tel"]}">{BIZ["phone"]}</a>
+      <div class="callc__acts">
+        <a href="/book" class="btn btn--lg">{icon("i-cal", 19)}Book online</a>
+        <a href="{BIZ["tel"]}" class="btn btn--lg ghost ghost--lt">{icon("i-phone", 19)}Call {BIZ["phone"]}</a>
+      </div>
+    </div>
+    <div class="infoc rv-in">
+      <p class="kicker"><span class="live"></span>Taking bookings</p>
+      <p style="margin:0;color:var(--fg-3)">The number on this page rings {BIZ["owner"]}, the owner. Booking online works day or night.</p>
+      <dl class="facts">
+        <div><dt>Area</dt><dd>Weber, Davis, Morgan &amp; Salt Lake County</dd></div>
+        <div><dt>Sizes</dt><dd>15, 20 and 25 yard roll-offs</dd></div>
+        <div><dt>Dump fee</dt><dd>Included in every bin rental</dd></div>
+        <div><dt>Delivery</dt><dd>Same-day and next-day most days</dd></div>
+        <div><dt>Email</dt><dd><a href="mailto:{BIZ["email"]}">{BIZ["email"]}</a></dd></div>
+      </dl>
     </div>
   </div>
 </section>'''
 
+FONTS = '<link href="https://fonts.googleapis.com/css2?family=Anton&family=Barlow+Condensed:ital,wght@0,600;0,700;0,800;1,700;1,800&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">'
+
 def page(path, title, description, body, schemas, og_image=None):
     url = SITE + path
+    inner = f'''{nav()}
+<main>
+{body}
+</main>
+{footer()}'''
     return f'''<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -565,15 +750,13 @@ def page(path, title, description, body, schemas, og_image=None):
   <meta name="twitter:card" content="summary_large_image">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/tokens.css">
+  {FONTS}
   <link rel="stylesheet" href="/pages.css">
   {"".join(schemas)}
 </head>
 <body>
-{nav()}
-{body}
-{footer()}
+{sprite(inner)}
+{inner}
 </body>
 </html>
 '''
@@ -586,6 +769,8 @@ def write(rel, content):
     print("wrote", rel, len(content.encode("utf-8")), "bytes")
 
 # ─────────────────────────────────────────────────────────── pages ────────
+# Section rhythm, as on the homepage: light bands (paper / stone) alternate
+# with dark ones; the contact pair sits on a light band above the dark footer.
 
 urls = [("/", "1.0"), ("/book", "0.9"), ("/terms", "0.3")]
 
@@ -594,7 +779,6 @@ for s in SIZES:
     path = f"/dumpster-rental/{s['slug']}/"
     title = f"{s['yd']} Yard Dumpster Rental in West Haven, UT | ${T(f'd{s["yd"]}_13')}, Dump Fee Included"
     desc = f"{s['yd']} yard roll-off dumpster rental in West Haven, Ogden, Roy and the Wasatch Front: ${T(f'd{s["yd"]}_13')} for 1–3 days, ${T(f'd{s["yd"]}_47')} for 4–7 days, dump fee included. {s['best']} Book online or call {BIZ['phone']}."
-    good = "".join(f"<li>{esc(g)}</li>" for g in s["good"])
     others = [x for x in SIZES if x["slug"] != s["slug"]]
     body = hero(
         f"{s['tag']} · {s['loads']}",
@@ -603,39 +787,28 @@ for s in SIZES:
         s["img"],
         f"/book?size={s['yd']}",
         f"Book the {s['yd']} yd",
-    ) + ticker() + f'''
-<section class="sec">
-  <div class="wrap">
-    <header class="sec-head"><p class="label">The {s["yd"]} yard</p><h2>Straight price.<br><em>Dump's included.</em></h2>
-      <p>Delivery, pickup, the rental and the dump fee, in one number. Utah sales tax is added at checkout. Extra days are ${T("ext_day")} each; call before pickup to extend.</p></header>
-    {rate_table(only=s["slug"])}
-  </div>
-</section>
-<section class="sec">
-  <div class="wrap two">
-    <div>
-      <header class="sec-head"><p class="label">What it takes</p><h2>Good for</h2></header>
-      <ul class="checks">{good}</ul>
-    </div>
-    <div>
-      <header class="sec-head"><p class="label">Before you book</p><h2>Three things</h2></header>
-      <ul class="points">
-        <li><div><strong>Where it goes</strong>{esc(s["fits"])} Tell us which side of the drive; drivers set it on boards if you want the concrete protected. On a public street, your city may want a permit; the form asks.</div></li>
-        <li><div><strong>What cannot go in</strong>Hazardous waste, wet paint and liquids, asbestos, propane and fuel. Tires, mattresses and appliances with refrigerant carry a handling fee. Heavy material (concrete, dirt, brick) has a weight limit; call first. <a href="/terms">The full list is on the terms page.</a></div></li>
-        <li><div><strong>How it is paid</strong>Online by card when you book. You get a confirmation text with your reference, a reminder the day before delivery and the day before pickup, and a text when it is done.</div></li>
-      </ul>
-    </div>
-  </div>
-</section>
-{faq_block(s["faq"], title=f"About the {s['yd']} yard")}
-<section class="sec">
-  <div class="wrap">
-    <header class="sec-head"><p class="label">Other sizes</p><h2>Not the right one?</h2></header>
-    <div class="rate-table">{"".join(f'''<div class="rate-row"><img class="rate-thumb" src="{o["img"]}" alt="{o["yd"]} yard roll-off bin" loading="lazy"><p class="rate-size">{o["yd"]}<small>yard</small></p><p class="rate-best"><strong>{esc(o["best"])}</strong></p><div class="rate-prices-m"><p class="rate-price">${T(f"d{o['yd']}_13")}<small>1–3 days</small></p><p class="rate-price">${T(f"d{o['yd']}_47")}<small>4–7 days</small></p></div><a href="/dumpster-rental/{o["slug"]}/" class="btn btn-ghost">About the {o["yd"]} yd</a></div>''' for o in others)}</div>
-    <p class="rate-note">Junk gone today instead? <a href="/junk-removal/">Junk removal</a> is weekends only, ${T("junk")} flat. Hauling it yourself? <a href="/dump-trailer-rental/">Dump trailer</a>, ${T("trailer_day")} a day.</p>
-  </div>
-</section>
-''' + cta()
+        [("Home", "/"), ("Dumpsters & prices", "/#bins"), (f"{s['yd']} yard", path)],
+    ) + ticker() + sec("paper",
+        head(f'The {s["yd"]} yard', "Straight price.<br><em>Dump's included.</em>",
+             f'Delivery, pickup, the rental and the dump fee, in one number. Utah sales tax is added at checkout. Extra days are ${T("ext_day")} each; call before pickup to extend.')
+        + rate_table(only=s["slug"])
+    ) + sec("dark", f'''
+    <div class="two two--even">
+      <div>{head("What it takes", "Good for")}
+        {checks(esc(g) for g in s["good"])}
+      </div>
+      <div>{head("Before you book", "Three things")}
+        <ul class="points">
+          <li><div><strong>Where it goes</strong>{esc(s["fits"])} Tell us which side of the drive; drivers set it on boards if you want the concrete protected. On a public street, your city may want a permit; the form asks.</div></li>
+          <li><div><strong>What cannot go in</strong>Hazardous waste, wet paint and liquids, asbestos, propane and fuel. Tires, mattresses and appliances with refrigerant carry a handling fee. Heavy material (concrete, dirt, brick) has a weight limit; call first. <a href="/terms">The full list is on the terms page.</a></div></li>
+          <li><div><strong>How it is paid</strong>Online by card when you book. You get a confirmation text with your reference, a reminder the day before delivery and the day before pickup, and a text when it is done.</div></li>
+        </ul>
+      </div>
+    </div>''') + faq_block(s["faq"], title=f"About the {s['yd']} yard", tone="stone") + sec("paper",
+        head("Other sizes", "Not the right one?")
+        + f'\n    <div class="bins">{"".join(bin_card(o, about=True) for o in others)}\n    </div>'
+        + f'\n    <p class="note">Junk gone today instead? <a href="/junk-removal/">Junk removal</a> is weekends only, ${T("junk")} flat. Hauling it yourself? <a href="/dump-trailer-rental/">Dump trailer</a>, ${T("trailer_day")} a day.</p>'
+    ) + cta("stone")
     schemas = [
         ld({"@context": "https://schema.org", "@type": "Product", "name": f"{s['yd']} Yard Dumpster Rental", "description": desc,
             "image": SITE + s["img"], "brand": {"@type": "Brand", "name": BIZ["name"]},
@@ -650,9 +823,14 @@ for s in SIZES:
     urls.append((path, "0.9"))
 
 # service pages
+SIDE_CHECKS = {
+    "junk-removal": ["Weekends only", "Truck, crew, hauling and dump fee in one price", "One load; call for more"],
+    "dump-trailer-rental": ["1 to 14 days", "${{TRD:trailer_dep}} refundable deposit", "Pick up and return in West Haven"],
+    "bin-switch": ["Same-trip swap", "Any size that is free", "New bin billed as a normal rental"],
+}
 for s in SERVICES:
     path = f"/{s['slug']}/"
-    secs = "".join(f'<div class="prose-block"><h2>{esc(h)}</h2>{"".join(f"<p>{esc(p)}</p>" for p in ps)}</div>' for h, ps in s["sections"])
+    secs = "".join(f'\n        <div class="prose-block"><h2>{esc(h)}</h2>{"".join(f"<p>{esc(p)}</p>" for p in ps)}</div>' for h, ps in s["sections"])
     body = hero(
         f"{s['price']} {s['unit']}",
         s["h1"],
@@ -660,31 +838,14 @@ for s in SERVICES:
         s["img"],
         s["book"],
         "Book it online",
-    ) + ticker() + f'''
-<section class="sec">
-  <div class="wrap two">
-    <div class="prose">{secs}</div>
-    <aside class="side-card">
-      <p class="label">At a glance</p>
-      <p class="big-price">{s["price"]}<small>{esc(s["unit"])}</small></p>
-      <ul class="checks">
-        {"<li>Weekends only</li><li>Truck, crew, hauling and dump fee in one price</li><li>One load; call for more</li>" if s["slug"] == "junk-removal" else ""}
-        {"<li>1 to 14 days</li><li>${{TRD:trailer_dep}} refundable deposit</li><li>Pick up and return in West Haven</li>" if s["slug"] == "dump-trailer-rental" else ""}
-        {"<li>Same-trip swap</li><li>Any size that is free</li><li>New bin billed as a normal rental</li>" if s["slug"] == "bin-switch" else ""}
-      </ul>
-      <a href="{s["book"]}" class="btn btn-fill">Book it online</a>
-      <a href="{BIZ["tel"]}" class="side-call">or call {BIZ["phone"]}</a>
-    </aside>
-  </div>
-</section>
-{faq_block(s["faq"])}
-<section class="sec">
-  <div class="wrap">
-    <header class="sec-head"><p class="label">Bins &amp; rates</p><h2>Or rent a <em>bin</em>.</h2><p>Three sizes, dump fee included, priced by the day.</p></header>
-    {rate_table()}
-  </div>
-</section>
-''' + cta()
+        [("Home", "/"), (s["name"], path)],
+    ) + ticker() + sec("paper", f'''
+    <div class="two">
+      <div class="prose">{secs}
+      </div>{side_card("At a glance", f'{s["price"]}<small>{esc(s["unit"])}</small>', SIDE_CHECKS[s["slug"]], s["book"], "Book it online", BIZ["tel"], f"or call {BIZ['phone']}")}
+    </div>''') + faq_block(s["faq"], tone="dark") + sec("stone",
+        head("Bins &amp; rates", "Or rent a <em>bin</em>.", "Three sizes, dump fee included, priced by the day.") + rate_table()
+    ) + cta("paper")
     schemas = [
         ld({"@context": "https://schema.org", "@type": "Service", "name": s["name"], "serviceType": s["name"], "description": s["description"], "provider": PROVIDER,
             "areaServed": ["Weber County, Utah", "Morgan County, Utah", "Davis County, Utah", "Salt Lake County, Utah"],
@@ -699,13 +860,13 @@ for s in SERVICES:
 def city_card(c):
     mins = "the shop" if c["min"] == 0 else f"~{c['min']} min"
     if c["slug"] in RETIRED_CITIES:
-        return f'''<li><div class="city"><span class="city-name">{esc(c["name"])}</span><span class="city-min">{mins}</span><span class="city-line">{esc(c["line"])}</span></div></li>'''
-    return f'''<li><a href="/service-area/{c["slug"]}/" class="city"><span class="city-name">{esc(c["name"])}</span><span class="city-min">{mins}</span><span class="city-line">{esc(c["line"])}</span></a></li>'''
+        return f'''<li><div class="city"><span class="city__n">{esc(c["name"])}</span><span class="city__m">{mins}</span><span class="city__l">{esc(c["line"])}</span></div></li>'''
+    return f'''<li><a href="/service-area/{c["slug"]}/" class="city"><span class="city__n">{esc(c["name"])}</span><span class="city__m">{mins}{icon("i-chev", 14)}</span><span class="city__l">{esc(c["line"])}</span><span class="ridge"></span></a></li>'''
 
 hub_groups = []
 for county in ["Weber", "Davis", "Morgan", "Salt Lake"]:
     cs = [c for c in CITIES if c["county"] == county]
-    hub_groups.append(f'<h2 class="county-head">{county} County</h2><ul class="city-grid">{"".join(city_card(c) for c in cs)}</ul>')
+    hub_groups.append(f'\n    <div class="county"><h2 class="county__h">{county} County</h2><ul class="city-grid">{"".join(city_card(c) for c in cs)}</ul></div>')
 
 hub_body = hero(
     "Where we haul",
@@ -714,19 +875,13 @@ hub_body = hero(
     AREA_IMG,
     "/book",
     "Book online",
-) + ticker() + f'''
-<section class="sec">
-  <div class="wrap">{"".join(hub_groups)}
-    <p class="area-note">Not on the list? Call anyway. If a job is a long way out we will say so rather than waste your time.</p>
-  </div>
-</section>
-<section class="sec">
-  <div class="wrap">
-    <header class="sec-head"><p class="label">Bins &amp; rates</p><h2>Same price <em>everywhere</em>.</h2><p>Dump fee included. Utah sales tax at checkout.</p></header>
-    {rate_table()}
-  </div>
-</section>
-''' + cta()
+    [("Home", "/"), ("Service area", "/service-area/")],
+    pin=True,
+) + ticker() + sec("dark",
+    "".join(hub_groups) + '\n    <p class="note">Not on the list? Call anyway. If a job is a long way out we will say so rather than waste your time.</p>'
+) + sec("paper",
+    head("Bins &amp; rates", "Same price <em>everywhere</em>.", "Dump fee included. Utah sales tax at checkout.") + rate_table()
+) + cta("stone")
 write("service-area/index.html", page(
     "/service-area/",
     "Dumpster Rental Service Area: Weber, Davis, Morgan & Salt Lake County, UT | Triple R Dump",
@@ -748,6 +903,7 @@ for c in [x for x in CITIES if x["slug"] in KEPT_CITIES]:
     title = f"Dumpster Rental in {c['name']}, UT | 15, 20 & 25 Yard Bins, Dump Fee Included"
     desc = f"Roll-off dumpster rental in {c['name']}, Utah from Triple R Dump, {dist}. 15, 20 and 25 yard bins from ${T('d15_13')}, dump fee included, same-day delivery available. Book online or call {BIZ['phone']}."
     from_shop = "the shop" if c["min"] == 0 else f"~{c['min']} min from the shop"
+    paras = "".join(f"\n        <p>{esc(p)}</p>" for p in c["body"] + x["more"])
     body = hero(
         f"{c['county']} County · {from_shop}",
         f"Dumpster rental<br><em>in {esc(c['name'])}.</em>",
@@ -755,37 +911,20 @@ for c in [x for x in CITIES if x["slug"] in KEPT_CITIES]:
         AREA_IMG if c["min"] else HERO_IMG,
         "/book",
         "Book online",
-    ) + ticker() + f'''
-<section class="sec">
-  <div class="wrap two">
-    <div class="prose">
-      <header class="sec-head"><p class="label">{esc(c["name"])}</p><h2>What we haul <em>here</em>.</h2></header>
-      {"".join(f"<p>{esc(p)}</p>" for p in c["body"] + x["more"])}
-      <p>ZIP codes: {esc(x["zips"])}.{esc(covers)}</p>
-      <p>Same prices as West Haven, dump fee included. Utah sales tax at checkout. <a href="/faq/">Questions answered here.</a></p>
-    </div>
-    <aside class="side-card">
-      <p class="label">From the shop</p>
-      <p class="big-price">{"0" if c["min"] == 0 else c["min"]}<small>{"minutes, give or take; this is home" if c["min"] == 0 else "minutes, give or take"}</small></p>
-      <ul class="checks"><li>Same-day and next-day available</li><li>Driveway, lot or street (permit if the city asks)</li><li>Bins set on boards on request</li></ul>
-      <a href="/book" class="btn btn-fill">Book online</a>
-      <a href="{BIZ["tel"]}" class="side-call">or call {BIZ["phone"]}</a>
-    </aside>
-  </div>
-</section>
-<section class="sec">
-  <div class="wrap">
-    <header class="sec-head"><p class="label">Bins &amp; rates</p><h2>Straight prices.<br><em>Dump's included.</em></h2></header>
-    {rate_table()}
-    <p class="rate-note">Junk gone today? <a href="/junk-removal/">Junk removal</a>, weekends. Hauling it yourself? <a href="/dump-trailer-rental/">Dump trailer</a>, by the day. Bin filled early? <a href="/bin-switch/">Bin switch</a>, same trip.</p>
-  </div>
-</section>
-<section class="sec">
-  <div class="wrap">
-    <p class="area-note">Also serving {", ".join(f'<a href="/service-area/{n["slug"]}/">{esc(n["name"])}</a>' for n in near)}, and <a href="/service-area/">the rest of the four counties</a>.</p>
-  </div>
-</section>
-''' + faq_block(city_faq, title=f"Dumpster rental in {esc(c['name'])}: <em>questions</em>") + cta()
+        [("Home", "/"), ("Service area", "/service-area/"), (c["name"], path)],
+        pin=True,
+    ) + ticker() + sec("paper", f'''
+    <div class="two">
+      <div class="prose">
+        <header class="prose__head"><p class="kicker">{esc(c["name"])}</p><h2>What we haul <em>here</em>.</h2></header>{paras}
+        <p>ZIP codes: {esc(x["zips"])}.{esc(covers)}</p>
+        <p>Same prices as West Haven, dump fee included. Utah sales tax at checkout. <a href="/faq/">Questions answered here.</a></p>
+      </div>{side_card("From the shop", f'{"0" if c["min"] == 0 else c["min"]}<small>{"minutes, give or take; this is home" if c["min"] == 0 else "minutes, give or take"}</small>', ["Same-day and next-day available", "Driveway, lot or street (permit if the city asks)", "Bins set on boards on request"], "/book", "Book online", BIZ["tel"], f"or call {BIZ['phone']}")}
+    </div>''') + sec("dark",
+        head("Bins &amp; rates", "Straight prices.<br><em>Dump's included.</em>") + rate_table()
+        + '\n    <p class="note">Junk gone today? <a href="/junk-removal/">Junk removal</a>, weekends. Hauling it yourself? <a href="/dump-trailer-rental/">Dump trailer</a>, by the day. Bin filled early? <a href="/bin-switch/">Bin switch</a>, same trip.</p>'
+        + f'\n    <p class="note">Also serving {", ".join(f"<a href=\"/service-area/{n['slug']}/\">{esc(n['name'])}</a>" for n in near)}, and <a href="/service-area/">the rest of the four counties</a>.</p>'
+    ) + faq_block(city_faq, title=f"Dumpster rental in {esc(c['name'])}: <em>questions</em>", tone="stone") + cta("paper")
     schemas = [
         ld({"@context": "https://schema.org", "@type": "Service", "name": f"Dumpster rental in {c['name']}, UT", "serviceType": "Roll-off dumpster rental", "provider": PROVIDER,
             "areaServed": {"@type": "City", "name": c["name"], "containedInPlace": {"@type": "AdministrativeArea", "name": f"{c['county']} County, Utah"}}, "url": SITE + path}),
@@ -803,14 +942,10 @@ faq_body = hero(
     P + "05_bin_rental_2.jpeg",
     "/book",
     "Book online",
-) + ticker() + faq_block(FAQ, title="Before you book") + f'''
-<section class="sec">
-  <div class="wrap">
-    <header class="sec-head"><p class="label">Bins &amp; rates</p><h2>Straight prices.<br><em>Dump's included.</em></h2></header>
-    {rate_table()}
-  </div>
-</section>
-''' + cta()
+    [("Home", "/"), ("FAQ", "/faq/")],
+) + ticker() + faq_block(FAQ, title="Before you book", tone="paper") + sec("dark",
+    head("Bins &amp; rates", "Straight prices.<br><em>Dump's included.</em>") + rate_table()
+) + cta("stone")
 write("faq/index.html", page(
     "/faq/",
     "Dumpster Rental FAQ: Sizes, Prices, What Can Go In | Triple R Dump, West Haven UT",
@@ -830,34 +965,23 @@ bbb_body = hero(
     P + "07_bin_rental_4.jpeg",
     "/book",
     "Book online",
-) + ticker() + f'''
-<section class="sec">
-  <div class="wrap two">
-    <div class="prose">
-      <div class="prose-block"><h2>What accreditation means</h2>
-        <p>The BBB accredits businesses that meet its Standards for Trust and keep meeting them: advertise honestly, tell the truth about prices, honor what was promised, and answer when a customer has a problem. Accreditation is reviewed, not bought once and kept forever; a business that stops living up to it loses it.</p>
-        <p>For a dumpster company that means the number on the page is the number on your card, the dump fee is included like the site says, and the fees for the rare extras are written down before you book, not discovered after.</p></div>
-      <div class="prose-block"><h2>If something goes wrong</h2>
-        <p>Call first; the person who answers is the owner and he would rather fix it today than read about it later. But accreditation means you do not have to take our word for that. Our BBB profile is a public channel we are obligated to answer, with our complaint history and current rating in the open.</p></div>
-      <div class="prose-block"><h2>Check for yourself</h2>
-        <p>The seal here is served by the BBB itself, not by us; it always shows our current standing, and it links straight to <a href="{BBB_PROFILE}" target="_blank" rel="noopener nofollow">our profile on bbb.org</a>. Reviews, rating, history: all of it is theirs to publish, not ours to edit.</p></div>
-    </div>
-    <aside class="side-card">
-      <p class="label">Verified by the BBB</p>
-      <a href="{BBB_PROFILE}#sealclick" target="_blank" rel="noopener nofollow"><img class="bbb-seal" src="{BBB_SEAL}" alt="Triple R Dump BBB Business Review" width="250" height="52" loading="lazy"></a>
-      <ul class="checks"><li>Accredited business</li><li>Live rating, straight from bbb.org</li><li>Public complaint channel</li></ul>
-      <a href="{BBB_PROFILE}" target="_blank" rel="noopener nofollow" class="btn btn-fill">See our BBB profile</a>
-      <a href="{BIZ["tel"]}" class="side-call">or call {BIZ["phone"]}</a>
-    </aside>
-  </div>
-</section>
-<section class="sec">
-  <div class="wrap">
-    <header class="sec-head"><p class="label">Bins &amp; rates</p><h2>Straight prices.<br><em>Dump's included.</em></h2></header>
-    {rate_table()}
-  </div>
-</section>
-''' + cta()
+    [("Home", "/"), ("BBB accredited", "/bbb/")],
+) + ticker() + sec("paper", f'''
+    <div class="two">
+      <div class="prose">
+        <div class="prose-block"><h2>What accreditation means</h2>
+          <p>The BBB accredits businesses that meet its Standards for Trust and keep meeting them: advertise honestly, tell the truth about prices, honor what was promised, and answer when a customer has a problem. Accreditation is reviewed, not bought once and kept forever; a business that stops living up to it loses it.</p>
+          <p>For a dumpster company that means the number on the page is the number on your card, the dump fee is included like the site says, and the fees for the rare extras are written down before you book, not discovered after.</p></div>
+        <div class="prose-block"><h2>If something goes wrong</h2>
+          <p>Call first; the person who answers is the owner and he would rather fix it today than read about it later. But accreditation means you do not have to take our word for that. Our BBB profile is a public channel we are obligated to answer, with our complaint history and current rating in the open.</p></div>
+        <div class="prose-block"><h2>Check for yourself</h2>
+          <p>The seal here is served by the BBB itself, not by us; it always shows our current standing, and it links straight to <a href="{BBB_PROFILE}" target="_blank" rel="noopener nofollow">our profile on bbb.org</a>. Reviews, rating, history: all of it is theirs to publish, not ours to edit.</p></div>
+      </div>{side_card("Verified by the BBB", "", ["Accredited business", "Live rating, straight from bbb.org", "Public complaint channel"], BBB_PROFILE, "See our BBB profile", BIZ["tel"], f"or call {BIZ['phone']}",
+                       extra=f'<a class="sidec__seal" href="{BBB_PROFILE}#sealclick" target="_blank" rel="noopener nofollow"><img class="bbb-seal" src="{BBB_SEAL}" alt="Triple R Dump BBB Business Review" width="250" height="52" loading="lazy"></a>',
+                       btn_attrs=' target="_blank" rel="noopener nofollow"')}
+    </div>''') + sec("dark",
+    head("Bins &amp; rates", "Straight prices.<br><em>Dump's included.</em>") + rate_table()
+) + cta("stone")
 write("bbb/index.html", page(
     "/bbb/",
     "BBB Accredited Business | Triple R Dump, West Haven UT",
@@ -881,39 +1005,26 @@ contact_body = hero(
     HERO_IMG,
     "/book",
     "Book online",
-) + ticker() + f'''
-<section class="sec">
-  <div class="wrap two">
-    <div class="prose">
-      <div class="prose-block"><h2>Call or text</h2>
-        <p><a href="{BIZ["tel"]}">{BIZ["phone"]}</a>. Calls get answered by the person who books the jobs and drives the trucks; texts get answered between them. Have the drop-off address, the dates and a rough idea of what you are tossing, and it is a two-minute conversation.</p></div>
-      <div class="prose-block"><h2>Email</h2>
-        <p><a href="mailto:{BIZ["email"]}">{BIZ["email"]}</a> works for quotes, commercial accounts, paperwork and anything with an attachment. For a bin this week, the phone is faster.</p></div>
-      <div class="prose-block"><h2>The shop</h2>
-        <p>{BIZ["address"]}. That is where the trucks and trailers live; dump trailer pickups and returns happen here. Directions: <a href="{MAPS_G}" target="_blank" rel="noopener">Google Maps</a> or <a href="{MAPS_A}" target="_blank" rel="noopener">Apple Maps</a>.</p></div>
-      <div class="prose-block"><h2>Book without calling</h2>
-        <p>The <a href="/book">booking page</a> takes the size, the dates and the address, checks that a bin is actually free, and takes payment by card. It is the same calendar we run the trucks from. Junk removal books weekends only; everything else, any day.</p></div>
-    </div>
-    <aside class="side-card">
-      <p class="label">Reach us</p>
-      <p class="big-price contact-num">{BIZ["phone"]}<small>call or text, the owner answers</small></p>
-      <p class="side-proof"><a href="{BIZ["gmaps"]}" target="_blank" rel="noopener"><span class="g-stars" aria-hidden="true">★★★★★</span> <strong data-trd-num="g_rating">5.0</strong> from <span data-trd-num="g_count">18</span> Google reviews</a></p>
-      <ul class="checks"><li>The owner answers</li><li>Same-day delivery most days</li><li>Booking online, day or night</li></ul>
-      <a href="{BIZ["tel"]}" class="btn btn-fill">Call {BIZ["phone"]}</a>
-      <a href="/book" class="side-call">or book online</a>
-    </aside>
-  </div>
-</section>
-<section class="sec">
-  <div class="wrap">
-    <header class="sec-head"><p class="label">Where we haul</p><h2>Four counties,<br><em>one shop.</em></h2><p>Weber, Morgan, Davis and Salt Lake County, from West Haven. <a href="/service-area/">Every city we serve is here.</a></p></header>
+    [("Home", "/"), ("Contact", "/contact/")],
+) + ticker() + sec("paper", f'''
+    <div class="two">
+      <div class="prose">
+        <div class="prose-block"><h2>Call or text</h2>
+          <p><a href="{BIZ["tel"]}">{BIZ["phone"]}</a>. Calls get answered by the person who books the jobs and drives the trucks; texts get answered between them. Have the drop-off address, the dates and a rough idea of what you are tossing, and it is a two-minute conversation.</p></div>
+        <div class="prose-block"><h2>Email</h2>
+          <p><a href="mailto:{BIZ["email"]}">{BIZ["email"]}</a> works for quotes, commercial accounts, paperwork and anything with an attachment. For a bin this week, the phone is faster.</p></div>
+        <div class="prose-block"><h2>The shop</h2>
+          <p>{BIZ["address"]}. That is where the trucks and trailers live; dump trailer pickups and returns happen here. Directions: <a href="{MAPS_G}" target="_blank" rel="noopener">Google Maps</a> or <a href="{MAPS_A}" target="_blank" rel="noopener">Apple Maps</a>.</p></div>
+        <div class="prose-block"><h2>Book without calling</h2>
+          <p>The <a href="/book">booking page</a> takes the size, the dates and the address, checks that a bin is actually free, and takes payment by card. It is the same calendar we run the trucks from. Junk removal books weekends only; everything else, any day.</p></div>
+      </div>{side_card("Reach us", f'<a href="{BIZ["tel"]}">{BIZ["phone"]}</a><small>call or text, the owner answers</small>', ["The owner answers", "Same-day delivery most days", "Booking online, day or night"], BIZ["tel"], f"{icon('i-phone')}Call {BIZ['phone']}", "/book", "or book online",
+                       big_cls=" sidec__big--num",
+                       extra=f'\n      <p class="sidec__proof"><a href="{BIZ["gmaps"]}" target="_blank" rel="noopener">{icon("i-g", 16)}{stars(15)} <strong data-trd-num="g_rating">5.0</strong> from <span data-trd-num="g_count">18</span> Google reviews</a></p>')}
+    </div>''') + sec("dark", head("Where we haul", "Four counties,<br><em>one shop.</em>", 'Weber, Morgan, Davis and Salt Lake County, from West Haven. <a href="/service-area/">Every city we serve is here.</a>') + f'''
     <div class="map-embed">
       <iframe src="{MAPS_EMBED}" title="Map: Triple R Dump, {BIZ["address"]}" loading="lazy" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
       <p class="map-cap">{BIZ["address"]} · <a href="{MAPS_G}" target="_blank" rel="noopener">Directions</a></p>
-    </div>
-  </div>
-</section>
-''' + cta()
+    </div>''') + cta("stone")
 write("contact/index.html", page(
     "/contact/",
     "Contact Triple R Dump | Call, Text or Book Online | West Haven, UT",
@@ -929,7 +1040,90 @@ write("contact/index.html", page(
 ))
 urls.append(("/contact/", "0.6"))
 
-# sitemap + robots
+# /social/ — the link-in-bio page (Instagram etc.). Built for one thumb on one
+# phone, two columns on desktop. Self-contained styles (does NOT use pages.css).
+# noindex, not in the sitemap. The video's still is ALSO an <img src> so
+# build_deploy.py (which scans src=/href=/srcset=) ships the jpg.
+def social_row(href, ico, label, sub, ext=False):
+    tgt = ' target="_blank" rel="noopener"' if ext else ""
+    return (f'\n      <a class="row" href="{href}"{tgt}><span class="rowI">{icon(ico, 20)}</span><span class="rowT"><b>{label}</b><small>{sub}</small></span>'
+            f'<span class="rowC" aria-hidden="true">{icon("i-chev")}</span></a>')
+
+social_inner = f'''<main class="page">
+  <div class="col">
+    <section class="clip" aria-label="Dumpster rental, dump fee included">
+      <img class="still" src="/assets/dump-loop.jpg" alt="">
+      <video class="video" src="/assets/dump-loop.mp4" poster="/assets/dump-loop.jpg" muted loop playsinline autoplay preload="metadata"></video>
+      <img class="logo" src="/assets/apple-touch-icon.png" alt="Triple R Dump" width="180" height="180">
+      <div class="txt">
+        <p class="where">West Haven, UT · Weber, Davis, Morgan &amp; Salt Lake</p>
+        <h1>Need a bin? <em>Dump fee included.</em></h1>
+        <p class="sub">15, 20 and 25 yard roll-off dumpsters, junk removal and dump trailers. Family owned, and the owner answers.</p>
+        <a class="rate" href="{BIZ["gmaps"]}" target="_blank" rel="noopener">{stars(14)}<b data-trd-num="g_rating">5.0</b> <span data-trd-num="g_count">18</span> Google reviews</a>
+      </div>
+    </section>
+
+    <div class="side">
+    <nav class="keys" aria-label="Reach us">
+      <a class="key" href="{BIZ["tel"]}">{icon("i-phone", 24)}Call</a>
+      <a class="key" href="{BIZ["gmaps"]}" target="_blank" rel="noopener">{icon("i-pin", 24)}Google</a>
+      <a class="key" href="{BIZ["instagram"]}" target="_blank" rel="noopener">{icon("i-ig", 24)}Instagram</a>
+    </nav>
+
+    <a class="go" href="/book">
+      <span class="goT"><b>Book a dumpster online</b><small>Pick a size and a date, pay by card. From ${T("d15_13")}.</small></span>
+      <span class="goArrow" aria-hidden="true">{icon("i-chev", 20)}</span>
+    </a>
+
+    <nav class="list" aria-label="More links">{social_row("/#bins", "i-bin", "Bin sizes &amp; prices", "15, 20 and 25 yard, dump fee included")}{social_row("/junk-removal/", "i-couch", "Junk removal", "We load it and haul it. Weekends, $" + T("junk") + " flat")}{social_row("/dump-trailer-rental/", "i-trailer", "Dump trailer rental", "By the day, for your own runs")}{social_row("/#work", "i-cam", "Our work", "Real bins on real driveways")}{social_row("/", "i-web", "Our website", "Every bin, every service, every town")}{social_row(BIZ["facebook"], "i-fb", "Facebook", "Triple R Dump", ext=True)}{social_row("/bbb/", "i-shield", "BBB accredited", "Our Better Business Bureau profile")}
+    </nav>
+
+    <a class="badge" href="{BIZ["tel"]}">
+      <span class="badgeI">{icon("i-clock", 24)}</span>
+      <span><b>Need a bin today?</b> Same-day delivery most days. Call {BIZ["phone"]} and {BIZ["owner"]} picks up.</span>
+    </a>
+
+    <footer class="foot">
+      <p>Triple R Dump · West Haven, Utah · Weber, Davis, Morgan &amp; Salt Lake County</p>
+      <p><a href="https://getkellan.com" target="_blank" rel="noopener">Made by Kellan</a></p>
+    </footer>
+    </div>
+  </div>
+</main>'''
+
+write("social/index.html", f'''<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Triple R Dump · Links</title>
+  <meta name="description" content="Book a dumpster online, call the owner, or find Triple R Dump on Google, Instagram and Facebook. Roll-off dumpster rental in West Haven, Utah, dump fee included.">
+  <meta name="robots" content="noindex, follow">
+  <link rel="canonical" href="{SITE}/social/">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" href="/assets/favicon-32x32.png" type="image/png" sizes="32x32">
+  <link rel="icon" href="/assets/favicon-16x16.png" type="image/png" sizes="16x16">
+  <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png" sizes="180x180">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;0,800;1,700;1,800&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+{SOCIAL_CSS}</style>
+</head>
+<body>
+{sprite(social_inner)}
+{social_inner}
+<script>
+  // Fade the loop in over the still only once it is actually playing.
+  var v = document.querySelector('.video');
+  v.addEventListener('playing', function () {{ v.classList.add('is-playing'); }});
+  if (v.play) {{ var p = v.play(); if (p && p.catch) p.catch(function () {{}}); }}
+</script>
+</body>
+</html>
+''')
+
+# sitemap + robots (/social/ is deliberately NOT in the sitemap: noindex)
 write("sitemap.xml", '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' + "".join(
     f"  <url>\n    <loc>{SITE}{p}</loc>\n    <lastmod>{TODAY}</lastmod>\n    <changefreq>monthly</changefreq>\n    <priority>{pr}</priority>\n  </url>\n" for p, pr in urls) + "</urlset>\n")
 write("robots.txt", "User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /api/\nDisallow: /booked\nDisallow: /r/\nDisallow: /inv/\nDisallow: /calendar/\n\nSitemap: " + SITE + "/sitemap.xml\n")

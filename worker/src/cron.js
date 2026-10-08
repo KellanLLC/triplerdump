@@ -11,6 +11,7 @@
 //
 // ONCE A DAY, at the reminder hour (10:00 America/Denver by default)
 //   5. runReminderSweep        reminders.js delivery + pickup reminders, "job never closed" nudge
+//   7. prune site_events      (inline)     website activity rows older than 400 days
 //   6. runInvoiceOverdueReminders invoice.js late-payment texts, then tell the owner
 //
 // Each job runs on its own: one failing never stops the others.
@@ -37,5 +38,6 @@ export async function runScheduled(env) {
   if (localHour === (Number(S.reminderHourLocal) || 10)) {
     await run("reminders", runReminderSweep(env, S));
     await run("invoice overdue", runInvoiceOverdueReminders(env, S));
+    await run("prune site events", env.DB.prepare("DELETE FROM site_events WHERE ts < ?1").bind(new Date(Date.now() - 400 * 864e5).toISOString()).run());
   }
 }

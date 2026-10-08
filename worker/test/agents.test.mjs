@@ -81,18 +81,18 @@ test("homepage: Accept text/markdown -> Markdown body, live prices, Vary: Accept
   const md = await res.text();
   assert.ok(md.startsWith("---\ntitle: "), "front matter first");
   assert.match(md, /^url: https:\/\/www\.triplerdump\.com\/$/m);
-  assert.match(md, /^# Family Dumpster Rental in West Haven, Ogden & Roy$/m);
-  assert.match(md, /^## Straight prices\. Dump's included\.$/m);
-  assert.match(md, /^\$299 1–3 days$/m, "D1 price substituted before conversion");
-  assert.doesNotMatch(md, /\$275 1–3 days/);
-  assert.match(md, /\[Book 15 yd\]\(https:\/\/www\.triplerdump\.com\/book\?size=15\)/, "links absolute");
-  assert.match(md, /\[call to confirm\]\(tel:8015643164\)\./);
+  assert.match(md, /^# Dumpster rental in West Haven, Ogden & Roy\.$/m);
+  assert.match(md, /^## Straight prices\. Dump fee included\.$/m);
+  assert.match(md, /^\*\*\$299\*\* 1–3 days$/m, "D1 price substituted before conversion");
+  assert.doesNotMatch(md, /\$350\*\* 1–3 days/);
+  assert.match(md, /\[Book the 15 yard\]\(https:\/\/www\.triplerdump\.com\/book\?size=15\)/, "links absolute");
+  assert.match(md, /\[Text a photo of the pile\]\(sms:8015643164\)/);
   assert.match(md, /https:\/\/www\.triplerdump\.com\/llms\.txt/);
   assert.doesNotMatch(md, /<[a-z\/!]/i, "no HTML left");
   assert.doesNotMatch(md, /\{\{TRD:|data-trd|&amp;|&nbsp;/);
   assert.doesNotMatch(md, /padding-block|grid-template|asphalt-tear/, "no CSS leaked");
   assert.equal(md.split("Same-Day Delivery Available").length - 1, 0, "ticker skipped");
-  assert.doesNotMatch(md, /Made by Kellan|nav-toggle|Open menu/, "chrome skipped");
+  assert.doesNotMatch(md, /Made by Kellan|Dumpsters & prices/, "header + footer chrome skipped");
 });
 
 test("homepage: browsers still get the HTML page, now with Vary: Accept", async () => {
@@ -139,7 +139,7 @@ test("D1 outage: HTML unchanged (code-default prices), Markdown still served", a
   assert.match(await html.text(), /data-trd="d15_13">\$300</, "code-default price");
   const md = await get("/", "text/markdown", makeEnv({ settingsFail: true }));
   assert.match(md.headers.get("content-type"), /^text\/markdown/);
-  assert.match(await md.text(), /^# Family Dumpster Rental/m);
+  assert.match(await md.text(), /^# Dumpster rental in West Haven/m);
 });
 
 test("404: Markdown body for agents, JSON as before for everyone else", async () => {
@@ -210,7 +210,7 @@ test("homepage metadata: canonical, lang, og:image, og:type", () => {
   assert.match(img[1], /^https:\/\/www\.triplerdump\.com\//, "absolute URL");
   // The image must be one the deploy ships (referenced elsewhere in index.html).
   const rel = img[1].replace("https://www.triplerdump.com/", "");
-  assert.ok(html.includes("url('" + rel + "')"), "og:image is the hero photo build_deploy.py copies");
+  assert.ok(html.includes('src="' + rel + '"'), "og:image is the hero photo build_deploy.py copies");
 });
 
 test("htmlToMarkdown: tables, entities, nested skips", () => {

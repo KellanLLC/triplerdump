@@ -9,7 +9,7 @@ import { loadSettings } from "./settings.js";
 import { reviewNumbers, reviewsJson } from "./reviews.js";
 import { prefersMarkdown, pageMarkdown, markdownNotFoundResponse, varyAccept, MARKDOWN_TYPE } from "./agents.js";
 
-const MARKETING_RE = /^\/(index\.html)?$|^\/(dumpster-rental|junk-removal|dump-trailer-rental|bin-switch|service-area|faq|bbb|contact)(\/|$)/;
+const MARKETING_RE = /^\/(index\.html)?$|^\/(dumpster-rental|junk-removal|dump-trailer-rental|bin-switch|service-area|faq|bbb|contact|social)(\/|$)/;
 
 export function isMarketingPath(p) {
   return MARKETING_RE.test(p);
@@ -77,6 +77,14 @@ export function rewriteReviews(body, g) {
   return out;
 }
 
+// Anonymous activity counter (assets/t.js -> /api/t) on every marketing page,
+// so the generated pages need no template change. Skipped if already present.
+export function addTracking(body) {
+  if (body.includes("/t.js")) return body;
+  const i = body.lastIndexOf("</body>");
+  return i < 0 ? body : body.slice(0, i) + '<script src="/assets/t.js" defer></script>' + body.slice(i);
+}
+
 export async function serveMarketingPage(env, request) {
   // Strip validators so ASSETS can't answer 304 (a 304 would let a browser keep
   // HTML whose prices changed while the underlying asset did not).
@@ -113,6 +121,8 @@ export async function serveMarketingPage(env, request) {
   if (md) {
     body = pageMarkdown(body, request.url, S);
     h.set("content-type", MARKDOWN_TYPE);
+  } else {
+    body = addTracking(body);
   }
   return new Response(request.method === "HEAD" ? null : body, { status: 200, headers: h });
 }

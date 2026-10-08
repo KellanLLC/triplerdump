@@ -46,6 +46,11 @@ async function smoke(base, { withBooking }) {
     ["/api/availability", "GET", null, 200],
     ["/admin", "GET", null, 200],
     ["/admin/login", "POST", "password=definitely-wrong-" + Date.now(), 401],
+    ["/", "GET", null, 200],
+    ["/social/", "GET", null, 200],
+    ["/dumpster-rental/20-yard/", "GET", null, 200],
+    ["/contact/", "GET", null, 200],
+    ["/api/t", "POST", '{"t":"smoke"}', 204], // not an allowed type: answers 204, writes nothing
   ];
   for (const [p, m, body, want] of checks) {
     let status = "ERR";
@@ -113,7 +118,17 @@ console.log("\n4/5 deploying", id, "to 100%...");
 console.log("    " + (sh(`npx wrangler versions deploy ${id}@100% --yes`).match(/SUCCESS.*/)?.[0] || "deployed"));
 
 console.log("\n5/5 re-checking the live site...");
-if (await smoke(SITE, { withBooking: false })) {
+// Cloudflare's edge takes up to ~a minute to serve a newly deployed version, so a
+// route that only exists in the NEW version (e.g. a page added in this deploy) can
+// 404 right after the switch. Retry for up to ~2 minutes before calling it a
+// failure; a real breakage still fails every attempt and is rolled back.
+let liveBad = await smoke(SITE, { withBooking: false });
+for (let i = 1; liveBad && i <= 6; i++) {
+  console.log(`    ${liveBad} check(s) failed - edge may still be switching over, retry ${i}/6 in 20s...`);
+  await new Promise((r) => setTimeout(r, 20000));
+  liveBad = await smoke(SITE, { withBooking: false });
+}
+if (liveBad) {
   if (prev) { console.error("\nLIVE CHECK FAILED - rolling back to " + prev); console.log(sh(`npx wrangler rollback ${prev} --yes --message "auto-rollback by deploy.mjs"`).match(/SUCCESS.*/)?.[0]); }
   else console.error("\nLIVE CHECK FAILED and previous version unknown - roll back by hand: npx wrangler rollback <id>");
   process.exit(4);

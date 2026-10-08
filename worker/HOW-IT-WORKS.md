@@ -29,6 +29,9 @@ after; the exact API call is in the top of `CLAUDE.md`.
 | `booked.js` | The "you're booked" page after paying. |
 | `terms.js` | The `/terms` page (fees come from settings). |
 | `marketing.js` | Puts live prices into the website pages; one-URL-per-page redirects. |
+| `page.js` | The `/book` page: 4 steps, order summary, custom dropdowns + calendar, address lookup, missing-fields popup. Posts to `/api/book` (`booking.js`). |
+| `icons.js` | Icon sprite for `/book`, generated from `assets/icons/` (Phosphor Icons, MIT). |
+| `reviews.js` | Google rating/count/review cards on the site (D1 `google_reviews`; daily Places refresh once a key exists). |
 | `agents.js` | For AI agents: pages as Markdown when asked (`Accept: text/markdown`), Markdown 404s, and `/llms.txt` (live prices + when to use us + how to book). Tests: `npm test`. |
 | `ical.js` | Calendar feed of jobs. |
 | `config.js`, `util.js` | Small shared helpers. |
@@ -82,6 +85,7 @@ Never asked twice for a review: anyone who already rated, or was asked in the la
 | `invoices` | Every invoice, Stripe ids, paid date, review + late-payment state |
 | `reviews` | Star ratings and feedback |
 | `settings` | Everything saved from the admin panel |
+| `site_events` | Anonymous website activity: page views + Book/Call/Text taps (no cookies, no IPs). Feeds the admin "Website activity" card; rows older than 400 days are pruned daily |
 
 Schema: `worker/schema.sql`. Changes go in `worker/migrations/` and must be applied
 to the live database **before** deploying code that uses them.

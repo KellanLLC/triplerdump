@@ -27,7 +27,7 @@ def srcset_refs(html):
     return out
 
 refs = sorted(
-    set(re.findall(r'(?:src|href)="((?!http|#|tel|mailto|/)[^"]+)"', src_html))
+    set(re.findall(r'(?:src|href)="((?!http|#|tel:|mailto:|sms:|/)[^"]+)"', src_html))
     | set(re.findall(r"url\('([^')]+)'\)", src_html))
     | srcset_refs(src_html)
 )
@@ -117,7 +117,7 @@ for ref in refs:
 # /uploads/...) so one page works from any depth; the scan below resolves that
 # leading slash against the repo root and ships anything index.html did not
 # already cover, through the same recompression path.
-PAGE_DIRS = ["dumpster-rental", "junk-removal", "dump-trailer-rental", "bin-switch", "service-area", "faq", "bbb", "contact"]
+PAGE_DIRS = ["dumpster-rental", "junk-removal", "dump-trailer-rental", "bin-switch", "service-area", "faq", "bbb", "contact", "social"]
 PAGE_FILES = ["pages.css", "sitemap.xml", "robots.txt"]
 page_refs = set()
 for d in PAGE_DIRS:

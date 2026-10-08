@@ -63,8 +63,8 @@ test("defaults: 5.0 from 18, seven cards, settings carry them", async () => {
 
 test("homepage HTML: live rating/count everywhere + review JSON, script-safe", async () => {
   const html = await (await get("/", env([{ key: "google_reviews", value: JSON.stringify(LIVE) }]))).text();
-  assert.equal((html.match(/data-trd-num="g_rating">4\.9</g) || []).length, 3, "hero, reviews, CTA");
-  assert.equal((html.match(/data-trd-num="g_count">23</g) || []).length, 3);
+  assert.equal((html.match(/data-trd-num="g_rating">4\.9</g) || []).length, 4, "hero, trust bar, score card, facts");
+  assert.equal((html.match(/data-trd-num="g_count">23</g) || []).length, 4);
   assert.doesNotMatch(html, /data-trd-num="g_count">18</);
   const json = html.match(/<script type="application\/json" id="trd-reviews">([\s\S]*?)<\/script>/)[1];
   assert.doesNotMatch(json, /<\/script>/i, "no breakout");
@@ -76,7 +76,7 @@ test("homepage HTML: live rating/count everywhere + review JSON, script-safe", a
 
 test("homepage HTML with no saved reviews: defaults (5.0 / 18) filled in", async () => {
   const html = await (await get("/", env())).text();
-  assert.equal((html.match(/data-trd-num="g_count">18</g) || []).length, 3);
+  assert.equal((html.match(/data-trd-num="g_count">18</g) || []).length, 4);
   const data = JSON.parse(html.match(/id="trd-reviews">([\s\S]*?)<\/script>/)[1]);
   assert.equal(data.reviews.length, 7);
   assert.equal(data.reviews[0].name, "Connie Collard");
@@ -154,14 +154,20 @@ test("reviewsJson escapes < so the block can't close early", () => {
   assert.doesNotMatch(reviewsJson(mergeGoogleReviews(LIVE)), /</);
 });
 
-test("landing page: Book Now in nav, drawer and hero; proof row; map; JSON block", () => {
-  assert.match(HOME, /<ul class="nav-inline">[\s\S]*?<a href="\/book" class="btn btn-fill">Book Now<\/a>[\s\S]*?<\/ul>/);
-  assert.match(HOME, /<div class="nav-drawer"[\s\S]*?<a href="\/book" class="btn btn-fill">Book Now<\/a>/);
-  assert.match(HOME, /<div class="hero-actions">\s*<a href="\/book" class="btn btn-fill">Book Now<\/a>/);
-  assert.match(HOME, /<ul class="hero-proof"[\s\S]*?Google[\s\S]*?BBB[\s\S]*?15 years/);
-  assert.match(HOME, /<div class="area-media area-map reveal">\s*<iframe src="https:\/\/www\.google\.com\/maps\/embed\?pb=[^"]+0x73bb4ed1504930b7[^"]*" title="Map: Triple R Dump[^"]*" loading="lazy"/);
+test("landing page: Book in header + hero, rate card, proof, map, reviews JSON, tracking", () => {
+  assert.match(HOME, /<header class="hdr"[\s\S]*?<a class="btn" href="\/book">Book a dumpster<\/a>[\s\S]*?<\/header>/);
+  assert.match(HOME, /<div class="hero__acts">\s*<a class="btn btn--lg" href="\/book">/);
+  assert.match(HOME, /<aside class="rate[\s\S]*?href="\/book\?size=15"[\s\S]*?href="\/book\?size=20"[\s\S]*?href="\/book\?size=25"/);
+  assert.match(HOME, /<ul class="hero__trust">[\s\S]*?Dump fee included[\s\S]*?BBB accredited/);
+  assert.match(HOME, /<div class="map rv-in">\s*<iframe src="https:\/\/www\.google\.com\/maps\/embed\?pb=[^"]+0x73bb4ed1504930b7[^"]*" title="Map: Triple R Dump[^"]*" loading="lazy"/);
   assert.match(HOME, /<script type="application\/json" id="trd-reviews">\{\}<\/script>/);
-  assert.match(HOME, /href="https:\/\/www\.google\.com\/maps\?cid=8339345795908710583"[^>]*>Read all reviews on Google/);
+  assert.match(HOME, /href="https:\/\/www\.google\.com\/maps\?cid=8339345795908710583">Read them on Google/);
+  assert.match(HOME, /<script src="assets\/t\.js" defer><\/script>/);
+  assert.match(HOME, /href="\/social\/"/);
+  assert.match(HOME, /<link rel="stylesheet" href="pages\.css">/);
+  assert.doesNotMatch(HOME, /_mock|mockflag|\.\.\/deploy|every one of them five stars|Every one is five stars|refund 48/i);
+  // every price on the page is a live marker
+  assert.equal((HOME.match(/data-trd="(d15_13|d15_47|d20_13|d20_47|d25_13|d25_47|junk|trailer_day|trailer_dep|binswitch|ext_day)"/g) || []).length, 14);
 });
 
 test("contact page: map embed + directions, built from build_pages.py", () => {

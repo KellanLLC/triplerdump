@@ -55,7 +55,7 @@ import { MAPS_URL } from "./reviews.js";
 // drawer, sticky call pill), decoration (aria-hidden), and the ticker, whose
 // highlights are repeated twice for the scroll loop and appear in the copy anyway.
 const SKIP_TAGS = new Set(["head", "script", "style", "noscript", "svg", "template", "nav", "footer", "button", "form", "iframe", "select", "textarea"]);
-const SKIP_CLASSES = ["ticker", "nav-drawer", "call-pill", "hazard"];
+const SKIP_CLASSES = ["ticker", "nav-drawer", "call-pill", "hazard", "hdr", "callbar", "mq", "tape"];
 const VOID_TAGS = new Set(["area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source", "track", "wbr"]);
 const BLOCK_TAGS = new Set(["p", "div", "section", "header", "main", "article", "aside", "ul", "ol", "table", "tr", "blockquote", "figure", "figcaption", "dl", "dt", "dd", "details", "summary"]);
 

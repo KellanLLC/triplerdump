@@ -15,6 +15,7 @@ import { createInvoice, refreshInvoiceStatus, voidInvoice, resendInvoice, parseL
 import { isMarketingPath, marketingRedirect, serveMarketingPage } from "./marketing.js";
 import { prefersMarkdown, markdownNotFoundResponse, renderLlmsTxt, varyAccept } from "./agents.js";
 
+const SITE_EVENT_TYPES = new Set(["view", "book_click", "call_click", "text_click"]);
 const cors = () => ({ "access-control-allow-origin": "*", "access-control-allow-methods": "GET,POST,OPTIONS", "access-control-allow-headers": "content-type" });
 const json = (d, s = 200) => new Response(JSON.stringify(d), { status: s, headers: { "content-type": "application/json; charset=utf-8", ...cors() } });
 const html = (b, s = 200, extra = {}) => new Response(b, { status: s, headers: { "content-type": "text/html; charset=utf-8", ...extra } });
@@ -91,6 +92,23 @@ async function handle(request, env) {
         return serveMarketingPage(env, request);
       }
 
+      // ----- Anonymous website activity (assets/t.js) -----
+      // One row per page view / Book / Call / Text tap; feeds the admin
+      // "Website activity" card. Never errors back to the page.
+      if (p === "/api/t" && m === "POST") {
+        try {
+          const ua = request.headers.get("user-agent") || "";
+          const raw = (await request.text()).slice(0, 600);
+          const j = JSON.parse(raw || "{}");
+          const type = String(j.t || "");
+          if (!/bot|crawl|spider|slurp|headless|preview|monitor/i.test(ua) && SITE_EVENT_TYPES.has(type)) {
+            const path = String(j.p || "").slice(0, 120).replace(/[^\w\/\-.]/g, "");
+            await env.DB.prepare("INSERT INTO site_events (ts, type, path) VALUES (?1, ?2, ?3)").bind(new Date().toISOString(), type, path).run();
+          }
+        } catch (e) { console.error("[api/t]", e && e.message ? e.message : e); }
+        return new Response(null, { status: 204, headers: cors() });
+      }
+
       // ----- AI agents: llms.txt (live prices, when-to-use guidance) -----
       if ((m === "GET" || m === "HEAD") && p === "/llms.txt") {
         const S = await loadSettings(env);
@@ -115,7 +133,7 @@ async function handle(request, env) {
         return html(renderPanel(S, {
           recent: bookings, lowReviews: reviews, saved: url.searchParams.get("saved"),
           flash: url.searchParams.get("flash"), flashRef: url.searchParams.get("ref"),
-          today, active,
+          today, active, activity: await siteActivity(env),
         }));
       }
       if (p === "/admin/login" && m === "POST") {
@@ -448,6 +466,34 @@ async function handle(request, env) {
       console.error("[fetch]", err && err.stack ? err.stack : err);
       return json({ ok: false, error: "Server error" }, 500);
     }
+  }
+}
+
+// Website activity for the admin card: views and Book/Call/Text taps over the
+// last 7 and 30 days, next to what actually happened (checkouts opened, bookings
+// paid). Any failure (e.g. table missing) just hides the card.
+async function siteActivity(env) {
+  try {
+    const now = Date.now();
+    const since = (d) => new Date(now - d * 864e5).toISOString();
+    const out = {};
+    for (const days of [7, 30]) {
+      const ev = (await env.DB.prepare("SELECT type, COUNT(*) AS n FROM site_events WHERE ts >= ?1 GROUP BY type").bind(since(days)).all()).results || [];
+      const bk = await env.DB.prepare(
+        "SELECT SUM(CASE WHEN account_type='residential' THEN 1 ELSE 0 END) AS started, " +
+        "SUM(CASE WHEN status IN ('paid','completed') OR paid_at IS NOT NULL THEN 1 ELSE 0 END) AS paid, " +
+        "SUM(CASE WHEN account_type='commercial' THEN 1 ELSE 0 END) AS quotes FROM bookings WHERE created_at >= ?1"
+      ).bind(since(days)).first();
+      const c = Object.fromEntries(ev.map((r) => [r.type, r.n]));
+      out[days] = { views: c.view || 0, book: c.book_click || 0, call: c.call_click || 0, text: c.text_click || 0,
+        started: (bk && bk.started) || 0, paid: (bk && bk.paid) || 0, quotes: (bk && bk.quotes) || 0 };
+    }
+    const first = await env.DB.prepare("SELECT MIN(ts) AS t FROM site_events").first();
+    out.since = first && first.t ? first.t : null;
+    return out;
+  } catch (e) {
+    console.error("[activity]", e && e.message ? e.message : e);
+    return null;
   }
 }
 

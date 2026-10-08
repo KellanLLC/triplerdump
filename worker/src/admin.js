@@ -73,6 +73,7 @@ const page = (body) => '<!DOCTYPE html><html lang="en"><head><meta charset="utf-
 // on a phone instead of stretching the whole page sideways.
 '.card{background:#fff;border:1px solid #dde5ef;border-radius:12px;padding:20px;margin-top:16px;overflow-x:auto}' +
 'table{width:100%;border-collapse:collapse;font-size:14px}td,th{text-align:left;padding:7px 6px;border-bottom:1px solid #eef2f7}' +
+'.tablewrap{overflow-x:auto}.act td:not(:first-child),.act th:not(:first-child){text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}.act td .hint{font-size:12px}' +
 '.ok{background:#e9f9ee;border:1px solid #9be0b3;padding:10px 14px;border-radius:8px;margin-bottom:12px}' +
 '.top{display:flex;justify-content:space-between;align-items:center;gap:12px}' +
 // Loud, plain-words confirmation of the thing he just did ("✓ marked picked up,
@@ -203,6 +204,26 @@ function todaySection(S, d) {
   return html + '<div class="quick"><a href="/admin/bookings">All bookings</a><a href="/admin/invoices">Invoices</a></div>';
 }
 
+// Website activity: how many people looked, tapped Book / Call / Text, and
+// how many of those turned into checkouts and paid bookings. Counts only;
+// nothing about who.
+function activitySection(a) {
+  if (!a || !a[7] || !a[30]) return "";
+  const row = (label, k, hint) => '<tr><td>' + label + (hint ? '<span class="hint">' + hint + '</span>' : "") + '</td><td>' + a[7][k] + '</td><td>' + a[30][k] + '</td></tr>';
+  const since = a.since ? new Date(a.since).toLocaleDateString("en-US", { timeZone: "America/Denver", month: "short", day: "numeric", year: "numeric" }) : "";
+  return '<div class="card"><h2>Website activity</h2>' +
+    '<p class="what">How many people visited the website, tapped a button, and booked.' + (since ? ' Counting since ' + esc(since) + '.' : ' Counting starts with the next visit.') + '</p>' +
+    '<div class="tablewrap"><table class="act"><tr><th></th><th>Last 7 days</th><th>Last 30 days</th></tr>' +
+    row("Page views", "views") +
+    row("Tapped Book", "book") +
+    row("Tapped Call", "call") +
+    row("Tapped Text", "text") +
+    row("Started checkout", "started", "filled in the booking form") +
+    row("Paid bookings", "paid") +
+    row("Commercial quote requests", "quotes") +
+    '</table></div></div>';
+}
+
 function svcP(S, key) {
   return (S.services && S.services[key] && S.services[key].pricing) || {};
 }
@@ -236,6 +257,7 @@ export function renderPanel(S, data) {
   // What needs doing today sits ABOVE the settings tabs: the owner opens this
   // page to run his day, not to edit config.
   body += todaySection(S, d);
+  body += activitySection(d.activity);
 
   // First tab on purpose: the answer to "what am I looking at" should be the
   // thing in front of him, not something he has to go hunting for. Marked
@@ -243,6 +265,10 @@ export function renderPanel(S, data) {
   sec("guide", "How this works", '<div class="card">' +
     '<h2>The one thing to remember</h2>' +
     '<p class="what" style="font-size:15px">When the bin is back on your truck, open that job and tap <b>&ldquo;Mark picked up / completed.&rdquo;</b> That is the only step the website can\'t work out on its own, and it\'s what asks the customer for a review. Everything else runs itself.</p>' +
+    '</div>' +
+
+    '<div class="card"><h2>Website activity</h2>' +
+    '<p class="what">The box under Today shows how many people visited the website in the last 7 and 30 days, how many tapped Book, Call or Text, and how many started and paid for a booking. It only counts taps; it never records who anyone is.</p>' +
     '</div>' +
 
     '<div class="card"><h2>How a job flows</h2>' +
