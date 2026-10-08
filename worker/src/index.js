@@ -13,6 +13,7 @@ import { renderReviewLanding, handleReviewRate, handleReviewFeedback } from "./r
 import { isAuthed, loginCookie, clearCookie, renderLogin, renderPanel, saveSettings, renderBookingsList, renderBookingDetail, renderInvoiceList, renderInvoiceNew, renderInvoiceDetail } from "./admin.js";
 import { createInvoice, refreshInvoiceStatus, voidInvoice, resendInvoice, parseLineItems, applyPercentDiscount } from "./invoice.js";
 import { isMarketingPath, marketingRedirect, serveMarketingPage } from "./marketing.js";
+import { prefersMarkdown, markdownNotFoundResponse, renderLlmsTxt, varyAccept } from "./agents.js";
 
 const cors = () => ({ "access-control-allow-origin": "*", "access-control-allow-methods": "GET,POST,OPTIONS", "access-control-allow-headers": "content-type" });
 const json = (d, s = 200) => new Response(JSON.stringify(d), { status: s, headers: { "content-type": "application/json; charset=utf-8", ...cors() } });
@@ -88,6 +89,14 @@ async function handle(request, env) {
         const to = marketingRedirect(p);
         if (to) return Response.redirect(url.origin + to + url.search, 301);
         return serveMarketingPage(env, request);
+      }
+
+      // ----- AI agents: llms.txt (live prices, when-to-use guidance) -----
+      if ((m === "GET" || m === "HEAD") && p === "/llms.txt") {
+        const S = await loadSettings(env);
+        return new Response(m === "HEAD" ? null : renderLlmsTxt(S, url.origin), {
+          headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "public, max-age=300" },
+        });
       }
 
       // ----- Admin / CMS -----
@@ -429,7 +438,12 @@ async function handle(request, env) {
         return new Response(await buildICalFeed(env), { headers: { "content-type": "text/calendar; charset=utf-8", "cache-control": "no-cache" } });
       }
 
-      return json({ ok: false, error: "Not found" }, 404);
+      // Unknown path. Agents asking for Markdown get a Markdown 404 that points at
+      // llms.txt and the sitemap; everyone else gets the JSON 404 as before.
+      if (prefersMarkdown(request.headers.get("accept"))) return markdownNotFoundResponse(request);
+      const nf = json({ ok: false, error: "Not found" }, 404);
+      varyAccept(nf.headers);
+      return nf;
     } catch (err) {
       console.error("[fetch]", err && err.stack ? err.stack : err);
       return json({ ok: false, error: "Server error" }, 500);

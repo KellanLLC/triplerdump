@@ -29,6 +29,7 @@ after; the exact API call is in the top of `CLAUDE.md`.
 | `booked.js` | The "you're booked" page after paying. |
 | `terms.js` | The `/terms` page (fees come from settings). |
 | `marketing.js` | Puts live prices into the website pages; one-URL-per-page redirects. |
+| `agents.js` | For AI agents: pages as Markdown when asked (`Accept: text/markdown`), Markdown 404s, and `/llms.txt` (live prices + when to use us + how to book). Tests: `npm test`. |
 | `ical.js` | Calendar feed of jobs. |
 | `config.js`, `util.js` | Small shared helpers. |
 

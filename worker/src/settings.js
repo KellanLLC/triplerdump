@@ -1,6 +1,7 @@
 // Effective settings = D1 `settings` overrides merged over code defaults
 // (+ env-secret fallbacks). Lets the CMS edit values without a deploy.
 import { CONFIG, quoteService as quoteServiceCore } from "./config.js";
+import { mergeGoogleReviews } from "./reviews.js";
 
 const num = (v, d) => (typeof v === "number" && !Number.isNaN(v) ? v : d);
 
@@ -132,6 +133,9 @@ export function defaultSettings(env = {}) {
     // Promo codes (CMS "Discounts" tab): [{code, pct, active}]. Empty = feature
     // dormant — the /book field still renders but no code ever matches.
     discountCodes: [],
+    // Google rating/count/review cards for the homepage (reviews.js). Written by the
+    // daily Places API refresh, never by the admin form.
+    googleReviews: mergeGoogleReviews(null),
     templates: { ...DEFAULT_TEMPLATES },
   };
 }
@@ -181,6 +185,7 @@ export async function loadSettings(env) {
   if (o.invoice_reminder_hours !== undefined) s.invoiceReminderHours = num(o.invoice_reminder_hours, s.invoiceReminderHours);
   if (o.invoice_reminder_max !== undefined) s.invoiceReminderMax = num(o.invoice_reminder_max, s.invoiceReminderMax);
   if (Array.isArray(o.discount_codes)) s.discountCodes = o.discount_codes;
+  if (o.google_reviews) s.googleReviews = mergeGoogleReviews(o.google_reviews);
   if (o.sms_templates) s.templates = { ...s.templates, ...o.sms_templates };
   return s;
 }

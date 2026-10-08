@@ -1,3 +1,81 @@
+*** LANDER SOCIAL PROOF + MAPS 2026-10-07 (worker v df51bc34 via deploy.mjs, checkout probe OK) ***
+- index.html: "Book Now" (fill) added to desktop nav, mobile drawer and hero (Call is now the
+  ghost button; "View Bin Sizes" dropped). Hero proof row: stars + rating + count (links #reviews),
+  BBB accredited (/bbb/), 15 years. Reviews heading now "5.0 stars · 18 Google reviews" + "Read all
+  reviews on Google" link; final CTA got a rating line. #area photo REPLACED by the Google Maps
+  embed (Share > Embed a map, 1d widened to 30000). Contact page (build_pages.py MAPS_EMBED) got
+  the same embed + directions under "Where we haul" and a rating line in the side card.
+- REVIEWS ARE DATA, NOT MARKUP: worker/src/reviews.js. D1 settings key `google_reviews`
+  {rating,count,updatedAt,source,reviews[]} (default = 5.0/18 + 7 cards, checked on Maps
+  2026-10-07). marketing.js rewriteReviews() fills every data-trd-num="g_rating|g_count" and the
+  <script type=application/json id=trd-reviews> block the carousel reads (inline array = fallback).
+  cron.js refreshGoogleReviews(): Places API (New) place ChIJ31PA2IU4wmIRtzBJUNFOu3M, at most every
+  20h, merges Google's 5 newest reviews in front (max 12). NO-OP until a GOOGLE_PLACES_API_KEY
+  worker secret exists (Boston must create it; add via `versions secret bulk`, then deploy.mjs -
+  and add it to REQUIRED_SECRETS only if you want deploys to demand it). Until then count/cards
+  are static: bump D1 google_reviews by hand if needed. Tests: npm test (23).
+
+*** AI-AGENT READINESS 2026-10-07 (worker v fb2ebdc7 via deploy.mjs, checkout probe OK) ***
+- src/agents.js: Accept: text/markdown (q >= text/html) on ANY marketing page -> the page
+  converted to Markdown (front matter + body + contact footer), Content-Type text/markdown,
+  Vary: Accept; prices are substituted BEFORE conversion. HTML responses unchanged except
+  they now carry Vary: Accept. Unknown paths: Markdown 404 for agents, the old JSON 404
+  for everyone else. /llms.txt is WORKER-GENERATED from live settings (when-to-use, how to
+  book = send people to /book?size=..|service=.., read-only /api/availability, never POST
+  /api/book for them). index.html got og:type/og:image/og:url/og:title/og:description/
+  twitter:card (og:image = the hero photo). Tests: `cd worker && npm test` (12, node:test,
+  mocked ASSETS+D1). /book and /terms are NOT negotiated (HTML only).
+- AI crawlers: Boston set AI Crawl Control "Training" policy to ALLOW (2026-10-07). Verified
+  ClaudeBot, Claude-User, anthropic-ai, GPTBot, ChatGPT-User, Google-Extended, ora-agent,
+  DeepSeekBot, CCBot, Bytespider all 200 on the homepage. robots.txt unchanged (Bot
+  Preference Sync on, nothing prepended).
+
+*** MAPS RANKING AUDIT 2026-09-29 (read-only; nothing changed) ***
+- Report: https://claude.ai/artifact/M4tNTLjZK571P1T66kiocy. ROOT CAUSE: GBP Business location =
+  "No location; deliveries and home services only" + service area Davis/Weber/Morgan/Box Elder/
+  Salt Lake -> Google's pin sits in the Great Salt Lake (41.2078,-112.6317), ~30 mi from West
+  Haven. 168-search grid (24 towns x 7 terms, top 60): TRD never in top 20, #36 in West Haven.
+  A distance model predicts current ranks within 7% from the lake pin (no other penalty).
+  Old Brandcraft listing gave apex ~37 impressions/day until Sep 4; ~7/day since.
+- FIX (Joseph): add hidden business address with unit # (3539 S 4250 W = townhome complex),
+  as the ONLY edit that day; expect re-verification. Then report the 40-listing spam cluster
+  (Onvoy 385 blocks; 44% of top-3 spots), add Junk removal category, resubmit description
+  (current new one NOT APPROVED), photos/posts, reviews to ~40. GBP website = apex (1 redirect).
+- Site: 3/38 indexed, 3 external links, homepage ~8 MB images, links only 2/8 city pages.
+- FOLLOW-UP SAME NIGHT (worker v 18f0a4b7 via deploy.mjs, checkout probe OK): build_deploy.py
+  ship_raster() now resizes/strips EXIF (GPS!) /sRGB-converts photos INTO deploy/ (originals in
+  uploads/ untouched) - homepage images 8.6 -> 4.9 MB; homepage footer links all 8 city pages;
+  JSON-LD sameAs + hasMap + priceRange (index.html + build_pages.py SAME_AS). GBP: all 17
+  services got descriptions (no verification flag). GBP has NO products, NO cover photo, 7
+  photos (business card twice). BBB already links the site (nofollow). Found: an UNCLAIMED
+  Bing listing (pin ~12 mi off in North Ogden, wrong category, Wix text) + Apple Maps place
+  exists; ChatGPT now sources local data from Yelp (Yelp says 24h). Claiming needs Joseph's logins.
+  PHOTOS: uploaded 7 photos + a 16:9 cover (Joseph + bin) to GBP from uploads/ originals (15 photos
+  now; business card still there twice). GBP uploader lives in a same-origin iframe the Chrome
+  file_upload tool can't see: add a hidden <input type=file> to the TOP doc, file_upload into it,
+  then copy .files into the iframe input via DataTransfer + dispatch change. NEVER file_upload
+  into the top-level Google file inputs - those are the search bar's image search.
+- 2026-09-29 later: Joseph OK'd address + junk category. JUNK REMOVAL SERVICE category ADDED
+  (pending review). HIDDEN ADDRESS IS NOT POSSIBLE in the current GBP editor: address fields
+  only exist while "Show business address to customers" is ON; toggling it OFF wipes them
+  (verified via DOM - values ""). Google support had told Joseph to remove the address (SAB).
+  Address edit was CANCELLED (still "No location"). Remaining lever: shrink the service area
+  (currently 5 counties incl. Salt Lake + Box Elder) so the auto pin/centroid moves toward
+  West Haven. DONE ~01:20Z 09-30 (Boston OK'd): junk category went LIVE first, then service area
+  changed 5 counties -> 18 cities (West Haven Roy Hooper Ogden Plain City Syracuse Clearfield
+  Layton Riverdale S/N Ogden Farr West Marriott-Slaterville Clinton West Point Sunset Washington
+  Terrace Kaysville), pending review. Evidence: old pin (41.2078,-112.6317) = bbox CENTER of the
+  5 counties. New bbox center ~ (41.18,-112.04). Re-run the Maps grid after it goes live.
+  Service area went LIVE (18 cities) but the public pin had not moved yet. Then Boston decided
+  (competitors TrashDash/Canyon View/Dumps Easy all show addresses) to add a PUBLIC address:
+  3539 S 4250 W, West Haven, UT 84401 saved with "Show business address to customers" ON,
+  pending review ~01:35Z 09-30.
+  ADDRESS WENT LIVE same night (Places API: sab=false, pin 41.2000,-112.0832). Datum grid
+  ("dumpster rental", 7x7 @1mi): OGDEN 20+ everywhere on 09-19 -> avg #9.3, 49/49 ranked, 78% top10
+  (center 41.2182,-111.9731 = same grid as 09-19); WEST HAVEN (centred on pin) avg #3.6, 65% top3,
+  100% top10. Images in Desktop/google profile snap shot/snapshots/triple-r-dump/. Risk accepted by Boston: re-verification / SAB-at-home rules
+  (Google support had told Joseph to remove it). Address was already public on site/Yelp/MapQuest.
+
 *** SERVICE PRICES IN ADMIN + BIN SWITCH $220 2026-09-27 (worker v b2f01b05) ***
 - Prices tab now has "Other services": bin switch, junk, trailer/day, trailer deposit
   (svc_* fields). saveSettings writes D1 `services` = ONLY {key:{pricing:{cents}}};

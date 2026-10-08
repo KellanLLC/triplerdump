@@ -6,6 +6,13 @@
   <title>Triple R Dump — Dumpster Rental | West Haven, Utah | 801-564-3164</title>
   <link rel="canonical" href="https://www.triplerdump.com/">
   <meta name="description" content="Family-owned roll-off dumpster rental serving Weber, Morgan, Davis & Salt Lake County. 15, 20 & 25 yard bins, dump fees included. Call 801-564-3164.">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Triple R Dump">
+  <meta property="og:url" content="https://www.triplerdump.com/">
+  <meta property="og:title" content="Triple R Dump — Dumpster Rental | West Haven, Utah | 801-564-3164">
+  <meta property="og:description" content="Family-owned roll-off dumpster rental serving Weber, Morgan, Davis &amp; Salt Lake County. 15, 20 &amp; 25 yard bins, dump fees included. Call 801-564-3164.">
+  <meta property="og:image" content="https://www.triplerdump.com/uploads/triple.r.dump-photo-DY2CxEIFMkG-20260527_075118_707154355.jpg">
+  <meta name="twitter:card" content="summary_large_image">
   <link rel="icon" href="favicon.ico" sizes="any">
   <link rel="icon" href="assets/favicon-32x32.png" type="image/png" sizes="32x32">
   <link rel="icon" href="assets/favicon-16x16.png" type="image/png" sizes="16x16">
@@ -160,6 +167,8 @@
     }
     .nav-inline a:not(.btn):hover { color: var(--color-ink); }
     .nav-inline .btn { font-size: var(--text-sm); min-height: 40px; }
+    .nav-inline li:has(.btn) + li:has(.btn) { margin-left: calc(var(--space-sm) - var(--space-lg)); }
+    .nav-inline .btn-ghost { border-color: rgba(251, 250, 246, 0.3); }
 
     /* hamburger button — mobile only */
     .nav-toggle {
@@ -262,6 +271,29 @@
     }
     .hero-actions { display: flex; gap: var(--space-sm); flex-wrap: wrap; }
     .hero-actions .btn { font-size: var(--text-lg); min-height: 52px; padding-inline: var(--space-lg); }
+
+    /* social proof under the hero buttons: Google rating, BBB, years */
+    .g-stars { color: #FBBC05; letter-spacing: 0.08em; }
+    .hero-proof {
+      list-style: none;
+      display: flex; flex-wrap: wrap; align-items: center;
+      gap: var(--space-2xs) var(--space-md);
+      margin-top: var(--space-lg);
+      font-size: clamp(0.875rem, 1.1vw, 1rem); color: rgba(251, 250, 246, 0.82);
+    }
+    .hero-proof .g-stars { font-size: 1.15em; }
+    @media (max-width: 40rem) {
+      .hero-proof { gap: var(--space-2xs) var(--space-md); }
+      .hero-proof li + li::before { display: none; }
+    }
+    .hero-proof li { display: inline-flex; align-items: center; gap: var(--space-md); }
+    .hero-proof li + li::before {
+      content: ''; width: 4px; height: 4px; border-radius: 50%;
+      background: var(--color-accent);
+    }
+    .hero-proof a { color: inherit; text-decoration: none; display: inline-flex; align-items: center; gap: 0.45rem; min-height: 32px; }
+    .hero-proof a:hover { color: var(--color-ink); }
+    .hero-proof strong { color: var(--color-ink); font-weight: 700; }
 
 
     /* ── Ticker (blue banner) ── */
@@ -653,6 +685,7 @@
       font-size: var(--text-sm); color: var(--color-ink-2); font-weight: 500;
     }
     .rc-rating-line strong { color: var(--color-ink); font-size: var(--text-md); }
+    .rc-cta { display: flex; flex-wrap: wrap; justify-content: center; gap: 0 var(--space-lg); }
 
     /* 3D coverflow stage */
     .rc-stage {
@@ -771,9 +804,16 @@
       filter: saturate(0.88) contrast(1.04);
     }
     .area-media .split-cap { border-radius: 0 var(--radius-card) 0 var(--radius-card); }
+    .area-map iframe {
+      display: block; width: 100%; height: 440px;
+      border: 1px solid var(--color-rule);
+      border-radius: var(--radius-card);
+      background: var(--color-card);
+    }
+    .area-map .split-cap { pointer-events: none; }
     @media (max-width: 56rem) {
       .area-grid { grid-template-columns: 1fr; gap: var(--space-xl); }
-      .area-media img { height: 300px; }
+      .area-media img, .area-map iframe { height: 300px; }
     }
 
     /* ── Final CTA ── */
@@ -814,6 +854,10 @@
     #contact p { color: var(--color-ink-2); max-width: 34em; margin: var(--space-lg) auto; }
     .cta-actions { display: flex; justify-content: center; gap: var(--space-sm); flex-wrap: wrap; }
     .cta-actions .btn { font-size: var(--text-lg); min-height: 52px; padding-inline: var(--space-lg); }
+    #contact p.cta-proof { margin: var(--space-md) auto 0; font-size: var(--text-sm); }
+    .cta-proof a { color: var(--color-ink-2); text-decoration: none; }
+    .cta-proof a:hover { color: var(--color-ink); }
+    .cta-proof strong { color: var(--color-ink); }
 
     /* ── Footer ── */
     footer { background: #0a0e14; border-top: 1px solid var(--color-rule); padding-block: var(--space-xl) var(--space-lg); }
@@ -942,9 +986,14 @@
     {"@type": "AdministrativeArea", "name": "Davis County, Utah"},
     {"@type": "AdministrativeArea", "name": "Salt Lake County, Utah"}
   ],
+  "priceRange": "$$",
+  "hasMap": "https://www.google.com/maps?cid=8339345795908710583",
   "sameAs": [
     "https://www.instagram.com/triple.r.dump/",
-    "https://www.facebook.com/profile.php?id=61587229028024"
+    "https://www.facebook.com/profile.php?id=61587229028024",
+    "https://www.bbb.org/us/ut/west-haven/profile/dumpster-rentals/triple-r-dump-1126-1000181920",
+    "https://www.yelp.com/biz/triple-r-dump-west-haven",
+    "https://www.google.com/maps?cid=8339345795908710583"
   ]
 }</script>
 </head>
@@ -969,7 +1018,8 @@
       <li><a href="#about">About</a></li>
       <li><a href="#gallery">Gallery</a></li>
       <li><a href="#reviews">Reviews</a></li>
-      <li><a href="tel:8015643164" class="btn btn-fill">Call 801-564-3164</a></li>
+      <li><a href="tel:8015643164" class="btn btn-ghost">Call 801-564-3164</a></li>
+      <li><a href="/book" class="btn btn-fill">Book Now</a></li>
     </ul>
     <button class="nav-toggle" aria-label="Open menu" aria-expanded="false" aria-controls="nav-drawer">
       <span></span><span></span><span></span>
@@ -987,7 +1037,8 @@
     <li><a href="#reviews"  class="drawer-link">Reviews</a></li>
     <li><a href="#haul"     class="drawer-link">Service Area</a></li>
   </ul>
-  <a href="tel:8015643164" class="btn btn-fill">Call 801-564-3164</a>
+  <a href="/book" class="btn btn-fill">Book Now</a>
+  <a href="tel:8015643164" class="btn btn-ghost">Call 801-564-3164</a>
 </div>
 
 <!-- Hero -->
@@ -999,9 +1050,14 @@
     <h1><em>Family</em> Dumpster Rental<br>in West Haven,<br>Ogden &amp; Roy</h1>
     <p class="hero-sub">On-demand dumpster rental serving Weber, Morgan, Davis &amp; Salt Lake County. 15, 20 &amp; 25 yard bins — residential and commercial. Dump fee included, always.</p>
     <div class="hero-actions">
-      <a href="tel:8015643164" class="btn btn-fill">Call 801-564-3164</a>
-      <a href="#rates" class="btn btn-ghost">View Bin Sizes</a>
+      <a href="/book" class="btn btn-fill">Book Now</a>
+      <a href="tel:8015643164" class="btn btn-ghost">Call 801-564-3164</a>
     </div>
+    <ul class="hero-proof" aria-label="Why customers trust us">
+      <li><a href="#reviews"><span class="g-stars" aria-hidden="true">★★★★★</span><span><strong data-trd-num="g_rating">5.0</strong> on Google · <span data-trd-num="g_count">18</span> reviews</span></a></li>
+      <li><a href="/bbb/"><span><strong>BBB</strong> accredited</span></a></li>
+      <li><span><strong>15 years</strong> hauling</span></li>
+    </ul>
   </div>
 </section>
 
@@ -1181,7 +1237,7 @@
       <a class="m2" href="uploads/triplerdump_photos/triplerdump_photos/03_25yd_bin_side.jpeg" target="_blank" rel="noopener"><img src="uploads/triplerdump_photos/triplerdump_photos/03_25yd_bin_side.jpeg" alt="Joseph with a 25 yard Triple R Dump bin" loading="lazy"></a>
       <a class="m3" href="uploads/triplerdump_photos/triplerdump_photos/14_gallery_photo_4.jpg" target="_blank" rel="noopener"><img src="uploads/triplerdump_photos/triplerdump_photos/14_gallery_photo_4.jpg" alt="Truck and dumpster heading out at dusk" loading="lazy"></a>
       <a class="m4" href="uploads/triplerdump_photos/triplerdump_photos/13_gallery_photo_3.jpeg" target="_blank" rel="noopener"><img src="uploads/triplerdump_photos/triplerdump_photos/13_gallery_photo_3.jpeg" alt="Roll-off bins staged and ready" loading="lazy"></a>
-      <a class="m5" href="uploads/triplerdump_photos/triplerdump_photos/05_bin_rental_2.jpeg" target="_blank" rel="noopener"><img src="uploads/triplerdump_photos/triplerdump_photos/05_bin_rental_2.jpeg" alt="Joseph with a Triple R Dump bin" loading="lazy"></a>
+      <a class="m5" href="uploads/triplerdump_photos/triplerdump_photos/03_25yd_bin_side.jpeg" target="_blank" rel="noopener"><img src="uploads/triplerdump_photos/triplerdump_photos/03_25yd_bin_side.jpeg" alt="Joseph with a Triple R Dump bin" loading="lazy"></a>
       <a class="m6" href="uploads/triplerdump_photos/triplerdump_photos/11_gallery_photo_1.jpeg" target="_blank" rel="noopener"><img src="uploads/triplerdump_photos/triplerdump_photos/11_gallery_photo_1.jpeg" alt="Delivery run on a neighborhood street" loading="lazy"></a>
     </div>
     <p class="mosaic-cap">Deliveries and pickups across the Wasatch Front</p>
@@ -1200,7 +1256,7 @@
         Google Reviews
       </p>
       <h2 class="rc-title">What our clients are saying</h2>
-      <p class="rc-rating-line"><strong>5.0</strong> ★★★★★ · based on real Google reviews</p>
+      <p class="rc-rating-line"><strong data-trd-num="g_rating">5.0</strong> <span class="g-stars" aria-hidden="true">★★★★★</span> · <span data-trd-num="g_count">18</span> Google reviews</p>
     </header>
 
     <div class="rc-stage" id="rc-stage" aria-roledescription="carousel" aria-label="Customer reviews"></div>
@@ -1208,6 +1264,7 @@
     <div class="rc-dots" id="rc-dots" role="tablist" aria-label="Choose a review"></div>
 
     <p class="rc-cta reveal">
+      <a href="https://www.google.com/maps?cid=8339345795908710583" target="_blank" rel="noopener">Read all reviews on Google</a>
       <a href="https://g.page/r/CbcwSVDRTrtzEAE/review" target="_blank" rel="noopener">Worked with us? Leave a review ★</a>
     </p>
   </div>
@@ -1233,9 +1290,9 @@
       </div>
       <p class="area-note">Surrounding areas too — call to confirm your address. <a href="/service-area/" style="color: var(--color-sky); font-weight: 600;">Every city we serve, with how far it is from the shop.</a></p>
     </div>
-    <div class="area-media reveal">
-      <img src="uploads/triple.r.dump-photo-DY2CxEIFMkG-20260527_075118_707005240.jpg" alt="Triple R Dump serving Utah neighborhoods" loading="lazy">
-      <p class="split-cap">Wasatch Front, Utah</p>
+    <div class="area-media area-map reveal">
+      <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d30000!2d-112.083158!3d41.200007!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x62c23885d8c053df%3A0x73bb4ed1504930b7!2sTriple%20R%20Dump!5e0!3m2!1sen!2sus!4v1791435442660!5m2!1sen!2sus" title="Map: Triple R Dump, 3539 S 4250 W, West Haven, UT 84401" loading="lazy" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+      <p class="split-cap">Our yard · West Haven, Utah</p>
     </div>
   </div>
 </section>
@@ -1254,6 +1311,7 @@
       <a href="tel:8015643164" class="btn btn-fill">Call or Text</a>
       <a href="/book" target="_blank" rel="noopener" class="btn btn-ghost">Book Online</a>
     </div>
+    <p class="cta-proof reveal"><a href="#reviews"><span class="g-stars" aria-hidden="true">★★★★★</span> <strong data-trd-num="g_rating">5.0</strong> from <span data-trd-num="g_count">18</span> Google reviews</a></p>
   </div>
 </section>
 
@@ -1294,10 +1352,14 @@
     <div class="foot-col">
       <h3>Service Area</h3>
       <ul>
-        <li><a href="/service-area/ogden/">Weber County</a></li>
-        <li><a href="/service-area/">Morgan County</a></li>
-        <li><a href="/service-area/layton/">Davis County</a></li>
-        <li><a href="/service-area/">Salt Lake County</a></li>
+        <li><a href="/service-area/west-haven/">West Haven</a></li>
+        <li><a href="/service-area/roy/">Roy</a></li>
+        <li><a href="/service-area/hooper/">Hooper</a></li>
+        <li><a href="/service-area/ogden/">Ogden</a></li>
+        <li><a href="/service-area/plain-city/">Plain City</a></li>
+        <li><a href="/service-area/syracuse/">Syracuse</a></li>
+        <li><a href="/service-area/clearfield/">Clearfield</a></li>
+        <li><a href="/service-area/layton/">Layton</a></li>
         <li><a href="/service-area/">Every city we serve</a></li>
         <li><a href="/faq/">Questions &amp; answers</a></li>
         <li><a href="/bbb/">BBB accredited</a></li>
@@ -1332,6 +1394,7 @@
   </span>
 </a>
 
+<script type="application/json" id="trd-reviews">{}</script>
 <script>
   // nav background on scroll
   const navEl = document.querySelector('nav');
@@ -1372,8 +1435,10 @@
   document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDrawer(); });
 
   // ── Google review coverflow carousel ──
+  // Cards come from #trd-reviews, which the worker fills from Google on every
+  // request (worker/src/reviews.js); the array below is only the fallback.
   (function () {
-    const REVIEWS = [
+    let REVIEWS = [
       { name: "Greg",           avatar: "G", color: "#116DFF", rating: 5, date: "2 months ago",  text: "Excellent experience! Joe got us set up fast with the perfect dumpster, and delivery, pickup, and hauling were all on time. Great service, highly recommend!" },
       { name: "Scott",          avatar: "S", color: "#6B3FA0", rating: 5, date: "a month ago",   text: "Easy booking and they delivered right on time. The driver was professional and careful not to damage the driveway. Smooth pickup, no hidden fees or surprises." },
       { name: "Nadine Rendon",  avatar: "N", color: "#00897B", rating: 5, date: "a month ago",   text: "Dropped off the dumpster exactly when they said, and set it on wooden beams so it wouldn't damage my driveway. Would recommend them to anyone. Great business!!" },
@@ -1381,6 +1446,30 @@
       { name: "Clayton Coombs", avatar: "C", color: "#0D56C9", rating: 5, date: "3 weeks ago",   text: "Made the whole process easy. Midway through I needed a bigger bin and Joseph switched me from a 15 to a 20 yd, no headache. That kind of service is hard to find." },
       { name: "Jordyn Hill",    avatar: "J", color: "#D32F2F", rating: 5, date: "a month ago",   text: "Such a great experience! Scheduling was a breeze and he delivered right on time. I even asked for same-day pickup on a Saturday and he made it happen!" },
     ];
+    const AVATAR_COLORS = ['#116DFF', '#6B3FA0', '#00897B', '#1A73E8', '#0D56C9', '#D32F2F'];
+    const esc = (t) => String(t == null ? '' : t).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    // "2026-05" / "2026-05-14" -> "5 months ago"; no date -> "Google review"
+    const ago = (d) => {
+      if (!d) return 'Google review';
+      const then = new Date(d.length === 7 ? d + '-15' : d);
+      if (isNaN(then)) return 'Google review';
+      const days = Math.max(0, Math.round((Date.now() - then) / 864e5));
+      if (days < 1) return 'today';
+      if (days < 7) return days === 1 ? 'a day ago' : days + ' days ago';
+      if (days < 30) { const w = Math.round(days / 7); return w === 1 ? 'a week ago' : w + ' weeks ago'; }
+      if (days < 365) { const m = Math.round(days / 30.4); return m <= 1 ? 'a month ago' : m + ' months ago'; }
+      const y = Math.round(days / 365); return y === 1 ? 'a year ago' : y + ' years ago';
+    };
+    try {
+      const live = JSON.parse(document.getElementById('trd-reviews').textContent);
+      if (live && Array.isArray(live.reviews) && live.reviews.length) {
+        REVIEWS = live.reviews.map((r, i) => ({
+          name: esc(r.name), avatar: esc(String(r.name || '?').trim().charAt(0).toUpperCase()),
+          color: AVATAR_COLORS[i % AVATAR_COLORS.length], rating: Math.round(Number(r.rating) || 5),
+          date: ago(r.date), text: esc(r.text),
+        }));
+      }
+    } catch (e) { /* keep the fallback cards */ }
     const AUTO = 4500;
     const stage = document.getElementById('rc-stage');
     const dotsBox = document.getElementById('rc-dots');

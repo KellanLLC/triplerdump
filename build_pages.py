@@ -47,7 +47,12 @@ BIZ = {
     "review": "https://g.page/r/CbcwSVDRTrtzEAE/review",
     "instagram": "https://www.instagram.com/triple.r.dump/",
     "facebook": "https://www.facebook.com/profile.php?id=61587229028024",
+    "bbb": "https://www.bbb.org/us/ut/west-haven/profile/dumpster-rentals/triple-r-dump-1126-1000181920",
+    "yelp": "https://www.yelp.com/biz/triple-r-dump-west-haven",
+    "gmaps": "https://www.google.com/maps?cid=8339345795908710583",  # Joseph's GBP (CID 8339345795908710583)
 }
+# sameAs for the #business entity - keep in step with index.html's LocalBusiness JSON-LD.
+SAME_AS = [BIZ["instagram"], BIZ["facebook"], BIZ["bbb"], BIZ["yelp"], BIZ["gmaps"]]
 
 HERO_IMG = "/uploads/triple.r.dump-photo-DY2CxEIFMkG-20260527_075118_707154355.jpg"
 AREA_IMG = "/uploads/triple.r.dump-photo-DY2CxEIFMkG-20260527_075118_707005240.jpg"
@@ -867,6 +872,8 @@ urls.append(("/bbb/", "0.5"))
 # this page exists so that URL lands somewhere real instead of a 404)
 MAPS_G = "https://maps.google.com/?q=3539+S+4250+W,+West+Haven,+UT+84401"
 MAPS_A = "https://maps.apple.com/?q=3539+S+4250+W,+West+Haven,+UT+84401"
+# Google Maps > Share > Embed a map, for Joseph's profile (CID 8339345795908710583).
+MAPS_EMBED = "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3001.9984669344267!2d-112.083158!3d41.200007!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x62c23885d8c053df%3A0x73bb4ed1504930b7!2sTriple%20R%20Dump!5e0!3m2!1sen!2sus!4v1791435442660!5m2!1sen!2sus"
 contact_body = hero(
     "Call, text or book",
     "Talk to<br><em>the owner.</em>",
@@ -890,6 +897,7 @@ contact_body = hero(
     <aside class="side-card">
       <p class="label">Reach us</p>
       <p class="big-price contact-num">{BIZ["phone"]}<small>call or text, the owner answers</small></p>
+      <p class="side-proof"><a href="{BIZ["gmaps"]}" target="_blank" rel="noopener"><span class="g-stars" aria-hidden="true">★★★★★</span> <strong data-trd-num="g_rating">5.0</strong> from <span data-trd-num="g_count">18</span> Google reviews</a></p>
       <ul class="checks"><li>The owner answers</li><li>Same-day delivery most days</li><li>Booking online, day or night</li></ul>
       <a href="{BIZ["tel"]}" class="btn btn-fill">Call {BIZ["phone"]}</a>
       <a href="/book" class="side-call">or book online</a>
@@ -899,6 +907,10 @@ contact_body = hero(
 <section class="sec">
   <div class="wrap">
     <header class="sec-head"><p class="label">Where we haul</p><h2>Four counties,<br><em>one shop.</em></h2><p>Weber, Morgan, Davis and Salt Lake County, from West Haven. <a href="/service-area/">Every city we serve is here.</a></p></header>
+    <div class="map-embed">
+      <iframe src="{MAPS_EMBED}" title="Map: Triple R Dump, {BIZ["address"]}" loading="lazy" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+      <p class="map-cap">{BIZ["address"]} · <a href="{MAPS_G}" target="_blank" rel="noopener">Directions</a></p>
+    </div>
   </div>
 </section>
 ''' + cta()
@@ -910,7 +922,8 @@ write("contact/index.html", page(
     [
         ld({"@context": "https://schema.org", "@type": "ContactPage", "name": "Contact Triple R Dump", "url": SITE + "/contact/",
             "about": {"@type": "LocalBusiness", "@id": SITE + "/#business", "name": BIZ["name"], "telephone": "+1-" + BIZ["phone"], "email": BIZ["email"], "url": SITE + "/",
-                      "address": {"@type": "PostalAddress", "streetAddress": "3539 S 4250 W", "addressLocality": "West Haven", "addressRegion": "UT", "postalCode": "84401", "addressCountry": "US"}}}),
+                      "address": {"@type": "PostalAddress", "streetAddress": "3539 S 4250 W", "addressLocality": "West Haven", "addressRegion": "UT", "postalCode": "84401", "addressCountry": "US"},
+                      "priceRange": "$$", "hasMap": BIZ["gmaps"], "sameAs": SAME_AS}}),
         breadcrumbs([("Home", "/"), ("Contact", "/contact/")]),
     ],
 ))

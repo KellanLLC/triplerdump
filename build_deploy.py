@@ -1,11 +1,12 @@
 """Build the deployable site into /deploy.
 
-Copies index.html, tokens.css and all referenced assets, recompressing the
-heavy photos (EXIF rotation baked in, max 1920px wide, JPEG q72) so the live
-site loads fast. Re-run any time index.html or the photos change.
+Copies index.html, tokens.css and all referenced assets. PHOTOS are shipped as
+web-sized copies (see ship_raster): the originals under uploads/ are the owner's
+full-res files and are only ever READ, never written. Same filename + extension
+in deploy/, so no HTML ref changes. Re-run any time index.html or the photos change.
 """
-from PIL import Image, ImageOps
-import os, re, shutil
+from PIL import Image, ImageOps, ImageCms
+import io, os, re, shutil
 
 ROOT = r"C:\Users\Home\Desktop\projects\tripe-r-dump"
 DST = os.path.join(ROOT, "deploy")
@@ -42,12 +43,61 @@ os.makedirs(DST, exist_ok=True)
 shutil.copy2(os.path.join(ROOT, "index.html"), DST)
 shutil.copy2(os.path.join(ROOT, "tokens.css"), DST)
 
-MAX_W = 1920
-# files displayed far smaller than their source — cap tighter
+# ── Photo optimization ─────────────────────────────────────────────────────
+# PHOTOS = any .jpg/.jpeg, plus .png files under uploads/ (01_15yd_bin.png is a
+# photo saved as PNG). PNGs anywhere else (assets/: logos, favicons, the stencil
+# "24/7" art) are copied byte-for-byte so they stay crisp.
+#   JPEG: EXIF rotation baked in, Display P3 -> sRGB (iPhone originals are P3;
+#         dropping the profile without converting washed the colours out),
+#         long edge <= MAX_EDGE, q80 progressive, NO EXIF (the originals carry
+#         GPS coordinates) and no ICC (sRGB is the web default).
+#   PNG photo over PNG_PHOTO_MIN bytes: long edge <= cap, alpha flattened when
+#         it is effectively opaque, 256-colour dithered palette (a photo PNG is
+#         ~3x larger lossless; the palette is visually identical at the sizes
+#         it is shown). Smaller uploads/ PNGs (icons) are copied as-is.
+MAX_EDGE = 1600
+JPEG_Q = 80
+PNG_PHOTO_MIN = 300_000
+# files displayed far smaller than their source — cap tighter (long edge)
 TIGHT = {
-    "triple-r-dump2.png": 700,                # nav wordmark, 22px tall on screen
-    "uploads/triplerdump_photos/triplerdump_photos/01_15yd_bin.png": 640,  # rates thumb
+    "uploads/triplerdump_photos/triplerdump_photos/01_15yd_bin.png": 640,  # rates thumb (+ 15yd page hero)
 }
+SRGB = ImageCms.ImageCmsProfile(ImageCms.createProfile("sRGB"))
+
+def _to_srgb(im):
+    icc = im.info.get("icc_profile")
+    if not icc:
+        return im
+    try:
+        return ImageCms.profileToProfile(im.convert("RGB"), ImageCms.ImageCmsProfile(io.BytesIO(icc)), SRGB, outputMode="RGB")
+    except Exception as e:  # unreadable profile: keep pixels as they are
+        print(f"  (colour conversion skipped: {e})")
+        return im
+
+def ship_raster(ref, src, dst):
+    """Write ref's deploy copy to dst. Returns a short note of what was done."""
+    key = ref.replace("\\", "/").lstrip("/")
+    ext = os.path.splitext(key)[1].lower()
+    size_in = os.path.getsize(src)
+    edge = TIGHT.get(key, MAX_EDGE)
+    if ext in (".jpg", ".jpeg"):
+        im = Image.open(src)
+        im = _to_srgb(ImageOps.exif_transpose(im))
+        im.thumbnail((edge, edge), Image.LANCZOS)  # never upscales
+        im.convert("RGB").save(dst, "JPEG", quality=JPEG_Q, optimize=True, progressive=True)
+        return "jpeg %dx%d q%d" % (im.width, im.height, JPEG_Q)
+    if ext == ".png" and key.startswith("uploads/") and size_in > PNG_PHOTO_MIN:
+        im = ImageOps.exif_transpose(Image.open(src))
+        im.thumbnail((edge, edge), Image.LANCZOS)
+        if im.mode in ("RGBA", "LA", "P") and im.convert("RGBA").getchannel("A").getextrema()[0] < 200:
+            im = im.convert("RGBA").quantize(256, method=Image.Quantize.FASTOCTREE, dither=Image.Dither.FLOYDSTEINBERG)
+        else:  # effectively opaque (01_15yd_bin.png: min alpha 228 on a few edge px)
+            im = im.convert("RGB").quantize(256, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.FLOYDSTEINBERG)
+        im.save(dst, "PNG", optimize=True)
+        return "png %dx%d palette" % (im.width, im.height)
+    shutil.copy2(src, dst)
+    return "copied"
+
 total = 0
 for ref in refs:
     if ref in ("tokens.css",):
@@ -55,27 +105,11 @@ for ref in refs:
     src = os.path.join(ROOT, ref)
     dst = os.path.join(DST, ref)
     os.makedirs(os.path.dirname(dst), exist_ok=True)
-    ext = os.path.splitext(ref)[1].lower()
     size_in = os.path.getsize(src)
-
-    max_w = TIGHT.get(ref.replace("\\", "/"), MAX_W)
-    if ext in (".jpg", ".jpeg") or (ext == ".png" and size_in > 400_000):
-        im = ImageOps.exif_transpose(Image.open(src))
-        if im.width > max_w:
-            im = im.resize((max_w, round(im.height * max_w / im.width)), Image.LANCZOS)
-        if ext == ".png":
-            if im.mode == "RGBA" and im.getextrema()[3][0] < 255:
-                im.save(dst, "PNG", optimize=True)
-            else:
-                im.convert("RGB").save(dst, "PNG", optimize=True)
-        else:
-            im.convert("RGB").save(dst, "JPEG", quality=72, optimize=True, progressive=True)
-    else:
-        shutil.copy2(src, dst)
-
+    note = ship_raster(ref, src, dst)
     size_out = os.path.getsize(dst)
     total += size_out
-    print(f"{ref}:  {size_in//1024} -> {size_out//1024} KB")
+    print(f"{ref}:  {size_in//1024} -> {size_out//1024} KB  ({note})")
 
 # ── The generated pages (build_pages.py): size, service, service-area and FAQ
 # pages, the stylesheet they share, the sitemap and robots. They are plain
@@ -116,20 +150,10 @@ for ref in sorted(page_refs - set(refs)):
     if os.path.exists(dst):
         continue
     os.makedirs(os.path.dirname(dst), exist_ok=True)
-    ext = os.path.splitext(ref)[1].lower()
     size_in = os.path.getsize(src)
-    if ext in (".jpg", ".jpeg") or (ext == ".png" and size_in > 400_000):
-        im = ImageOps.exif_transpose(Image.open(src))
-        if im.width > MAX_W:
-            im = im.resize((MAX_W, round(im.height * MAX_W / im.width)), Image.LANCZOS)
-        if ext == ".png":
-            im.convert("RGB").save(dst, "PNG", optimize=True)
-        else:
-            im.convert("RGB").save(dst, "JPEG", quality=72, optimize=True, progressive=True)
-    else:
-        shutil.copy2(src, dst)
+    note = ship_raster(ref, src, dst)
     total += os.path.getsize(dst)
-    print(f"(pages) {ref}:  {size_in//1024} -> {os.path.getsize(dst)//1024} KB")
+    print(f"(pages) {ref}:  {size_in//1024} -> {os.path.getsize(dst)//1024} KB  ({note})")
 
 # Workers Static Assets must not upload these if they ever reappear.
 with open(os.path.join(DST, ".assetsignore"), "w", encoding="utf-8") as f:

@@ -6,6 +6,8 @@
 // response. Changing a price in /admin therefore changes it EVERYWHERE at once.
 // Fail-open: any error serves the asset unrewritten (stale price beats a 500).
 import { loadSettings } from "./settings.js";
+import { reviewNumbers, reviewsJson } from "./reviews.js";
+import { prefersMarkdown, pageMarkdown, markdownNotFoundResponse, varyAccept, MARKDOWN_TYPE } from "./agents.js";
 
 const MARKETING_RE = /^\/(index\.html)?$|^\/(dumpster-rental|junk-removal|dump-trailer-rental|bin-switch|service-area|faq|bbb|contact)(\/|$)/;
 
@@ -64,6 +66,17 @@ export function rewritePriceTokens(body, tokens) {
   return out;
 }
 
+// Google rating + review count (data-trd-num="g_rating" / "g_count") and the review
+// cards JSON the homepage carousel reads. The baked values in index.html are the
+// fallback if this never runs.
+export function rewriteReviews(body, g) {
+  if (!g) return body;
+  const nums = reviewNumbers(g);
+  let out = body.replace(/(data-trd-num="([a-z0-9_]+)"[^>]*>)[0-9][0-9.,]*/g, (m, pre, k) => (k in nums ? pre + nums[k] : m));
+  out = out.replace(/(<script type="application\/json" id="trd-reviews">)[\s\S]*?(<\/script>)/, (m, a, b) => a + reviewsJson(g) + b);
+  return out;
+}
+
 export async function serveMarketingPage(env, request) {
   // Strip validators so ASSETS can't answer 304 (a 304 would let a browser keep
   // HTML whose prices changed while the underlying asset did not).
@@ -71,20 +84,35 @@ export async function serveMarketingPage(env, request) {
   headers.delete("if-none-match");
   headers.delete("if-modified-since");
   const res = await env.ASSETS.fetch(new Request(request.url, { method: request.method, headers }));
+  // Agents asking for Markdown (Accept: text/markdown) get the same page as
+  // Markdown; browsers get the HTML exactly as before. Either way the response
+  // varies on Accept so no cache hands one the other's body. See agents.js.
+  const md = prefersMarkdown(request.headers.get("accept"));
+  if (res.status === 404 && md) return markdownNotFoundResponse(request);
   const ct = res.headers.get("content-type") || "";
   if (res.status !== 200 || !ct.includes("text/html")) return res;
-  let S;
+  let S = null;
   try {
     S = await loadSettings(env);
   } catch (e) {
     console.error("[marketing] settings load failed, serving unrewritten", e && e.message ? e.message : e);
-    return res;
   }
-  const body = rewritePriceTokens(await res.text(), priceTokens(S));
+  if (!S && !md) {
+    const out = new Response(res.body, res);
+    varyAccept(out.headers);
+    return out;
+  }
+  let body = await res.text();
+  if (S) body = rewriteReviews(rewritePriceTokens(body, priceTokens(S)), S.googleReviews);
   const h = new Headers(res.headers);
   h.delete("etag");
   h.delete("last-modified");
   h.delete("content-length");
   h.set("cache-control", "public, max-age=300"); // a CMS price change is fully live within 5 min
+  varyAccept(h);
+  if (md) {
+    body = pageMarkdown(body, request.url, S);
+    h.set("content-type", MARKDOWN_TYPE);
+  }
   return new Response(request.method === "HEAD" ? null : body, { status: 200, headers: h });
 }
