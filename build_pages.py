@@ -588,7 +588,7 @@ def footer():
       <li><a href="sms:8015643164">Text a photo</a></li>
       <li><a href="mailto:{BIZ["email"]}">Email Joseph</a></li>
       <li>{BIZ["address"]}</li>
-      <li><a href="/social/">Links page</a></li>
+      <li><a href="https://social.triplerdump.com/">Links page</a></li>
       <li><a href="{BIZ["instagram"]}" target="_blank" rel="noopener">@triple.r.dump</a></li>
     </ul></div>
   </div>
@@ -1070,12 +1070,12 @@ social_inner = f'''<main class="page">
       <a class="key" href="{BIZ["instagram"]}" target="_blank" rel="noopener">{icon("i-ig", 24)}Instagram</a>
     </nav>
 
-    <a class="go" href="/book">
+    <a class="go" href="{SITE}/book">
       <span class="goT"><b>Book a dumpster online</b><small>Pick a size and a date, pay by card. From ${T("d15_13")}.</small></span>
       <span class="goArrow" aria-hidden="true">{icon("i-chev", 20)}</span>
     </a>
 
-    <nav class="list" aria-label="More links">{social_row("/#bins", "i-bin", "Bin sizes &amp; prices", "15, 20 and 25 yard, dump fee included")}{social_row("/junk-removal/", "i-couch", "Junk removal", "We load it and haul it. Weekends, $" + T("junk") + " flat")}{social_row("/dump-trailer-rental/", "i-trailer", "Dump trailer rental", "By the day, for your own runs")}{social_row("/#work", "i-cam", "Our work", "Real bins on real driveways")}{social_row("/", "i-web", "Our website", "Every bin, every service, every town")}{social_row(BIZ["facebook"], "i-fb", "Facebook", "Triple R Dump", ext=True)}{social_row("/bbb/", "i-shield", "BBB accredited", "Our Better Business Bureau profile")}
+    <nav class="list" aria-label="More links">{social_row(SITE + "/#bins", "i-bin", "Bin sizes &amp; prices", "15, 20 and 25 yard, dump fee included")}{social_row(SITE + "/junk-removal/", "i-couch", "Junk removal", "We load it and haul it. Weekends, $" + T("junk") + " flat")}{social_row(SITE + "/dump-trailer-rental/", "i-trailer", "Dump trailer rental", "By the day, for your own runs")}{social_row(SITE + "/#work", "i-cam", "Our work", "Real bins on real driveways")}{social_row(SITE + "/", "i-web", "Our website", "Every bin, every service, every town")}{social_row(BIZ["facebook"], "i-fb", "Facebook", "Triple R Dump", ext=True)}{social_row(SITE + "/bbb/", "i-shield", "BBB accredited", "Our Better Business Bureau profile")}
     </nav>
 
     <a class="badge" href="{BIZ["tel"]}">
@@ -1099,7 +1099,7 @@ write("social/index.html", f'''<!DOCTYPE html>
   <title>Triple R Dump · Links</title>
   <meta name="description" content="Book a dumpster online, call the owner, or find Triple R Dump on Google, Instagram and Facebook. Roll-off dumpster rental in West Haven, Utah, dump fee included.">
   <meta name="robots" content="noindex, follow">
-  <link rel="canonical" href="{SITE}/social/">
+  <link rel="canonical" href="https://social.triplerdump.com/">
   <link rel="icon" href="/favicon.ico" sizes="any">
   <link rel="icon" href="/assets/favicon-32x32.png" type="image/png" sizes="32x32">
   <link rel="icon" href="/assets/favicon-16x16.png" type="image/png" sizes="16x16">

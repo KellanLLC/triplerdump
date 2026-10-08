@@ -53,6 +53,8 @@ async function verifyTurnstile(env, token, ip) {
 // workers.dev and per-version preview hosts serve the same pages as www. They
 // are normally switched OFF (duplicate content), but deploy.mjs turns previews
 // on for its smoke test; noindex keeps any such host out of Google regardless.
+const SOCIAL_HOST = "social.triplerdump.com";
+
 async function noindexOffDomain(request, res) {
   if (!new URL(request.url).hostname.endsWith(".workers.dev")) return res;
   const out = new Response(res.body, res);
@@ -82,6 +84,17 @@ async function handle(request, env) {
     }
     if (m === "OPTIONS") return new Response(null, { headers: cors() });
 
+    // social.triplerdump.com = the link-in-bio page (Instagram etc.). Its root
+    // serves /social/; static files (icons, video) come from the asset path
+    // without reaching here; /api/t stays for the page-view ping; anything else
+    // goes to the same path on www. www/social/ points at the subdomain.
+    if (url.hostname === SOCIAL_HOST) {
+      if ((m === "GET" || m === "HEAD") && p === "/") return serveMarketingPage(env, new Request(url.origin + "/social/", request));
+      if (p !== "/api/t") return Response.redirect((env.SITE_ORIGIN || "https://www.triplerdump.com") + p + url.search, 301);
+    } else if (/^\/social\/?$/.test(p) && url.hostname.endsWith("triplerdump.com")) {
+      return Response.redirect("https://" + SOCIAL_HOST + "/", 301);
+    }
+
     try {
       // ----- Marketing pages (static assets + live CMS prices) -----
       // wrangler.toml run_worker_first routes these here instead of serving the
@@ -102,7 +115,8 @@ async function handle(request, env) {
           const j = JSON.parse(raw || "{}");
           const type = String(j.t || "");
           if (!/bot|crawl|spider|slurp|headless|preview|monitor/i.test(ua) && SITE_EVENT_TYPES.has(type)) {
-            const path = String(j.p || "").slice(0, 120).replace(/[^\w\/\-.]/g, "");
+            let path = String(j.p || "").slice(0, 120).replace(/[^\w\/\-.]/g, "");
+            if (url.hostname === SOCIAL_HOST && path === "/") path = "/social/";
             await env.DB.prepare("INSERT INTO site_events (ts, type, path) VALUES (?1, ?2, ?3)").bind(new Date().toISOString(), type, path).run();
           }
         } catch (e) { console.error("[api/t]", e && e.message ? e.message : e); }

@@ -1,3 +1,11 @@
+*** SOCIAL SUBDOMAIN 2026-10-08 (worker v ee23695d via deploy.mjs; checkout probe OK) ***
+- https://social.triplerdump.com/ = the links page (Workers custom domain, added via API; cert auto).
+  index.js: on that host "/" serves /social/, /api/t is kept (views logged as path /social/), every
+  other path 301s to the same path on www (static assets still serve from the asset path).
+  www|apex /social(/) 301 -> the subdomain; workers.dev previews still render /social/ (smoke test).
+  Social page links to www absolutely; canonical = the subdomain; footer "Links page" links point there.
+  deploy.mjs live check now expects /social/ 301 + social.triplerdump.com/ 200.
+
 *** PRICES SET TO JOSEPH'S SEP 30 TEXT 2026-10-08 (D1 only, no deploy; Boston asked) ***
 - Joseph texted Boston on Sep 30: "2t 15yd @ $320, 3t 20yd @ $375, 4t 25yd @ $425, anything over is
   $70 a ton" (one price per bin, no 1-3 / 4-7 split). Live D1 had $350/$400/$450 (both tiers), tons

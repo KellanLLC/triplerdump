@@ -38,7 +38,7 @@ async function d1(sql) {
 }
 
 // Full smoke test against a base URL. Returns the number of failed checks.
-async function smoke(base, { withBooking }) {
+async function smoke(base, { withBooking, live = false }) {
   let bad = 0;
   const checks = [
     ["/book", "GET", null, 200],
@@ -47,7 +47,10 @@ async function smoke(base, { withBooking }) {
     ["/admin", "GET", null, 200],
     ["/admin/login", "POST", "password=definitely-wrong-" + Date.now(), 401],
     ["/", "GET", null, 200],
-    ["/social/", "GET", null, 200],
+    // The links page lives on social.triplerdump.com; www/social/ 301s there.
+    // Previews (workers.dev) still render /social/ so the page itself is checked.
+    ["/social/", "GET", null, live ? 301 : 200],
+    ...(live ? [["https://social.triplerdump.com/", "GET", null, 200]] : []),
     ["/dumpster-rental/20-yard/", "GET", null, 200],
     ["/contact/", "GET", null, 200],
     ["/api/t", "POST", '{"t":"smoke"}', 204], // not an allowed type: answers 204, writes nothing
@@ -55,7 +58,7 @@ async function smoke(base, { withBooking }) {
   for (const [p, m, body, want] of checks) {
     let status = "ERR";
     try {
-      const r = await fetch(base + p, { method: m, body, headers: body ? { "content-type": "application/x-www-form-urlencoded" } : {}, redirect: "manual" });
+      const r = await fetch(p.startsWith("https://") ? p : base + p, { method: m, body, headers: body ? { "content-type": "application/x-www-form-urlencoded" } : {}, redirect: "manual" });
       status = r.status;
     } catch {}
     const ok = status === want;
@@ -122,11 +125,11 @@ console.log("\n5/5 re-checking the live site...");
 // route that only exists in the NEW version (e.g. a page added in this deploy) can
 // 404 right after the switch. Retry for up to ~2 minutes before calling it a
 // failure; a real breakage still fails every attempt and is rolled back.
-let liveBad = await smoke(SITE, { withBooking: false });
+let liveBad = await smoke(SITE, { withBooking: false, live: true });
 for (let i = 1; liveBad && i <= 6; i++) {
   console.log(`    ${liveBad} check(s) failed - edge may still be switching over, retry ${i}/6 in 20s...`);
   await new Promise((r) => setTimeout(r, 20000));
-  liveBad = await smoke(SITE, { withBooking: false });
+  liveBad = await smoke(SITE, { withBooking: false, live: true });
 }
 if (liveBad) {
   if (prev) { console.error("\nLIVE CHECK FAILED - rolling back to " + prev); console.log(sh(`npx wrangler rollback ${prev} --yes --message "auto-rollback by deploy.mjs"`).match(/SUCCESS.*/)?.[0]); }

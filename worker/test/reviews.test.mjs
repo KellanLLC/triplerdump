@@ -163,7 +163,7 @@ test("landing page: Book in header + hero, rate card, proof, map, reviews JSON, 
   assert.match(HOME, /<script type="application\/json" id="trd-reviews">\{\}<\/script>/);
   assert.match(HOME, /href="https:\/\/www\.google\.com\/maps\?cid=8339345795908710583">Read them on Google/);
   assert.match(HOME, /<script src="assets\/t\.js" defer><\/script>/);
-  assert.match(HOME, /href="\/social\/"/);
+  assert.match(HOME, /href="https:\/\/social\.triplerdump\.com\/"/);
   assert.match(HOME, /<link rel="stylesheet" href="pages\.css">/);
   assert.doesNotMatch(HOME, /_mock|mockflag|\.\.\/deploy|every one of them five stars|Every one is five stars|refund 48/i);
   // every price on the page is a live marker
