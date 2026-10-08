@@ -418,7 +418,13 @@
   };
   const COLORS = ['#116DFF', '#6B3FA0', '#00897B', '#1A73E8', '#0D56C9', '#D32F2F'];
   const photoOk = (u) => /^https:\/\/[a-z0-9.-]*googleusercontent\.com\//i.test(String(u || ''));
-  document.getElementById('cards').innerHTML = REVIEWS.slice(0, 6).map((r, i) => {
+  // Only reviews with a verified date are shown, so no card is missing one.
+  // (Falls back to all of them if fewer than 3 carry a date.)
+  const dated = REVIEWS.filter((r) => ago(r.date));
+  const shown = (dated.length >= 3 ? dated : REVIEWS).slice(0, 6);
+  const cardsEl = document.getElementById('cards');
+  cardsEl.dataset.n = String(shown.length);
+  cardsEl.innerHTML = shown.map((r, i) => {
     const name = String(r.name || 'Google user');
     const when = ago(r.date);
     const av = photoOk(r.photo)

@@ -28,8 +28,11 @@
   hold released + row deleted (bookings 20 -> 20); payment/SMS/review/reminder/invoice code byte-
   identical; D1 settings identical to the pre-change baseline (26 keys); 6 secrets on ec06fc93;
   admin login form + wrong-pw 401 live; right-pw 302 in the offline test (real password not used).
-- OPEN: /terms still promises a full refund 48h+ before delivery - Boston unsure it is true; confirm
-  with Joseph. Google Places API key still not set (review photos/dates for the other 4 cards + auto
+- /terms refund wording: Boston said LEAVE IT (it was there before). Texting: webhook untouched, fine.
+- REVIEW CARDS (v 1a6911d5): only reviews with a verified date are shown (Connie/Scott/Jorge, real
+  photo + date); falls back to all if <3 dated. Boston DECLINED a Places API key (cost) and declined
+  Chrome desktop access, so more dates need a manual add to reviews.js DEFAULT_GOOGLE_REVIEWS.
+- WAS OPEN: /terms full-refund line - resolved above. Google Places API key still not set (review photos/dates for the other 4 cards + auto
   count). _mock/ (gitignored) holds the approved mocks.
 
 *** LANDER SOCIAL PROOF + MAPS 2026-10-07 (worker v df51bc34 via deploy.mjs, checkout probe OK) ***
