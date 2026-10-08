@@ -8,6 +8,10 @@
   llms.txt, and a real 15yd 4-7 day booking -> Stripe Checkout $344.00 (row deleted after).
 - Earlier history: Aug 23 Joseph lowered to 275/300, 325/350, 375/400; before that 300/325, 350/375,
   400/425. If Joseph's prices change again, he edits them in /admin (Prices tab) - no deploy needed.
+- CONFIRMED BY JOSEPH (via Boston, 2026-10-08): ONE price per bin for a 7-day rental across the board;
+  customers who want it picked up sooner just call. Same price in both D1 tiers is INTENTIONAL.
+  (Correction: his $25 price drop happened between Aug 12-21, not Aug 23. The Oct 1-2 admin saves
+  were not made by any Claude session.)
 
 *** SITE REDESIGN LIVE 2026-10-08 (worker v ec06fc93 via deploy.mjs; preview + live checks OK) ***
 - New look on the Nichols Tree Removal "bones" (fixed header, photo hero + rate card, tape + trust bar,
