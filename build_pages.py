@@ -588,7 +588,7 @@ def footer():
       <li><a href="sms:8015643164">Text a photo</a></li>
       <li><a href="mailto:{BIZ["email"]}">Email Joseph</a></li>
       <li>{BIZ["address"]}</li>
-      <li><a href="https://social.triplerdump.com/">Links page</a></li>
+      <li><a href="https://bio.triplerdump.com/">Links page</a></li>
       <li><a href="{BIZ["instagram"]}" target="_blank" rel="noopener">@triple.r.dump</a></li>
     </ul></div>
   </div>
@@ -1099,7 +1099,7 @@ write("social/index.html", f'''<!DOCTYPE html>
   <title>Triple R Dump · Links</title>
   <meta name="description" content="Book a dumpster online, call the owner, or find Triple R Dump on Google, Instagram and Facebook. Roll-off dumpster rental in West Haven, Utah, dump fee included.">
   <meta name="robots" content="noindex, follow">
-  <link rel="canonical" href="https://social.triplerdump.com/">
+  <link rel="canonical" href="https://bio.triplerdump.com/">
   <link rel="icon" href="/favicon.ico" sizes="any">
   <link rel="icon" href="/assets/favicon-32x32.png" type="image/png" sizes="32x32">
   <link rel="icon" href="/assets/favicon-16x16.png" type="image/png" sizes="16x16">

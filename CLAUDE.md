@@ -1,10 +1,11 @@
-*** SOCIAL SUBDOMAIN 2026-10-08 (worker v ee23695d via deploy.mjs; checkout probe OK) ***
-- https://social.triplerdump.com/ = the links page (Workers custom domain, added via API; cert auto).
-  index.js: on that host "/" serves /social/, /api/t is kept (views logged as path /social/), every
-  other path 301s to the same path on www (static assets still serve from the asset path).
-  www|apex /social(/) 301 -> the subdomain; workers.dev previews still render /social/ (smoke test).
-  Social page links to www absolutely; canonical = the subdomain; footer "Links page" links point there.
-  deploy.mjs live check now expects /social/ 301 + social.triplerdump.com/ 200.
+*** LINKS PAGE ON bio.triplerdump.com 2026-10-08 (worker v a56db2df via deploy.mjs; checkout probe OK) ***
+- https://bio.triplerdump.com/ = the links page (Workers custom domain, added via API; cert auto).
+  index.js SOCIAL_HOST: on that host "/" serves /social/, /api/t is kept (views logged as /social/),
+  every other path 301s to the same path on www (static assets still serve from the asset path).
+  www|apex /social(/) AND social.triplerdump.com (used for ~1 hour first, also a custom domain) 301
+  -> bio. workers.dev previews still render /social/ (smoke test). Page links to www absolutely;
+  canonical = bio; footer "Links page" links point there. deploy.mjs live check expects /social/ 301,
+  bio 200, social. 301.
 
 *** PRICES SET TO JOSEPH'S SEP 30 TEXT 2026-10-08 (D1 only, no deploy; Boston asked) ***
 - Joseph texted Boston on Sep 30: "2t 15yd @ $320, 3t 20yd @ $375, 4t 25yd @ $425, anything over is

@@ -47,10 +47,10 @@ async function smoke(base, { withBooking, live = false }) {
     ["/admin", "GET", null, 200],
     ["/admin/login", "POST", "password=definitely-wrong-" + Date.now(), 401],
     ["/", "GET", null, 200],
-    // The links page lives on social.triplerdump.com; www/social/ 301s there.
+    // The links page lives on bio.triplerdump.com; www/social/ 301s there.
     // Previews (workers.dev) still render /social/ so the page itself is checked.
     ["/social/", "GET", null, live ? 301 : 200],
-    ...(live ? [["https://social.triplerdump.com/", "GET", null, 200]] : []),
+    ...(live ? [["https://bio.triplerdump.com/", "GET", null, 200], ["https://social.triplerdump.com/", "GET", null, 301]] : []),
     ["/dumpster-rental/20-yard/", "GET", null, 200],
     ["/contact/", "GET", null, 200],
     ["/api/t", "POST", '{"t":"smoke"}', 204], // not an allowed type: answers 204, writes nothing

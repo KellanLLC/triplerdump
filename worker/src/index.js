@@ -53,7 +53,7 @@ async function verifyTurnstile(env, token, ip) {
 // workers.dev and per-version preview hosts serve the same pages as www. They
 // are normally switched OFF (duplicate content), but deploy.mjs turns previews
 // on for its smoke test; noindex keeps any such host out of Google regardless.
-const SOCIAL_HOST = "social.triplerdump.com";
+const SOCIAL_HOST = "bio.triplerdump.com";
 
 async function noindexOffDomain(request, res) {
   if (!new URL(request.url).hostname.endsWith(".workers.dev")) return res;
@@ -84,10 +84,12 @@ async function handle(request, env) {
     }
     if (m === "OPTIONS") return new Response(null, { headers: cors() });
 
-    // social.triplerdump.com = the link-in-bio page (Instagram etc.). Its root
+    // bio.triplerdump.com = the link-in-bio page (Instagram etc.). Its root
     // serves /social/; static files (icons, video) come from the asset path
     // without reaching here; /api/t stays for the page-view ping; anything else
-    // goes to the same path on www. www/social/ points at the subdomain.
+    // goes to the same path on www. www/social/ and the briefly-used
+    // social.triplerdump.com both point at it.
+    if (url.hostname === "social.triplerdump.com") return Response.redirect("https://" + SOCIAL_HOST + "/", 301);
     if (url.hostname === SOCIAL_HOST) {
       if ((m === "GET" || m === "HEAD") && p === "/") return serveMarketingPage(env, new Request(url.origin + "/social/", request));
       if (p !== "/api/t") return Response.redirect((env.SITE_ORIGIN || "https://www.triplerdump.com") + p + url.search, 301);

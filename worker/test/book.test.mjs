@@ -131,24 +131,27 @@ test("admin login unchanged: right password 302 + cookie, wrong 401, then /admin
   assert.match(html, /Log out/, "logged-in panel, not the login form");
 });
 
-test("social.triplerdump.com serves the links page; www/social/ points there", async () => {
+test("bio.triplerdump.com serves the links page; www/social/ points there", async () => {
   const e = { ...trackEnv(), ASSETS: { fetch: async (req) => new URL(req.url).pathname === "/social/"
     ? new Response("<html><body>LINKS</body></html>", { headers: { "content-type": "text/html; charset=utf-8" } })
     : new Response(null, { status: 404 }) } };
   const go = (u, init) => worker.fetch(new Request(u, init), e);
-  const root = await go("https://social.triplerdump.com/");
+  const root = await go("https://bio.triplerdump.com/");
   assert.equal(root.status, 200);
   assert.match(await root.text(), /LINKS[\s\S]*assets\/t\.js/);
-  let r = await go("https://social.triplerdump.com/book?size=20");
+  let r = await go("https://bio.triplerdump.com/book?size=20");
   assert.equal(r.status, 301);
   assert.equal(r.headers.get("location"), ORIGIN + "/book?size=20");
   for (const p of ["/social/", "/social"]) {
     r = await go(ORIGIN + p);
     assert.equal(r.status, 301, p);
-    assert.equal(r.headers.get("location"), "https://social.triplerdump.com/");
+    assert.equal(r.headers.get("location"), "https://bio.triplerdump.com/");
   }
+  r = await go("https://social.triplerdump.com/anything");
+  assert.equal(r.status, 301);
+  assert.equal(r.headers.get("location"), "https://bio.triplerdump.com/", "old subdomain forwards");
   r = await go("https://x-triplerdump.bkthueson.workers.dev/social/");
   assert.equal(r.status, 200, "previews still render it for the deploy smoke test");
-  await go("https://social.triplerdump.com/api/t", { method: "POST", headers: { "user-agent": "Mozilla/5.0" }, body: JSON.stringify({ t: "view", p: "/" }) });
+  await go("https://bio.triplerdump.com/api/t", { method: "POST", headers: { "user-agent": "Mozilla/5.0" }, body: JSON.stringify({ t: "view", p: "/" }) });
   assert.equal(e.writes.at(-1).args[2], "/social/", "views on the subdomain are logged as /social/");
 });
