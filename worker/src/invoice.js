@@ -13,8 +13,9 @@
 // the hourly sweep (the backup if a webhook is missed).
 import { stripeKey } from "./stripe.js";
 import { fillTemplate } from "./settings.js";
-import { sendInvoiceSms, sendOwnerInvoicePaid, sendOwnerInvoiceOverdue } from "./sms.js";
+import { sendInvoiceSms, sendOwnerInvoicePaid, sendOwnerInvoiceOverdue, sendOwnerInvoiceFinal } from "./sms.js";
 import { startReview } from "./review.js";
+import { todayISO, addDays } from "./util.js";
 
 const API = "https://api.stripe.com/v1/";
 
@@ -88,6 +89,9 @@ export function totalsFor(items, taxRate, taxable) {
   return { subtotal_cents, tax_cents, total_cents: subtotal_cents + tax_cents };
 }
 
+// The job / work order line as it goes to Stripe: one line, at most 140 characters, "" when blank.
+export const jobRefOf = (v) => String(v || "").replace(/\s+/g, " ").trim().slice(0, 140);
+
 // YYYY-MM-DD (a date input) -> unix seconds. Stripe wants a timestamp; pinned to
 // 23:59:59 UTC so an invoice due "the 10th" isn't already overdue that morning.
 function dueDateToUnix(ymd) {
@@ -99,7 +103,7 @@ function dueDateToUnix(ymd) {
 /**
  * Creates + sends a Stripe invoice, then records it in D1.
  * `data`: { customer_name, email, phone, company, booking_id, items[], due_date,
- *           taxable, terms, notes }
+ *           taxable, terms, notes, job_ref }
  * Returns { ok, id, number, hosted_url } or { ok:false, error }.
  */
 export async function createInvoice(env, S, data) {
@@ -139,6 +143,14 @@ export async function createInvoice(env, S, data) {
   if (dueUnix) invParams.set("due_date", String(dueUnix));
   else invParams.set("days_until_due", String(Number(S.invoiceDueDays) || 14));
   if (data.terms) invParams.set("footer", data.terms);
+  // Job / work order line (Joseph 10/30): contractors like Utah Roofing Consultants match each bill to
+  // a house, so he types their job number, usually the homeowner's last name and the address. A Stripe
+  // custom field prints it in the invoice header, on the PDF and the pay page. Stripe caps it at 140.
+  const jobRef = jobRefOf(data.job_ref);
+  if (jobRef) {
+    invParams.set("custom_fields[0][name]", "Job / Work order");
+    invParams.set("custom_fields[0][value]", jobRef);
+  }
   if (data.booking_id) invParams.set("metadata[booking_id]", data.booking_id);
   invParams.set("payment_settings[payment_method_types][0]", "card");
   // NO setup_future_usage here, and it CANNOT be added. Verified in sandbox 2026-07-28:
@@ -189,18 +201,23 @@ export async function createInvoice(env, S, data) {
   if (!sent.ok) return { ok: false, error: sent.message };
 
   const now = new Date().toISOString();
+  // The final notice goes out this many days after the due date (no due date given = Stripe's
+  // days_until_due from today). Joseph can switch it off per invoice in the console.
+  const noticeDays = Number(S.invoiceFinalNoticeDays) || 0;
+  const tz = (S.business && S.business.timezone) || "America/Denver";
+  const finalNotice = noticeDays > 0 ? addDays(data.due_date || addDays(todayISO(tz), Number(S.invoiceDueDays) || 14), noticeDays) : null;
   try {
     await env.DB.prepare(
       "INSERT INTO invoices (id, created_at, booking_id, customer_name, phone, email, company," +
       " line_items, subtotal_cents, tax_cents, total_cents, due_date, status, terms," +
-      " stripe_invoice_id, stripe_customer_id, number, hosted_url, pdf_url, sent_at, notes, ask_review)" +
-      " VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,'sent',?13,?14,?15,?16,?17,?18,?19,?20,?21)"
+      " stripe_invoice_id, stripe_customer_id, number, hosted_url, pdf_url, sent_at, notes, ask_review, final_notice_date, job_ref)" +
+      " VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,'sent',?13,?14,?15,?16,?17,?18,?19,?20,?21,?22,?23)"
     ).bind(
       id, now, data.booking_id || null, data.customer_name, data.phone || "", data.email || "",
       data.company || "", JSON.stringify(items), subtotal_cents, tax_cents, total_cents,
       data.due_date || "", data.terms || "", stripeInvoiceId, customerId,
       sent.data.number || "", sent.data.hosted_invoice_url || "", sent.data.invoice_pdf || "",
-      now, data.notes || "", data.ask_review ? 1 : 0
+      now, data.notes || "", data.ask_review ? 1 : 0, finalNotice, jobRef || null
     ).run();
   } catch (e) {
     // The customer HAS been billed by now. Surface it loudly rather than pretending
@@ -232,7 +249,7 @@ export async function createInvoice(env, S, data) {
     console.error("[invoice] sms failed (invoice still sent)", e && e.message ? e.message : e);
   }
 
-  return { ok: true, id, number: sent.data.number || "", hosted_url: sent.data.hosted_invoice_url || "" };
+  return { ok: true, id, number: sent.data.number || "", hosted_url: sent.data.hosted_invoice_url || "", final_notice_date: finalNotice };
 }
 
 // Re-reads the invoice from Stripe and syncs status/paid_at into D1. Webhook-free,
@@ -411,4 +428,71 @@ export async function runInvoiceOverdueReminders(env, S) {
   }
   console.log(`[invoice overdue] due ${(results || []).length}, texted ${sent}, owner alerted ${alerted}`);
   return { due: (results || []).length, sent, alerted };
+}
+
+// The final notice (0012). ONE text per invoice, at the daily reminder hour on its
+// final_notice_date, saying small claims is next. Stripe is re-checked first, so nobody
+// who just paid gets it. Claimed with a guarded UPDATE before sending (two ticks can't
+// double-text); a send that fails releases the claim and it tries again the next day.
+// Needs a mobile number: an invoice without one never gets it (the console says so).
+export async function runInvoiceFinalNotices(env, S) {
+  const tz = (S.business && S.business.timezone) || "America/Denver";
+  const today = todayISO(tz);
+  const { results } = await env.DB.prepare(
+    "SELECT id FROM invoices WHERE status='sent' AND final_notice_date IS NOT NULL AND final_notice_date <> ''" +
+    " AND final_notice_date <= ?1 AND COALESCE(final_notice_off,0)=0 AND final_notice_sent_at IS NULL" +
+    " AND phone IS NOT NULL AND phone <> '' LIMIT 20"
+  ).bind(today).all();
+
+  const base = (S.publicBaseUrl || "").replace(/\/+$/, "");
+  let sent = 0;
+  for (const { id } of results || []) {
+    try {
+      const row = await refreshInvoiceStatus(env, S, id); // paid since? stop here
+      if (!row || row.status !== "sent") continue;
+      const due = row.due_date || String(row.sent_at || row.created_at || "").slice(0, 10);
+      const vals = {
+        name: String(row.customer_name || "").split(/\s+/)[0] || row.customer_name || "",
+        number: row.number || row.id, total: money(row.total_cents), due,
+        days_late: Math.max(1, Math.round((Date.parse(today) - Date.parse(due)) / 864e5)),
+        late_pct: String((S.fees && S.fees.latePct) || 0),
+        invoice_link: base + "/inv/" + row.id, phone: (S.business && S.business.phone) || "",
+        customer_phone: row.phone || "", admin_link: base + "/admin/invoice/" + row.id,
+      };
+      const msg = fillTemplate((S.templates && S.templates.invoice_final) || "", vals);
+      if (!msg.trim()) continue; // template blanked in the CMS = feature off
+      const claim = await env.DB.prepare(
+        "UPDATE invoices SET final_notice_sent_at=?1 WHERE id=?2 AND final_notice_sent_at IS NULL"
+      ).bind(new Date().toISOString(), row.id).run();
+      if (!(claim.meta && claim.meta.changes === 1)) continue;
+      const r = await sendInvoiceSms(S, row.phone, msg);
+      if (!r || !r.ok) {
+        await env.DB.prepare("UPDATE invoices SET final_notice_sent_at=NULL WHERE id=?1").bind(row.id).run();
+        continue;
+      }
+      await sendOwnerInvoiceFinal(S, { ...vals, name: row.customer_name || "" });
+      sent++;
+    } catch (e) {
+      console.error("[invoice final notice]", id, e && e.message);
+    }
+  }
+  console.log(`[invoice final notice] due ${(results || []).length}, texted ${sent}`);
+  return { due: (results || []).length, sent };
+}
+
+// The console's switch on an unpaid invoice. Off = it never goes out. On again = it goes on
+// its date, or tomorrow if that date has passed. Once it's been sent there's nothing to switch.
+export async function setFinalNotice(env, S, id, on) {
+  const row = await env.DB.prepare(
+    "SELECT id, status, due_date, final_notice_date, final_notice_sent_at FROM invoices WHERE id=?1"
+  ).bind(id).first();
+  if (!row) return { ok: false, error: "Invoice not found." };
+  if (row.final_notice_sent_at) return { ok: false, error: "The final notice already went out." };
+  if (row.status !== "sent") return { ok: false, error: row.status === "paid" ? "That invoice is paid." : "That invoice was voided." };
+  const tz = (S.business && S.business.timezone) || "America/Denver";
+  const today = todayISO(tz);
+  let date = row.final_notice_date || addDays(row.due_date || today, Number(S.invoiceFinalNoticeDays) || 60);
+  if (on && date <= today) date = addDays(today, 1);
+  await env.DB.prepare("UPDATE invoices SET final_notice_off=?1, final_notice_date=?2 WHERE id=?3").bind(on ? 0 : 1, date, id).run();
+  return { ok: true, on: !!on, date };
 }

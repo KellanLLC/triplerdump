@@ -51,7 +51,13 @@ CREATE TABLE IF NOT EXISTS bookings (
   review_clicked_at TEXT,              -- first tap on /r/<token>
   review_token TEXT,                   -- minted by the review sweep; powers /r/<token>
   review_rating INTEGER,               -- 1-5, captured on the review landing
-  notes TEXT
+  notes TEXT,
+  delivered_at TEXT,                   -- console "Dropped off" (0010)
+  bin_no TEXT,                         -- bin on the ground, e.g. 20-001 (0010)
+  completed_at TEXT,                   -- console "Picked up" (0010)
+  weight_tons REAL,                    -- scale weight, records only (0010)
+  addons TEXT,                         -- JSON [{k, label, cents}] paid with the booking (0011)
+  debris TEXT                          -- what they said is going in it (0011)
 );
 
 CREATE INDEX IF NOT EXISTS idx_bookings_delivery ON bookings(delivery_date);
@@ -108,7 +114,9 @@ CREATE TABLE IF NOT EXISTS invoices (
   owner_paid_notified_at TEXT, review_checked_at TEXT,
   review_token TEXT, review_sms_sent_at TEXT, review_rating INTEGER, review_step INTEGER,
   review_next_due_at TEXT, review_stopped_at TEXT, review_stop_reason TEXT, review_clicked_at TEXT,
-  overdue_reminders_sent INTEGER DEFAULT 0, overdue_last_sent_at TEXT, overdue_owner_alerted_at TEXT  -- late-payment texts (0008)
+  overdue_reminders_sent INTEGER DEFAULT 0, overdue_last_sent_at TEXT, overdue_owner_alerted_at TEXT, -- late-payment texts (0008)
+  final_notice_date TEXT, final_notice_off INTEGER DEFAULT 0, final_notice_sent_at TEXT, -- the final notice text (0012)
+  job_ref TEXT                     -- job / work order line, printed on the Stripe invoice (0013)
 );
 CREATE INDEX IF NOT EXISTS idx_invoices_booking ON invoices(booking_id);
 CREATE INDEX IF NOT EXISTS idx_invoices_status  ON invoices(status);
@@ -122,3 +130,9 @@ CREATE TABLE IF NOT EXISTS site_events (
   path TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_site_events_ts ON site_events (ts);
+
+-- every change the Pull Count console makes (0010)
+CREATE TABLE IF NOT EXISTS console_log (
+  id TEXT PRIMARY KEY, at TEXT NOT NULL, by_user TEXT, role TEXT, action TEXT NOT NULL, target TEXT, detail TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_console_log_target ON console_log(target, at);

@@ -33,3 +33,7 @@ skills-lock.json
 _archive/
 _review/
 _mock/
+
+# --- Local tooling state ---
+.wrangler/
+.claude/

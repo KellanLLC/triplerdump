@@ -16,6 +16,301 @@
 - To turn it off: disable the endpoint in Stripe (Developers > Webhooks); everything falls back to the hourly check.
 - NOT COMMITTED. admin.js guide tab still says invoice texts come "within the hour" (still true; not redeployed for it).
 
+*** SITE COPY STATES THE FUEL CHARGE 2026-10-31 (worker v 1428b51b via deploy.mjs, previous 98f48ffe, checkout probe OK;
+    previews back OFF) — fixes the OPEN marketing-copy note below ***
+- The pages promised no drive charge ("no fuel surcharge", Springville "the drive is on us", Logan "Do you charge extra
+  ... No.", "Same price everywhere") while bookings past 30 mi carry one. Now the copy comes from live settings:
+  marketing.js tokens {{TRD:fuel_note}} (how it works, fuelWords; "Delivery is included anywhere we deliver." when off)
+  and {{TRD:fuel_<town>}} (fuel_logan, fuel_plain_city: booking.js townFuel = PLACES town center miles + fuelFor, the
+  same answer a booking ending in that town gets without a street match). index.html uses <span data-trd-text="fuel_note">
+  (baked fallback). Every city page's "Same bin prices as West Haven" line carries its town token; far-town FAQs too.
+  "same prices" -> "same bin prices" for far towns; hub/meta "Same price everywhere" -> "One price per bin".
+- Live: Springville 75 mi ~$85 (a street address there reads 78 mi $88, hence "about" + "the booking page shows the
+  exact amount"), Logan 39 $49, Tremonton 36 $46, Cottonwood Heights 43 $53, Roy/near towns "no fuel charge".
+- test/fuel-copy.test.mjs (npm test 81/81). Changed HTML copied into deploy/ (build_deploy.py NOT re-run). NOT COMMITTED.
+- Homepage hero "One price covers up to 7 days, delivery, pickup and the dump fee" left as is (true inside 30 mi; the
+  rates section right under it now states the fuel charge).
+
+*** FUEL STARTING CHARGE 2026-10-30 night (worker v 98f48ffe via deploy.mjs, previous b36fbcb5, checkout probe OK;
+    previews back OFF; console = trykellan Pages deployment a0659164) — SUPERSEDES the $ math in the entry below ***
+- Joseph: "if someone lives 31 miles, it's gonna charge them one dollar extra ... There should be a $40 up charge plus
+  a dollar a mile after that". S.fuelMile = {free 30, base 4000, cents 100}: past the free miles it's base + (rounded
+  miles - free) x cents. 31 mi $41, 33 mi $43, 48 mi $58, 70 mi $80. Label "Fuel charge ($40 + 18 miles × $1)" (base
+  only: "Fuel charge (past 30 miles)"). settings.js fuelWords(S) = the customer wording, used by /book ("Farther out, we
+  still come to you: a $40 fuel charge plus $1 for every mile past 30 (straight-line miles).") and llms.txt.
+- D1 fuel_per_mile still NOT written (default serves). A saved row without `base` reads as the $40 default; console-api
+  /settings stores no base when an old console tab omits it, so an old tab can't zero it. base $0-$500.
+- Console Setup > Where you deliver: new "Starting charge $[40]" row under the two ring rows; example line shows
+  "$65 ($40 + 25 × $1)"; town list "32 mi · $42". real-data.js fuelMi has base. npm test 77/77; sample console
+  checked (desktop + 375px, no overflow); live /api/fuel: Draper 48 mi $58, Provo 70 mi $80, Roy none.
+
+*** FUEL CHARGE BY THE MILE 2026-10-30 later (worker v b36fbcb5 via deploy.mjs, previous 3d181c30, checkout probe OK;
+    previews back OFF; console = trykellan Pages deployment 7bd8155f) ***
+- Boston proposed "30 miles included and every mile past is an extra 1-5 dollars"; Joseph: "So I guess $1 a mile
+  should work right?" The flat rings ($80 past 30, $120 past 60) are GONE. settings.js S.fuelMile {free, cents}
+  (default {30, 100}; D1 key fuel_per_mile, NOT written yet, so the default serves; cents 0 = off; fuelOn(S)).
+  fuelFor = (Math.round(miles) - free) x cents, on the rounded miles the customer sees; label "Fuel charge (18 miles
+  × $1)" (Stripe line / invoice line). D1 fuel_zones still holds the old rings but nothing reads it.
+- /book hint: "...Farther out, we still come to you for $1 a mile past 30 (straight-line miles), to cover fuel."
+  llms.txt says it too. console-api /settings takes fuelMile {free 0-300, rate $0-$25/mi} -> fuel_per_mile; the old
+  `fuel` rings payload is ignored. real-data.js returns fuelMi {free, rate} (null = default).
+- Console Setup > Where you deliver: row 1 = free miles (-/+5, "Free"), row 2 = delivery limit (-/+5) + "$ [1] /mi";
+  map draws the free ring + the limit; town list shows each town's charge ("39 mi · $9"); example line. Take a booking
+  sample math matches; fuel amounts show cents ($13.50). sitePatch sends fuelMile on every save.
+- Live checked: Draper 48 mi $18, Provo 70 mi $40, Roy 3 mi none; /book + llms.txt wording. npm test 77/77.
+- FIXED 10/31 (entry at the top), was OPEN (marketing copy): several pages still promised no drive charge: guides_content.py cost guide "no
+  fuel surcharge", build_pages.py Springville FAQ "the drive is on us" and Logan FAQ "Do you charge extra to come over
+  the canyon? No.", plus "delivery included" lines everywhere. Wrong since the 10/27 fuel zones.
+
+*** FUEL CHARGE ON CONSOLE PHONE BOOKINGS 2026-10-30 (worker v 3d181c30 via deploy.mjs, previous a2e138bc, checkout
+    probe OK; previews back OFF; console = trykellan Pages deployment f4bedc41) ***
+- Joseph's text: "When I book the appointment it doesn't add the fuel charge for addresses farther than 30 miles".
+  It skipped S.ownerBooking on purpose (10/27 note below). Now booking.js charges it on console bookings too, same
+  fuelFor/milesFromYard as /book; input.no_fuel === true waives it, honored ONLY when S.ownerBooking. A custom
+  price_cents replaces the rental; fuel + extras + tax still go on top. Owner bookings also skip the radius refusal
+  now (the console already told him "You can still take it"); past the radius they get the farthest ring.
+  Pay-link invoices already itemize bk.addons, so fuel is its own invoice line.
+- New POST /api/console/fuel {address} (owners) -> fuelQuote(S, address, owner=true). trykellan _middleware.js
+  LIVE_PATH fuel:"fuel". Console "Take a booking": componentDidUpdate asks it 700 ms after the address/town stop
+  changing (same "addr, town, UT" string the booking sends, so same cached answer); a row under "Price for this job"
+  ("About 48 miles from the yard, so the $80 fuel charge goes on" + "No fuel charge"/"Add it back"); total and
+  summary include it; sends no_fuel. Sample console prices it from the town (TOWNLL + its fuel rings).
+- test/console-fuel.test.mjs (npm test 74/74). Sample console checked: SLC 32 mi -> $489.13, waived $403.13,
+  custom $280 -> $387.00. Live console not opened (sign-in); live /api/console/fuel without key = 401.
+- Seen live 10/30: D1 service_radius_miles is 80 (was 88 on 10/27), presumably a console Setup save. Not touched.
+- OWNER-GUIDE.md section 5 updated. NOT COMMITTED (either repo).
+
+*** JOB / WORK ORDER LINE ON INVOICES 2026-10-30 (worker v a2e138bc via deploy.mjs, previous eb924674, checkout probe OK;
+    previews back OFF; console = trykellan Pages deployment 6ca4ff0a; D1 migration 0013 applied) ***
+- Joseph's text: Utah Roofing Consultants (contract) want a job / work order number on each invoice = the homeowner's
+  last name + address, so they know which house a bill is for. createInvoice takes data.job_ref -> Stripe invoice
+  custom_fields[0] {name "Job / Work order", value <=140, one line (jobRefOf)}: prints in the PDF header (verified on a
+  sandbox invoice, voided after) + pay page. Stored in invoices.job_ref (0013, NULL on the 40 older rows).
+- /admin New invoice: "Job / Work order #" box (name job_ref); detail row; list shows it under the customer; search
+  matches it. Console (_src-console.dc.html): box on New invoice (iv.job, kept through "Change") and on "weigh and
+  bill" when it sends an invoice (finJob); POST /api/console/invoice passes job_ref; real-data.js selects job_ref ->
+  customer card "Invoices you've sent" shows "Job: ...". NOT on the contract monthly bill (that's a monthly roll-up).
+- test/job-ref.test.mjs (npm test 66/66). Console build diff = those lines only (console + sample index). Live console
+  view not opened (sign-in); its invoice SELECT was run on live D1 OK. OWNER-GUIDE.md updated. NOT COMMITTED (either repo).
+- SAME DAY, BIN SWITCH DAY ON INVOICES (console only, Pages deployment 861f7abb; worker unchanged): Joseph: "if I invoice
+  somebody for a bin switch, we can put what day we're gonna do the bin switch". Console New invoice: the "+ Bin switch"
+  chip's line has a "Switch day" date box (required to send), prefilled with the customer's next switch already booked
+  from the job (their "Bin switch" jobs or swapsOf, >= today). The line goes to Stripe as "Bin switch · Wed Nov 4"
+  (lineLabel). Only the chip's line; a typed "Bin switch" line has no box. /admin lines are free text (type the day).
+  Tested in the sample console: refused without a day, prefill from a logged swap, sent line on the customer card.
+- SAME DAY, UNPAID INVOICES ON THE CONSOLE HOME (console only, Pages deployment 7da40ae1; worker unchanged): Joseph: "How
+  do I see invoices that still need to be paid?" (before: only Customers > "Owe you", per customer, or /admin/invoices,
+  paid + unpaid mixed). Today screen, last section, owner only (DRIVER sees nothing): "Unpaid invoices N", "$X waiting ·
+  N overdue", one row per unpaid invoice (S.invoices !paid; real-data = D1 status 'sent', the hourly sweep keeps it
+  fresh), soonest due first, "Overdue N days" in red / "Due Fri Nov 6"; tap = that customer's card. An invoice just sent
+  from the console has no due until reload, so it counts date + 14 (same as the card). Empty = "Every invoice is paid."
+  Tested in the sample console (overdue first, paid one left out, tap-through, empty state, 375px no overflow).
+
+*** TERMS SECTION 6: REPEAT + INVOICED CUSTOMERS 2026-10-29 night (worker v eb924674 via deploy.mjs, previous ba36bc88;
+    previews back OFF) ***
+- Joseph: "if you have ordered from us before and are using a post-invoice type of payment ... automatically assume all
+  risk ... putting the dumpster on their driveway or in their grass". terms.js: new "6. Repeat Customers and Invoiced
+  Orders" (terms carry over to every later order however placed/paid; customer assumes the section 4 + Property Damage &
+  Placement risk) and "Last updated October 29, 2026" under the title. Goes forward only: it can't reach an incident
+  before 10/29 (Joseph hinted at one). Verified live on /terms. NOT COMMITTED.
+
+*** FINAL NOTICE TEXT ON UNPAID INVOICES 2026-10-29 (worker v ba36bc88 via deploy.mjs, previous a1079aac; previews back OFF;
+    console = trykellan Pages deployment 4e13cae9; D1 migration 0012 applied) ***
+- Joseph (10/29, Ray Epps owes $1,181.30 on TRD-INV-57M9N9, due 10/9, all 5 late texts sent): one text 60 days past due
+  saying small claims is next. "60 days from now" for invoices already unpaid -> 0012 set final_notice_date 2026-12-28 on
+  every status='sent' row (only Ray's). New invoices: createInvoice stores due + S.invoiceFinalNoticeDays (60).
+- Daily at the reminder hour (cron.js) runInvoiceFinalNotices: re-checks Stripe, claims final_notice_sent_at, texts
+  templates.invoice_final, owner copy owner_invoice_final; failed send releases the claim. Needs a phone. Wording claims
+  only what /terms backs: 1.5%/mo late charge + collection costs, plus court costs. No attorney fees (not in his terms).
+- Console: customer card > "Invoices you've sent" shows "Final notice texts Ray Mon Dec 28 · Don't send" (POST
+  /api/console/invoice/<id>/notice {on}; setFinalNotice). Templates editable in /admin. test/final-notice.test.mjs (61/61).
+  The live on/off switch was NOT clicked (would write his data); route covered by tests + sample console. NOT COMMITTED.
+
+*** JOSEPH'S OWN PRICE ON PHONE BOOKINGS 2026-10-27 evening (worker v a1079aac via deploy.mjs, checkout probe OK, previews
+    back OFF; console = trykellan Pages deployment 9046ffc6) ***
+- Joseph's text: concrete-only job is $220 + $60 dump, "when I do a booking I can change the price myself but if anyone else
+  does they can't". Console "Take a booking" has a "Price for this job" box ($, before tax; blank = price list, shown as
+  the placeholder). It sends price_cents to /api/console/book; booking.js createBooking honors it ONLY when S.ownerBooking
+  (console-api.js), so /api/book ignores it. It replaces the rental incl. extra days; add-ons + tax still on top; $0-$10,000.
+  The booking gets a note "Custom price $280.00 before tax (price list $375.00)"; console_log detail has price_cents.
+  test/price.test.mjs (npm test 56/56). Console source: Desktop/Kellan systems/trykellan-demo/_src-console.dc.html
+  (nbPrice*, nbCustomCents); rebuilt with _build-apps.js + _dist.js only (dist diff = console + sample index only).
+  The installed app ("Triple R Dashboard") has no cache (console/sw.js), so it shows on next open. NOT COMMITTED (either repo).
+
+*** FUEL RINGS EDITABLE FROM THE CONSOLE 2026-10-27 (worker v 3ff28dd3 via deploy.mjs; previews back OFF) ***
+- console-api.js /settings takes { fuel: [{over, price}] } -> D1 fuel_zones [{over, cents}] (rings must grow outward,
+  $0-$1,000). The console (trykellan Setup > Where you deliver) shows three rings: free out to 30, $80 out to 60, $120
+  out to the radius (88), each with -/+ 5 mi and a $ box; it sends fuel + radius on every save. Until the first save
+  D1 has no fuel_zones and settings.js's default (the same rings) applies.
+- /book wording: "Delivery's included within 30 miles of our yard in West Haven. Farther out, we still come to you
+  with a flat fuel charge for the drive: $80 up to 60 miles, $120 past 60." then "Good news, we deliver out your way!
+  You're about 48 miles from our yard, so we add $80 for fuel." Tested on the D1 copy: save, reprice, bad order refused.
+- NOT COMMITTED.
+
+*** FUEL CHARGE ZONES LIVE 2026-10-27 (worker v 0672ca53 via deploy.mjs; preview + live checks OK; previews back OFF) ***
+- Joseph asked (text to Boston): zones by distance, charged automatically at booking. Green within 30 miles of the
+  yard = none, yellow 30-60 = $80, red 60 to the radius (88 live) = $120. Bins, junk removal and bin switches booked
+  ONLINE; not trailers (renter tows) or console phone bookings (S.ownerBooking). settings.js S.fuelZones (code
+  default; D1 key fuel_zones overrides, [] = off) + fuelFor(); taxed like the rental; a promo never discounts it.
+- It's its own line: stored in bookings.addons as {k:"fuel"}, so Stripe Checkout shows "Fuel charge (30–60 miles)"
+  (verified on a sandbox session: bin, fuel, tax, promo all right). stripe.js trailer line now subtracts add-on lines.
+- Distance (booking.js milesFromYard), straight-line miles like the radius: 1) Census geocoder street match, kept
+  only in UT and when the typed town agrees (it fuzzy-matched Huntsville -> Hanksville); 2) else the town the address
+  ends with, src/places.js (180 Utah places within 100 mi, Census 2024 Gazetteer); 3) else no fuel charge and the
+  radius check falls back to Photon's closest candidate (old rule). Photon alone was wrong (Logan -> Centerville,
+  Springville -> Logan, Huntsville -> Goshen 87 mi, St George -> Kaysville). Cached a day (Cache API /__cache/miles2).
+- /book: GET /api/fuel?address= prices the address as they type; note under the address ("No fuel charge within 30
+  miles... 30–60 miles: $80. Over 60: $120." then "About 48 miles from our West Haven yard: $80 fuel charge added."),
+  a summary row, totals. llms.txt says it too. test/fuel.test.mjs (npm test 52/52).
+- Checked live: Draper 48 mi $80, Provo 70 mi $120, Roy 3 mi none, Huntsville 15 mi none, St George refused.
+- Same day: delivery radius 85 -> 88 (Joseph's text: "our range all the way up to 88 miles"; D1 settings
+  service_radius_miles, written directly). Red zone label now "Fuel charge (60–88 miles)"; Santaquin (86 mi) books.
+  The console resends its radius on every settings save, so a console tab opened before this could write 85 back.
+- NOT shown yet on the Pull Count console job view (real-data.js folds it into the bin price; total is right).
+- NOT COMMITTED.
+
+*** PULL COUNT CONSOLE PHASE 2 LIVE 2026-10-27 (worker v cbde574c, then v 0649e245 with contracts, both via deploy.mjs; previews back OFF) ***
+- The console now EDITS HIS SITE: POST /api/console/settings writes bins (one price both tiers, inventory, hidden,
+  blurb), fees (extensionDay, tonsNN), services.binswitch, addons, included_days, service_radius_miles, run_days,
+  lead_hours, same_day_cutoff, closed_dates, daily_runs, ground_conditions, debris_list, sms_templates, sms_off,
+  review_off, review_link. ALL OPTIONAL: unset = the old behavior. settings.js loads them; booking.js obeys them
+  (earliestDate, dateOpen, dayFull, hidden sizes, add-ons priced + taxed, ownerBooking); page.js shows them
+  (add-on checkboxes, "What's going in it?", calendar rules); stripe.js adds add-on lines; reminders.js/sms honor
+  sms_off; startReview honors review_off. The original ground conditions still validate (the deploy smoke test).
+- New console actions: booking/<id>/{details,dates,size,swap,paid}, book (phone bookings; pay link = Stripe invoice,
+  needs email; cash/terminal/invoice), hold (a signed contract's bins as payment_type 'contract' jobs), text-staff,
+  and /text to a phone with no booking (contract contacts). MIGRATION 0011 APPLIED LIVE (addons, debris).
+  Backup first: tripe-r-dump-backups/triplerdump_bookings-2026-10-27-before-phase2.sql. npm test 48/48.
+- NOT COMMITTED.
+
+*** PULL COUNT CONSOLE WRITES LIVE 2026-10-26 (worker v 5107cb23 via deploy.mjs; preview + live checks OK; previews back OFF) ***
+- Joseph agreed (via Boston). The console (trykellan.com/console, soon admin.triplerdump.com; Pages project `trykellan`)
+  now WRITES here through src/console-api.js: POST /api/console/booking/<id>/{delivered,completed,pickup-date,cancel,notes},
+  /api/console/text, /api/console/invoice (+ /invoice/<id>/{resend,void}). Server to server only: the Pages project calls
+  this Worker over a service binding (TRD) with header x-console-key = secret CONSOLE_API_KEY (8 secrets now; deploy.mjs
+  still requires the original 6). Missing/wrong key -> 401. Drivers: delivered/completed/text/notes only (403 otherwise).
+- Same SQL as /admin: "completed" runs startReview (the review ask); pickup-date re-arms reminders + stamps notes;
+  "delivered" with a pickup (dropped early) moves the pickup the same way. Every change -> console_log (who/what/when).
+- MIGRATION 0010 APPLIED LIVE (d1 execute --file; no d1_migrations table here): bookings += delivered_at, bin_no,
+  completed_at, weight_tons; new table console_log. Additive; every INSERT names its columns. Backup first:
+  Desktop/projects/tripe-r-dump-backups/triplerdump_bookings-2026-10-26-golive.sql (27 bookings).
+- TEXTS: CONSOLE_TEXT_MODE unset = "owner": every text the console writes goes to S.ownerPhone as
+  "[Preview of a text to NAME, PHONE] ...". Set the var to "customers" (wrangler.toml [vars] + deploy.mjs) only when
+  Joseph OKs them. The review ask and invoice texts are this Worker's own and go to customers as before.
+- OFF SWITCH: trykellan wrangler.toml LIVE_WRITES = "off" + pages deploy (console goes read-only), or delete the
+  CONSOLE_API_KEY secret here. Tested first on a local copy of this D1 (wrangler dev + pages dev, texts caught locally).
+- NOT COMMITTED (src/console-api.js, src/index.js route, migrations/0010_console.sql, schema.sql).
+- DNS ADDED same night (Boston saw NXDOMAIN): CNAME admin -> trykellan.pages.dev, proxied, record id
+  4dca7c57203490adc9bec8e0ee4ff659 (via ../.env CLOUDFLARE_TOKEN, which can edit this zone). It's a Pages custom domain
+  on `trykellan`; this Worker's custom domains (apex, www, bio, social) are exact hostnames, so no clash. Delete the
+  record to undo.
+
+*** MIGRATION PREP: PULL COUNT CONSOLE 2026-10-26 (superseded by the entry above: the console now writes) ***
+- The new system = trykellan.com (Desktop/Kellan systems/trykellan-demo, Cloudflare Pages `trykellan`). Its
+  /console/ READS this D1 via functions/real-data.js (fixed SELECTs, never writes); every console action is
+  browser-only (localStorage). Swapping Joseph over needs a real write backend first (see plan in that session).
+- Debugged there (local, NOT deployed/committed): demo/demo.js syntax error (a `//` comment ate the end of a
+  line, so Demo tools + Phone were dead on every page since d36fed1); _dist.js now refuses scripts that don't
+  parse; geocode retry without ", UT 84404-9792" (Photon returns nothing for ZIP+4, so the live job had no pin);
+  one phone = one customer (invoices typed "Root & Ripple" vs "Root and Ripple Designs" split him); "Repeat" and
+  the customer list now count invoices (contractor work is mostly invoiced, no booking behind it).
+- FACTS FOR THE MIGRATION: bookings have NO lat/lng (store them at booking time); bin switches have bin_size NULL;
+  no bin numbers/trucks/contracts/dump weights/customers table in D1; the LIVE service-area gate (booking.js
+  ~446) also gets zero Photon results for ZIP+4 addresses and fails OPEN, so the radius isn't enforced on them.
+
+*** WIX GSC TOKEN REMOVED 2026-10-24 ***
+- Deleted Cloudflare TXT google-site-verification=iizxVYdJu7gsxBf0emEU0Hny9KSZjEg_2le5_ShvWuI (Wix reseller
+  'reseller-api-user-do-not-delete@reseller.gappsemail.wix.com' GSC owner) so Boston could remove that owner.
+  KEPT: google-site-verification=4T67NtoF... and the Google SPF TXT. Re-add the record to undo.
+
+*** FOOTER CREDIT WORDING 2026-10-24 later (worker v 012bcb41 via deploy.mjs; checkout probe OK; previews back OFF) ***
+- Boston picked "Powered by Pull Count" (over "Website by" / "Built by"): same link, spot and styling. Verified live, 37/37.
+
+*** FOOTER CREDIT -> PULL COUNT 2026-10-24 (worker v 2cd486ec via deploy.mjs; checkout probe OK; previews back OFF) ***
+- Boston OK'd. Footer credit on all 37 pages (build_pages.py footer + social footer, hand-built index.html) is now
+  <a href="https://pullcount.com/" target="_blank" rel="noopener">Website by Pull Count</a> (followed; was "Made by
+  Kellan" -> getkellan.com). build_pages.py rebuilt: only that line changed; HTML copied into deploy/ (build_deploy.py
+  NOT re-run, photos untouched). agents.test.mjs footer regex updated, 48/48. Before the edit, local worker bundle +
+  deploy/ were verified identical to live. Verified live on all 37 pages. NOT COMMITTED.
+
+*** FOOTER LINK FIX 2026-10-10 (worker v 24ce10e4 via deploy.mjs; checkout probe OK; previews back OFF) ***
+- 'Made by Kellan' was unclickable on wide desktops (~1920px): the giant .ft__sig text (line-height .8) overflows
+  upward over .ft__bottom and won the hit test. pages.css .ft__sig now pointer-events:none (decorative). Homepage
+  link now target=_blank like every other page. Verified live at 1920px: the link is the hit target everywhere.
+
+*** SPAM CLUSTER REPORTED 2026-10-09 (Google Business Redressal Complaint, case ID 8-3750000041499) ***
+- Boston OK'd. 42 suspected lead-gen listings (Ogden/Roy/North+South Ogden/Clearfield/Syracuse/Layton/Kaysville/
+  Farmington/Brigham City/Huntsville) filed as 'This business doesn't exist', name 'Boston', bkthueson@gmail.com.
+  Evidence list (Maps cid URLs, phones, addresses, review counts): _mock/spam-listings-2026-10-09.csv (gitignored).
+  Form GOTCHAS: URL fields must start 'https://www.google.com/maps/' (the '?cid=' form without /place/ is rejected;
+  'https://www.google.com/maps/place/?cid=N' works and resolves); the optional spreadsheet upload made Submit hang
+  forever - use 'Add additional field' (a.add-additional) instead. Google gives no status updates: re-run the rank
+  survey in 2-4 weeks and check whether the listings are gone (same cids).
+
+*** LIVE GOOGLE REVIEW COUNT + RANK MAP 2026-10-09 evening (worker v 4760c6f6 via deploy.mjs; checkout probe OK) ***
+- GOOGLE_PLACES_API_KEY secret ADDED (7 secrets now; deploy.mjs requires 6, fine). Key = the 'bos' key from Desktop/
+  google profile snap shot/keys.local.js (unrestricted Places key; all 4 keys there work server-side). Places returns
+  rating/userRatingCount (5.0 / 20) but NO review texts for this listing, so cards stay as reviews.js defaults; the
+  count/rating now auto-update (cron, every 20h). First run due 16:00 MDT 10-09 (D1 key google_reviews).
+- RANK MAP artifact: https://claude.ai/artifact/CPbW11cJdBFGCP2cYkBcXB (source + data + scripts in session scratchpad
+  rank/: survey.py = 24 towns x 7 terms top-60 @3 km bias; grid.py = 7x7 @1 mi top-20). Sep 28-29 (no address) ->
+  Oct 9: top-20 2->64 /168, top-10 0->25, top-3 0->3; West Haven 'dumpster rental' #36->#10. BUT grids fell vs Sep 29:
+  West Haven avg 3.6->6.6, Ogden 9.3->16.8, because ~10 lead-gen spam listings ('[City] Dumpster Rental', 0-3 reviews;
+  NEW: 'Alfredo Dumpster Rentals Ogden' 473 27th St, 'Desmond O Dumpster Ogden' 244 25th St) crowd the Ogden top 20.
+  Biggest lever = Business Redressal Complaint reports (Boston's call; not filed). The 4 keys' free daily quota ran out
+  (resets midnight Pacific); Bountiful/Cottonwood Heights/Springville/Logan/Tremonton are not measured yet.
+- Scheduled task 'trd-request-indexing-logan-tremonton' fires 2026-10-10 15:05 MDT: requests GSC indexing for Logan +
+  Tremonton, checks the review row, and reports to Boston's Discord webhook (URL lives in the task + auto-memory, NOT repo).
+
+*** LOGAN + TREMONTON CITY PAGES 2026-10-09 later (worker v f29e03f8 via deploy.mjs; checkout probe OK) ***
+- Boston: add cities if no farther than Springville. Logan (~49 mi/55 min, Cache County, books online) and
+  Tremonton (~40 min, Box Elder) added: 16 city pages, Cache County in AREA_TEXT/agents.js SERVICE_AREA, hub
+  'Logan to Springville'. NO job photos there (no Recent-job section, no job claims). Logan landfill/transfer
+  + Box Elder County Landfill facts cited (loganutah.gov, boxeldercountyut.gov). 48/48 tests. Sitemap 37.
+- GBP photos: North Ogden + Springville were already there (Joseph); Roy, Clinton, Bountiful, Brigham City,
+  Cottonwood Heights UPLOADED 10-09 (blurred uploads/jobs versions; showed 'Pending' review). GBP 'Add photos'
+  needs a REAL click with Chrome visible (hidden window = clicks never arrive). Logan/Tremonton 'Request
+  indexing' hit GSC daily quota on 10-09 - request them next session (they are in the sitemap).
+
+*** EXTREME SEO PASS 2026-10-09 (worker v d13f9b0b via deploy.mjs; checkout probe OK; previews toggled back OFF) ***
+- WHY: GSC (3 mo) = 51 clicks / 2.35K imp, 21 pages indexed (was 3), but city/service pages had impressions
+  and ZERO clicks (Roy 217 imp pos 9; "dumpster rental roy ut" 136 imp pos 6.6; Layton/Ogden pos 17-38).
+  Competitors (Canyon View - same street in West Haven, Dumps Easy, TrashDash) publish no prices, no FAQ
+  schema, no real job photos; nobody covers permits/"dumpster days" for Weber/Davis/Box Elder.
+- JOB PHOTOS: Joseph texted 16 photos (Desktop/transfer/received_photos IMG_7773..7887), every one GPS-
+  verified to the city he labeled: Roy, Clinton, Bountiful, North Ogden, Brigham City, Springville, Cottonwood
+  Heights (GPS on the Holladay line). 14 shipped in uploads/jobs/ (city-named, house numbers BLURRED, EXIF/GPS
+  stripped; IMG_7886 skipped = child + van plate). The OTHER 77 IMG_62xx-65xx in that folder are GPS'd in
+  Dayton/Cincinnati OH + N. Kentucky = NOT Joseph's - never use. Bin sizes in job photos are UNKNOWN.
+- SITE (build_pages.py largely rewritten; data-driven): KEPT_CITIES = 14 (added brigham-city, springville,
+  cottonwood-heights; un-retired north-ogden, clinton, bountiful - marketing.js RETIRED_CITIES matches, test
+  checks). Each photo city has "Recent job in X" figures + ImageObject JSON-LD + photo hero/og:image.
+  New: /dumpster-rental/ size hub (fixed the 404), /guides/ + 6 guides (content = guides_content.py: cost,
+  size-by-project, permits, what-can-go-in, dumpster vs junk vs trailer, city dumpster days - all third-party
+  facts cited to official pages), HTML 404 page (not-found/, noindex; agents still Markdown, /api JSON),
+  301s for old Wix paths + /book/ /terms/. ONE-PRICE copy everywhere ("up to 7 days", tons included, $/ton)
+  via new tokens tons15/tons20/tons25/over_ton/prohibited (marketing.js). Titles <=60 / descs <=155, size
+  pages target Ogden/Weber/Davis (not West Haven). Homepage: logo 404 fixed, geo, 24h hours, areaServed,
+  recent-jobs strip, hero preload. reviews.js defaults = 20 reviews (5 new, approx dates). Sitemap 35 URLs
+  + 33 image entries. Service area wording = AREA_TEXT (Weber, Davis, Box Elder, Morgan, Salt Lake + Utah
+  County to Springville). Prohibited items now match /terms (tires, Freon appliances, electronics NOT allowed
+  $200/item; mattresses call first; concrete/dirt call first). 47/47 tests. Money files byte-identical.
+- D1 (no deploy needed): service_radius_miles 60 -> 85 (Boston OK'd; Springville ~75 mi books online).
+  sms_templates.review now asks customers to mention their town + project (json_set, 17 keys intact).
+- GBP (Joseph's listing, via Chrome): 6 PRODUCTS added + live (15/20/25 yd $320/$375/$425, junk $550, trailer
+  $200/day, bin switch $220), each linked to its page. IF PRICES CHANGE, edit the GBP products too. GBP now
+  shows "Open 24 hours" and 20 reviews (all 5.0). Did NOT bulk-upload job photos (Joseph already added some).
+- GSC: sitemap resubmitted 10-09; Request indexing on 6 new city pages, Roy, /dumpster-rental/, /guides/,
+  /guides/dumpster-rental-cost-utah/ (quota used for the day). GSC MCP is NOT configured (no creds) - use Chrome.
+- DEPLOY GOTCHA: deploy.mjs needs previews ON; right after enabling, preview URLs can 404 (plain-text platform
+  404) for ~30-60 s -> first attempt was correctly refused on POST /api/t. Enable previews, WAIT 60 s, deploy,
+  then set previews_enabled false.
+- OPEN for Joseph/Boston: /terms still says concrete/dirt/brick "must be in a small designated container
+  (e.g. 10-yard)" (no such bin) - site says "call first"; decide + fix terms.js. Logan (72 imp, pos 41) and
+  Tremonton show demand - only add pages if Joseph serves them. Brigham City requires a city business license
+  to haul refuse for profit (codelibrary §94) - confirm Joseph has one (NOT on the site). config.js fallback
+  prices/tons ($325.., 3/4/5 t, $75) differ from live D1 - only matter if D1 is down. NOT COMMITTED.
+
 *** LINKS PAGE ON bio.triplerdump.com 2026-10-08 (worker v a56db2df via deploy.mjs; checkout probe OK) ***
 - https://bio.triplerdump.com/ = the links page (Workers custom domain, added via API; cert auto).
   index.js SOCIAL_HOST: on that host "/" serves /social/, /api/t is kept (views logged as /social/),

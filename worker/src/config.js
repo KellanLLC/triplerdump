@@ -8,7 +8,7 @@ export const CONFIG = {
     email: "Joseph.Rodrigues@triplerdump.com",
     address: "3539 S 4250 W, West Haven, UT 84401",
     timezone: "America/Denver",
-    serviceArea: "Weber, Morgan, Davis & Salt Lake County, UT",
+    serviceArea: "Weber, Davis, Box Elder, Morgan, Salt Lake & Utah County, UT",
     taxRate: 0.075,
   },
 

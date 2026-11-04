@@ -51,6 +51,13 @@ const DEFAULT_TEMPLATES = {
   invoice_overdue: "Hi {name}, a reminder from Triple R Dump: invoice {number} for {total} was due {due} ({days_late} days ago). Pay here: {invoice_link} Questions? {phone}",
   // Owner heads-up once the customer has had every reminder and still hasn't paid.
   owner_invoice_overdue: "{name} still hasn't paid invoice {number} ({total}, {days_late} days late) after {count} reminder texts. Worth a call: {customer_phone}. {admin_link}",
+  // The final notice: ONE text, invoiceFinalNoticeDays after the due date (Joseph 10/29: "a text that
+  // goes out after 60 days ... we will have to take legal action in small claims court"). Only what
+  // /terms backs up: the late charge ({late_pct}) and "reasonable collection costs"; court costs are
+  // what small claims awards the winner. No attorney fees: his terms don't provide for them.
+  invoice_final: "Final notice from Triple R Dump: {name}, invoice {number} for {total} is {days_late} days past due. If it stays unpaid, we will file in small claims court to collect it, and under our terms you'll also owe the late charge ({late_pct}% a month) plus collection and court costs. Pay here: {invoice_link} Questions? {phone}",
+  // Owner copy the moment the final notice goes out.
+  owner_invoice_final: "Final notice texted to {name} for invoice {number} ({total}, {days_late} days late). If it's still unpaid, small claims is next. {admin_link}",
 };
 
 // Fee schedule. Joseph's supplied policy text quoted TWO different prices for the
@@ -124,12 +131,20 @@ export function defaultSettings(env = {}) {
     // published counties (Weber, Morgan, Davis, Salt Lake). 0 disables the check.
     serviceRadiusMiles: 60,
     serviceCenter: { lat: 41.203, lon: -112.054 },
+    // Fuel charge by distance (Joseph, 10/30: "There should be a $40 up charge plus a dollar a mile
+    // after that"): the first `free` miles are included; past them it's `base` once plus `cents` for
+    // every mile past `free`, in straight-line miles from the yard (the same measure as the radius).
+    // Bins, junk removal and bin switches, online or taken by phone; not trailers (they tow it).
+    // D1 key fuel_per_mile; base and cents both 0 turns it off. (It replaced the 10/27 flat rings,
+    // $80 past 30 / $120 past 60; their old D1 key fuel_zones is unused.)
+    fuelMile: { free: 30, base: 4000, cents: 100 },
     invoiceTerms: DEFAULT_INVOICE_TERMS,
     invoiceDueDays: 14,
     invoiceTaxDefault: true,
     invoiceRemindersOn: true,   // late-payment texts to the customer
     invoiceReminderHours: 48,   // gap between late-payment texts
     invoiceReminderMax: 5,      // then stop and text the owner instead
+    invoiceFinalNoticeDays: 60, // the final notice text, this many days past due; 0 = none on new invoices
     // Promo codes (CMS "Discounts" tab): [{code, pct, active}]. Empty = feature
     // dormant — the /book field still renders but no code ever matches.
     discountCodes: [],
@@ -137,6 +152,16 @@ export function defaultSettings(env = {}) {
     // daily Places API refresh, never by the admin form.
     googleReviews: mergeGoogleReviews(null),
     templates: { ...DEFAULT_TEMPLATES },
+    // Set from the Pull Count console (console-api.js /settings). All optional: unset = the old behavior.
+    addons: [],            // [{k, label, cents, on}] dumpster extras, paid at booking (e.g. a prepaid extra ton)
+    closedDates: {},       // {"2026-11-02": "Truck in the shop"} no deliveries booked that day
+    runDays: [0, 1, 2, 3, 4, 5, 6], // weekdays deliveries run (0 = Sunday)
+    leadHours: null,       // hours of notice; null = S.booking.minLeadDays (tomorrow)
+    sameDayCutoff: "",     // "14:00": a same-day booking only before this (needs leadHours under a day)
+    debrisList: [],        // "What's going in it?" options on the booking form; empty = not asked
+    smsOff: [],            // template keys switched off in the console: confirmation, reminder_sms, pickup_reminder
+    reviewOff: false,      // the console's "Ask for a review after pickup" switched off
+    dailyRuns: null,       // drop-offs + pickups his trucks can do in a day (the console's Fleet); null = no limit
   };
 }
 
@@ -178,15 +203,35 @@ export async function loadSettings(env) {
   if (o.reminder_lead_days !== undefined) s.reminderLeadDays = num(o.reminder_lead_days, s.reminderLeadDays);
   if (o.fees) s.fees = { ...s.fees, ...o.fees };
   if (o.service_radius_miles !== undefined) s.serviceRadiusMiles = num(o.service_radius_miles, s.serviceRadiusMiles);
+  if (o.fuel_per_mile && typeof o.fuel_per_mile === "object") {
+    const f = o.fuel_per_mile, n = (v) => Math.max(0, Math.round(Number(v) || 0));
+    s.fuelMile = { free: n(f.free), base: f.base === undefined ? s.fuelMile.base : n(f.base), cents: n(f.cents) };
+  }
   if (o.invoice_terms !== undefined) s.invoiceTerms = o.invoice_terms;
   if (o.invoice_due_days !== undefined) s.invoiceDueDays = num(o.invoice_due_days, s.invoiceDueDays);
   if (o.invoice_tax_default !== undefined) s.invoiceTaxDefault = o.invoice_tax_default === true;
   if (o.invoice_reminders_on !== undefined) s.invoiceRemindersOn = o.invoice_reminders_on === true;
   if (o.invoice_reminder_hours !== undefined) s.invoiceReminderHours = num(o.invoice_reminder_hours, s.invoiceReminderHours);
   if (o.invoice_reminder_max !== undefined) s.invoiceReminderMax = num(o.invoice_reminder_max, s.invoiceReminderMax);
+  if (o.invoice_final_notice_days !== undefined) s.invoiceFinalNoticeDays = num(o.invoice_final_notice_days, s.invoiceFinalNoticeDays);
   if (Array.isArray(o.discount_codes)) s.discountCodes = o.discount_codes;
   if (o.google_reviews) s.googleReviews = mergeGoogleReviews(o.google_reviews);
   if (o.sms_templates) s.templates = { ...s.templates, ...o.sms_templates };
+  // ---- from the Pull Count console ----
+  if (Array.isArray(o.addons)) s.addons = o.addons.filter((a) => a && a.k && Number(a.cents) > 0);
+  if (o.included_days !== undefined) {
+    const n = num(o.included_days, 7);
+    if (n >= 4 && n <= 30) s.tiers = { ...s.tiers, "4-7": { label: "4-" + n + " day", maxDays: n } };
+  }
+  if (o.closed_dates && typeof o.closed_dates === "object") s.closedDates = o.closed_dates;
+  if (Array.isArray(o.run_days) && o.run_days.length) s.runDays = o.run_days.map(Number).filter((d) => d >= 0 && d <= 6);
+  if (o.lead_hours !== undefined && o.lead_hours !== null) s.leadHours = num(o.lead_hours, null);
+  if (o.same_day_cutoff !== undefined) s.sameDayCutoff = String(o.same_day_cutoff || "");
+  if (Array.isArray(o.ground_conditions) && o.ground_conditions.length) s.groundConditions = o.ground_conditions.map(String);
+  if (Array.isArray(o.debris_list)) s.debrisList = o.debris_list.map(String);
+  if (Array.isArray(o.sms_off)) s.smsOff = o.sms_off.map(String);
+  if (o.review_off !== undefined) s.reviewOff = o.review_off === true;
+  if (o.daily_runs !== undefined && o.daily_runs !== null) { const n = num(o.daily_runs, 0); s.dailyRuns = n > 0 ? n : null; }
   return s;
 }
 
@@ -221,6 +266,36 @@ export function findDiscountCode(S, code) {
     if (c && c === want && Number.isFinite(pct) && pct > 0) return { code: c, pct: Math.min(100, pct) };
   }
   return null;
+}
+
+// Is there a fuel charge at all (S.fuelMile with a starting charge or a rate)?
+const fuelParts = (S) => {
+  const f = (S && S.fuelMile) || {};
+  return { free: Math.max(0, Math.round(Number(f.free) || 0)), base: Math.max(0, Math.round(Number(f.base) || 0)), rate: Math.max(0, Math.round(Number(f.cents) || 0)) };
+};
+export const fuelOn = (S) => { const f = fuelParts(S); return f.base > 0 || f.rate > 0; };
+const dollars = (c) => "$" + (c % 100 ? (c / 100).toFixed(2) : String(c / 100));
+
+// The fuel charge for a drop-off this many miles from the yard: past the free miles, the starting
+// charge plus the rate for each whole mile past them, on the rounded miles the customer is shown
+// ("about 48 miles": $40 + 18 x $1 = $58). Returns {cents, label, miles} (miles = the ones past the
+// free ones) or null (inside the free miles, no charge set, or distance unknown).
+export function fuelFor(S, miles) {
+  if (!Number.isFinite(miles) || !fuelOn(S)) return null;
+  const f = fuelParts(S), over = Math.round(miles) - f.free;
+  if (over <= 0) return null;
+  const per = over + (over === 1 ? " mile" : " miles") + " \u00d7 " + dollars(f.rate);
+  const label = "Fuel charge (" + (f.base && f.rate ? dollars(f.base) + " + " + per : f.rate ? per : "past " + f.free + " miles") + ")";
+  return { cents: f.base + over * f.rate, miles: over, label };
+}
+
+// How the fuel charge reads to a customer (the /book note, llms.txt): "a $40 fuel charge plus $1 for
+// every mile past 30". "" when there's none.
+export function fuelWords(S) {
+  if (!fuelOn(S)) return "";
+  const f = fuelParts(S);
+  if (f.base && f.rate) return "a " + dollars(f.base) + " fuel charge plus " + dollars(f.rate) + " for every mile past " + f.free;
+  return f.base ? "a flat " + dollars(f.base) + " fuel charge" : dollars(f.rate) + " for every mile past " + f.free + " to cover fuel";
 }
 
 export function fillTemplate(tpl, vals) {

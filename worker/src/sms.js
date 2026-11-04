@@ -109,6 +109,12 @@ export async function sendOwnerInvoiceOverdue(S, vals) {
   return sendSms(S, S.ownerPhone, fillTemplate((S.templates && S.templates.owner_invoice_overdue) || "", { ...vals, link: vals.admin_link }));
 }
 
+// Owner copy the moment an invoice's final notice goes out (small claims is next).
+export async function sendOwnerInvoiceFinal(S, vals) {
+  if (!S.ownerPhone) return { skipped: true };
+  return sendSms(S, S.ownerPhone, fillTemplate((S.templates && S.templates.owner_invoice_final) || "", { ...vals, link: vals.admin_link }));
+}
+
 // Commercial "request a quote" lead -> texts the owner. All details in the message.
 export async function sendCommercialLead(S, lead) {
   if (!lead) return { skipped: true };

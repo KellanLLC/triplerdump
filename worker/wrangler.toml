@@ -12,7 +12,7 @@ workers_dev = true
 [assets]
 directory = "../deploy"
 binding = "ASSETS"
-run_worker_first = ["/", "/index.html", "/dumpster-rental", "/dumpster-rental/*", "/junk-removal", "/junk-removal/*", "/dump-trailer-rental", "/dump-trailer-rental/*", "/bin-switch", "/bin-switch/*", "/service-area", "/service-area/*", "/faq", "/faq/*", "/bbb", "/bbb/*", "/contact", "/contact/*", "/social", "/social/*"]
+run_worker_first = ["/", "/index.html", "/dumpster-rental", "/dumpster-rental/*", "/junk-removal", "/junk-removal/*", "/dump-trailer-rental", "/dump-trailer-rental/*", "/bin-switch", "/bin-switch/*", "/service-area", "/service-area/*", "/faq", "/faq/*", "/bbb", "/bbb/*", "/contact", "/contact/*", "/social", "/social/*", "/guides", "/guides/*"]
 
 [[d1_databases]]
 binding = "DB"

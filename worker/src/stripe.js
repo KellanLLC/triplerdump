@@ -144,14 +144,19 @@ export async function createCheckout(env, S, booking) {
   // amount (a per-day unit could drift by rounding when the discount splits).
   const isTrailer = booking.service_type === "trailer";
   const days = Math.max(1, Number(booking.rental_days) || 1);
+  // add-ons (the console's Prices) are their own lines; they're inside subtotal_cents
+  const extras = lineDiscount > 0 ? [] : (booking.addons || []).filter((a) => a && a.cents > 0);
+  const extraC = extras.reduce((n, a) => n + a.cents, 0);
   setLine(form, i++, lineDiscount > 0
     ? { unit: booking.subtotal_cents - lineDiscount, qty: 1, productId: liveProduct, name: lineName(booking) }
     : {
-        unit: isTrailer ? Math.round(booking.subtotal_cents / days) : booking.subtotal_cents,
+        unit: isTrailer ? Math.round((booking.subtotal_cents - extraC) / days) : booking.subtotal_cents - extraC,
         qty: isTrailer ? days : 1,
         productId: liveProduct,
         name: lineName(booking),
       });
+
+  for (const a of extras) setLine(form, i++, { unit: a.cents, qty: 1, productId: null, name: a.label });
 
   // Sales tax (computed server-side; deposit is untaxed). Inline product in both
   // modes. TODO(pre-live polish): swap to a dedicated "UT Sales Tax" product id to
@@ -251,7 +256,7 @@ export async function markPaid(env, S, ref, session) {
       customer_phone: b.phone || "",
       note: b.message || "",
     });
-    await sendBookingWebhook(S, b, 1, msg);
+    await sendBookingWebhook(S, b, (S.smsOff || []).includes("confirmation") ? 0 : 1, msg);
   } catch (e) {
     console.error("[stripe webhook] confirmation send failed", e && e.message ? e.message : e);
   }

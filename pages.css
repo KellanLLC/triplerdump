@@ -289,7 +289,7 @@ h2{font-size:clamp(2.1rem,1.3rem + 2.9vw,3.5rem);line-height:1.02;letter-spacing
 .ft a:hover{color:#fff}
 .ft__bottom{max-width:var(--max);margin:clamp(30px,4vw,48px) auto 0;padding:16px 0;border-top:1px solid var(--edge);display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px;font-size:.8rem}
 .ft__bottom a{text-transform:uppercase;letter-spacing:.07em;text-decoration:underline;text-underline-offset:4px}
-.ft__sig{font-family:var(--sig);text-transform:uppercase;font-size:clamp(4rem,15vw,13.5rem);line-height:.8;letter-spacing:.01em;color:#151d2b;text-align:center;white-space:nowrap;margin:8px 0 -.12em;user-select:none}
+.ft__sig{font-family:var(--sig);text-transform:uppercase;font-size:clamp(4rem,15vw,13.5rem);line-height:.8;letter-spacing:.01em;color:#151d2b;text-align:center;white-space:nowrap;margin:8px 0 -.12em;user-select:none;pointer-events:none}
 
 /* phone: sticky call/book bar */
 .callbar{display:none}
@@ -332,7 +332,7 @@ h2{font-size:clamp(2.1rem,1.3rem + 2.9vw,3.5rem);line-height:1.02;letter-spacing
 /* two columns: copy + side card */
 .two{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:clamp(28px,4.4vw,72px);align-items:start}
 .two--even{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
-@media (max-width:900px){.two,.two--even{grid-template-columns:1fr}}
+@media (max-width:900px){.two,.two--even{grid-template-columns:minmax(0,1fr)}}
 
 /* prose */
 .prose{max-width:68ch}
@@ -432,6 +432,79 @@ div.city .city__n{color:var(--fg-2)}
 .map-cap{margin:0;padding:12px 16px;font-size:.9rem;color:var(--fg-3)}
 .map-cap a{color:var(--sky);border-bottom:1px solid rgba(189,233,251,.35)}
 .map-cap a:hover{color:#fff}
+
+/* ── 2026-10-09: one price per bin, job photos, size table, guides ─────────── */
+/* the second price cell is now the weight included */
+.bin__px b span{font-size:inherit;color:inherit}
+.bin__px b small{font-family:var(--body);font-weight:600;font-size:.42em;letter-spacing:.14em;text-transform:uppercase;color:var(--dark-3);margin-left:5px}
+.bin__more{align-self:flex-start;margin:-4px 0 14px;font-size:.92rem;font-weight:600;color:var(--accent-ink);border-bottom:2px solid rgba(11,79,191,.3)}
+.bin__more:hover{color:var(--dark);border-color:var(--dark)}
+.city__ph{grid-column:1/-1;display:inline-flex;align-items:center;gap:6px;margin-top:4px;font-family:var(--disp);font-weight:700;font-size:.78rem;letter-spacing:.14em;text-transform:uppercase;color:var(--sky)}
+
+/* "Recent job in <City>": the real photos, captioned */
+.jobs{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:clamp(10px,1.4vw,16px)}
+.jobs--1{grid-template-columns:minmax(0,1fr);max-width:980px}
+.job{position:relative;margin:0;border-radius:var(--radius);overflow:hidden;background:var(--panel-2)}
+.job img{width:100%;height:auto;aspect-ratio:4/3;object-fit:cover}
+.jobs--1 .job img{aspect-ratio:16/10}
+.job figcaption{padding:11px 14px 13px;color:var(--fg-2);font-size:.9rem;line-height:1.4}
+
+/* "Recent jobs" strip: one photo card per city, each links to its page */
+.jobcs{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(260px,100%),1fr));gap:clamp(10px,1.4vw,16px)}
+.jobcs--3{grid-template-columns:repeat(auto-fill,minmax(min(320px,100%),1fr))}
+.jobc{position:relative;display:block;aspect-ratio:4/3.2;border-radius:var(--radius);overflow:hidden;background:var(--panel-2);isolation:isolate}
+.jobc img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:transform .6s var(--e-out)}
+.jobc:hover img{transform:scale(1.04)}
+.jobc::after{content:'';position:absolute;inset:0;background:linear-gradient(0deg,rgba(9,14,22,.92) 4%,rgba(9,14,22,.4) 38%,rgba(9,14,22,0) 64%)}
+.jobc__t{position:absolute;left:0;right:0;bottom:0;z-index:1;padding:14px 16px 16px;color:#fff}
+.jobc__t b{display:block;font-family:var(--disp);font-size:1.3rem;line-height:1.1}
+.jobc__t small{font-size:.84rem;color:var(--fg-2)}
+.jobc .ridge{top:auto;bottom:0;width:0;right:auto;z-index:2;background:var(--accent-lift);transition:width .52s var(--e-out)}
+.jobc:hover .ridge{width:100%}
+
+/* size comparison + guide tables (scroll inside the box on phones, never the page) */
+.cmp-wrap{position:relative;overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--edge-lt);border-radius:var(--radius);background:var(--card)}
+.cmp{width:100%;min-width:640px;border-collapse:collapse;font-size:.98rem}
+.cmp caption{caption-side:top;text-align:left;padding:14px 16px 2px;font-family:var(--disp);font-weight:700;font-size:1.12rem;color:var(--dark)}
+.cmp th,.cmp td{padding:13px 16px;text-align:left;vertical-align:middle;border-bottom:1px solid var(--edge-lt);color:var(--dark-2);line-height:1.45}
+.cmp thead th{font-family:var(--disp);font-weight:700;font-size:.82rem;letter-spacing:.14em;text-transform:uppercase;color:var(--accent-ink);background:var(--paper)}
+.cmp tbody th{font-family:var(--disp);font-weight:700;font-size:1.3rem;color:var(--dark);white-space:nowrap}
+.cmp tbody th a{border-bottom:2px solid rgba(11,79,191,.3)}
+.cmp tbody th a:hover{color:var(--accent-ink)}
+.cmp td b{font-family:var(--disp);font-size:1.5rem;color:var(--dark);font-variant-numeric:tabular-nums}
+.cmp tbody tr:last-child>*{border-bottom:0}
+.cmp .btn{padding:10px 14px;font-size:1rem}
+.cmp--guide{min-width:520px}
+.cmp--guide tbody th{font-size:1.06rem;white-space:normal}
+.prose .cmp-wrap{margin:clamp(22px,2.6vw,32px) 0}
+
+/* guides: cards, the answer-first lead, lists, byline, sources */
+.gcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(300px,100%),1fr));gap:clamp(12px,1.6vw,20px)}
+.gcard{position:relative;display:flex;flex-direction:column;background:var(--card);border:1px solid var(--edge-lt);border-radius:var(--radius);overflow:hidden;color:var(--dark)}
+.gcard__pic{display:block;aspect-ratio:16/10;overflow:hidden;background:var(--paper-2)}
+.gcard__pic img{width:100%;height:100%;object-fit:cover;transition:transform .6s var(--e-out)}
+.gcard:hover .gcard__pic img{transform:scale(1.04)}
+.gcard__b{display:flex;flex-direction:column;gap:6px;padding:16px 18px 20px}
+.gcard__b .kicker,.sec--dark .gcard__b .kicker{margin:0;font-size:.78rem;color:var(--accent-ink)}
+.gcard__b b{font-family:var(--disp);font-size:1.4rem;line-height:1.12}
+.gcard__b>span:last-child{font-size:.93rem;color:var(--dark-2);line-height:1.5}
+.gcard .ridge{top:auto;bottom:0;width:0;right:auto;transition:width .52s var(--e-out)}
+.gcard:hover .ridge{width:100%}
+.sec--dark .gcard{border-color:transparent}
+.prose .answer{margin:0 0 clamp(22px,2.6vw,30px);padding:18px 20px;background:var(--card);border-left:4px solid var(--accent);border-radius:var(--radius);font-size:1.12rem;line-height:1.55;color:var(--dark)}
+.prose ul,.prose ol{margin:0 0 14px;padding-left:1.25em;color:var(--dark-2);font-size:1.05rem}
+.prose li{margin:5px 0}
+.prose .byline{margin:clamp(24px,3vw,34px) 0 0;padding-top:14px;border-top:1px solid var(--edge-lt);font-size:.9rem;color:var(--dark-3)}
+.sources{margin:0 0 clamp(34px,4vw,52px);padding-left:1.3em;display:grid;gap:8px;max-width:86ch;color:var(--dark-2)}
+.sources a{color:var(--accent-ink);border-bottom:2px solid rgba(11,79,191,.3);overflow-wrap:anywhere}
+.sources a:hover{color:var(--dark);border-color:var(--dark)}
+.sec--dark .sources{color:var(--fg-2)}
+.sec--dark .sources a{color:var(--sky);border-color:rgba(189,233,251,.35)}
+.gl{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(340px,100%),1fr));gap:0 clamp(28px,4vw,60px);border-bottom:1px solid var(--edge-lt)}
+.gl li{display:grid;gap:4px;padding:16px 0 18px;border-top:1px solid var(--edge-lt)}
+.gl a{font-family:var(--disp);font-weight:700;font-size:1.3rem;line-height:1.15;color:var(--accent-ink)}
+.gl a:hover{color:var(--dark)}
+.gl span{font-size:.95rem;color:var(--dark-2)}
 
 /* small phones (<=380px): the header Book button must not push past the edge */
 @media (max-width:380px){

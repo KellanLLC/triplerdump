@@ -62,6 +62,24 @@ PNG_PHOTO_MIN = 300_000
 TIGHT = {
     "uploads/triplerdump_photos/triplerdump_photos/01_15yd_bin.png": 640,  # rates thumb (+ 15yd page hero)
 }
+# Whole folders with their own (long edge, JPEG quality). The 2026-10-09 job
+# photos are 2400 px originals full of foliage: 1600 q80 was 400-660 KB each,
+# 1280 q66 averages ~240 KB and is what the pages' width/height attributes say.
+PREFIX_JPEG = {"uploads/jobs/": (1280, 66)}
+# Resized copies for srcset: <dir>/w<N>/<file> is generated from <dir>/<file>
+# with long edge N (e.g. uploads/jobs/w800/x.jpg), only when no such file exists
+# in the repo. The variants exist only inside deploy/.
+VARIANT_RE = re.compile(r"^(.*)/w(\d+)/([^/]+\.jpe?g)$", re.I)
+VARIANT_Q = 70
+
+def source_for(ref):
+    """(source path, long-edge override or None, quality override or None)."""
+    key = ref.replace("\\", "/").lstrip("/")
+    direct = os.path.join(ROOT, key)
+    m = VARIANT_RE.match(key)
+    if m and not os.path.exists(direct):
+        return os.path.join(ROOT, m.group(1), m.group(3)), int(m.group(2)), VARIANT_Q
+    return direct, None, None
 SRGB = ImageCms.ImageCmsProfile(ImageCms.createProfile("sRGB"))
 
 def _to_srgb(im):
@@ -74,18 +92,21 @@ def _to_srgb(im):
         print(f"  (colour conversion skipped: {e})")
         return im
 
-def ship_raster(ref, src, dst):
+def ship_raster(ref, src, dst, edge=None, quality=None):
     """Write ref's deploy copy to dst. Returns a short note of what was done."""
     key = ref.replace("\\", "/").lstrip("/")
     ext = os.path.splitext(key)[1].lower()
     size_in = os.path.getsize(src)
-    edge = TIGHT.get(key, MAX_EDGE)
+    pre = next((v for k, v in PREFIX_JPEG.items() if key.startswith(k)), None)
+    if edge is None:
+        edge = TIGHT.get(key, pre[0] if pre else MAX_EDGE)
+    q = quality or (pre[1] if pre else JPEG_Q)
     if ext in (".jpg", ".jpeg"):
         im = Image.open(src)
         im = _to_srgb(ImageOps.exif_transpose(im))
         im.thumbnail((edge, edge), Image.LANCZOS)  # never upscales
-        im.convert("RGB").save(dst, "JPEG", quality=JPEG_Q, optimize=True, progressive=True)
-        return "jpeg %dx%d q%d" % (im.width, im.height, JPEG_Q)
+        im.convert("RGB").save(dst, "JPEG", quality=q, optimize=True, progressive=True)
+        return "jpeg %dx%d q%d" % (im.width, im.height, q)
     if ext == ".png" and key.startswith("uploads/") and size_in > PNG_PHOTO_MIN:
         im = ImageOps.exif_transpose(Image.open(src))
         im.thumbnail((edge, edge), Image.LANCZOS)
@@ -102,11 +123,11 @@ total = 0
 for ref in refs:
     if ref in ("tokens.css",):
         continue
-    src = os.path.join(ROOT, ref)
+    src, edge, q = source_for(ref)
     dst = os.path.join(DST, ref)
     os.makedirs(os.path.dirname(dst), exist_ok=True)
     size_in = os.path.getsize(src)
-    note = ship_raster(ref, src, dst)
+    note = ship_raster(ref, src, dst, edge, q)
     size_out = os.path.getsize(dst)
     total += size_out
     print(f"{ref}:  {size_in//1024} -> {size_out//1024} KB  ({note})")
@@ -117,7 +138,7 @@ for ref in refs:
 # /uploads/...) so one page works from any depth; the scan below resolves that
 # leading slash against the repo root and ships anything index.html did not
 # already cover, through the same recompression path.
-PAGE_DIRS = ["dumpster-rental", "junk-removal", "dump-trailer-rental", "bin-switch", "service-area", "faq", "bbb", "contact", "social"]
+PAGE_DIRS = ["dumpster-rental", "junk-removal", "dump-trailer-rental", "bin-switch", "service-area", "faq", "bbb", "contact", "social", "guides", "not-found"]
 PAGE_FILES = ["pages.css", "sitemap.xml", "robots.txt"]
 page_refs = set()
 for d in PAGE_DIRS:
@@ -134,6 +155,9 @@ for d in PAGE_DIRS:
             shutil.copy2(full, os.path.join(DST, rel))
             html = open(full, encoding="utf-8").read()
             page_refs |= set(re.findall(r'(?:src|href|srcset)="/((?:assets|uploads)/[^"\s]+)"', html))
+            # every candidate of a multi-entry srcset / imagesrcset, not just the first
+            for attr in re.findall(r'(?:srcset|imagesrcset)="([^"]+)"', html):
+                page_refs |= {c.split()[0][1:] for c in attr.split(",") if c.split() and c.split()[0].startswith(("/assets/", "/uploads/"))}
             page_refs |= set(re.findall(r"url\('/((?:assets|uploads)/[^')]+)'\)", html))
 for name in PAGE_FILES:
     src = os.path.join(ROOT, name)
@@ -142,7 +166,7 @@ for name in PAGE_FILES:
         if name == "pages.css":
             page_refs |= set(re.findall(r"url\('/((?:assets|uploads)/[^')]+)'\)", open(src, encoding="utf-8").read()))
 for ref in sorted(page_refs - set(refs)):
-    src = os.path.join(ROOT, ref)
+    src, edge, q = source_for(ref)
     dst = os.path.join(DST, ref)
     if not os.path.exists(src):
         print(f"WARNING: page references missing file {ref}")
@@ -151,7 +175,7 @@ for ref in sorted(page_refs - set(refs)):
         continue
     os.makedirs(os.path.dirname(dst), exist_ok=True)
     size_in = os.path.getsize(src)
-    note = ship_raster(ref, src, dst)
+    note = ship_raster(ref, src, dst, edge, q)
     total += os.path.getsize(dst)
     print(f"(pages) {ref}:  {size_in//1024} -> {os.path.getsize(dst)//1024} KB  ({note})")
 
@@ -161,3 +185,37 @@ with open(os.path.join(DST, ".assetsignore"), "w", encoding="utf-8") as f:
 
 total += os.path.getsize(os.path.join(DST, "index.html")) + os.path.getsize(os.path.join(DST, "tokens.css"))
 print(f"\ndeploy total: {total/1024/1024:.1f} MB")
+
+# ── Every local ref must resolve INSIDE deploy/. The scanner has silently missed
+# attribute types before (srcset; then the 2nd+ candidates of a srcset). This
+# checks src, href, poster, srcset/imagesrcset (every candidate) and CSS url() in
+# every deployed HTML/CSS file. Page routes (/book, /service-area/...) are skipped.
+def _local_refs(text):
+    out = set(re.findall(r'(?:src|href|poster)="([^"#?]+)', text))
+    out |= set(re.findall(r"url\(['\"]?([^'\")]+)", text))
+    for attr in re.findall(r'(?:srcset|imagesrcset)="([^"]+)"', text):
+        out |= {c.split()[0] for c in attr.split(",") if c.split()}
+    return {r for r in out if not r.startswith(("http", "tel:", "mailto:", "sms:", "data:", "//", "#"))}
+
+missing = []
+for dirpath, _, files in os.walk(DST):
+    for name in files:
+        if not name.endswith((".html", ".css")):
+            continue
+        full = os.path.join(dirpath, name)
+        for r in _local_refs(open(full, encoding="utf-8").read()):
+            if r.startswith("/"):
+                if not r.startswith(("/assets/", "/uploads/", "/pages.css", "/favicon")):
+                    continue  # a route, not a file
+                target = os.path.join(DST, r.lstrip("/"))
+            else:
+                if "." not in os.path.basename(r):
+                    continue  # relative route
+                target = os.path.join(os.path.dirname(full), r)
+            if not os.path.isfile(target):
+                missing.append(f"{os.path.relpath(full, DST)} -> {r}")
+if missing:
+    print("\nMISSING IN deploy/ (would 404 live):\n  " + "\n  ".join(sorted(missing)))
+    raise SystemExit(1)
+n_files = sum(len(fs) for _, _, fs in os.walk(DST))
+print(f"ref check: every local asset ref in deploy/ resolves ({n_files} files in deploy/)")

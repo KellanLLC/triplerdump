@@ -14,6 +14,9 @@
 //    the backend stores an unpriced lead + alerts the owner, and we show a
 //    "we'll reach out" screen.
 import { ICON_SPRITE } from "./icons.js";
+import { earliestDate } from "./booking.js";
+import { fuelOn, fuelWords } from "./settings.js";
+const escHtml = (t) => String(t == null ? "" : t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 
 export function renderBookingPage(S, service) {
   const SERVICE_TYPES = ["dumpster", "trailer", "junk", "binswitch"];
@@ -40,7 +43,11 @@ export function renderBookingPage(S, service) {
   const bs = (S.services && S.services.binswitch && S.services.binswitch.pricing) || {};
   const pricing = {
     taxRate: S.taxRate,
-    bins: Object.fromEntries(Object.entries(S.bins).map(([k, b]) => [k, { label: b.label, prices: b.prices }])),
+    bins: Object.fromEntries(Object.entries(S.bins).filter(([, b]) => !b.hidden).map(([k, b]) => [k, { label: b.label, prices: b.prices }])),
+    // add-ons for a dumpster (the console's Prices), in cents
+    addons: (S.addons || []).filter((a) => a.on !== false).map((a) => ({ k: a.k, label: a.label, cents: Math.round(Number(a.cents)) })),
+    // the fuel charge past the free miles (S.fuelMile); /api/fuel prices the address
+    fuel: fuelOn(S) ? { free: Math.round(Number(S.fuelMile.free) || 0), words: fuelWords(S) } : null,
     tiers: Object.fromEntries(Object.entries(S.tiers).map(([k, t]) => [k, { label: t.label }])),
     services: {
       trailer: { dayRate_cents: tr.dayRate_cents || 20000, minDays: tr.minDays || 1, maxDays: tr.maxDays || 14, deposit_cents: tr.deposit_cents || 30000 },
@@ -53,7 +60,7 @@ export function renderBookingPage(S, service) {
   const g = S.googleReviews || { rating: 5, count: 0 };
   const binPhoto = { "15": "01_15yd_bin.png", "20": "02_20yd_bin_side.jpeg", "25": "03_25yd_bin_side.jpeg" };
   const binFor = { "15": "About 5 pickup loads. Garage cleanouts, yard waste, moving.", "20": "About 7 loads. Kitchens, flooring, estate cleanouts.", "25": "Roofing, construction, full-home cleanouts." };
-  const minBin = Math.min(...Object.values(S.bins).map((b) => b.prices["1-3"]).filter(Number.isFinite));
+  const minBin = Math.min(...Object.values(S.bins).filter((b) => !b.hidden).map((b) => b.prices["1-3"]).filter(Number.isFinite));
   const svcIcon = { dumpster: "i-bin", trailer: "i-trailer", junk: "i-couch", binswitch: "i-swap" };
   const svcPrice = {
     dumpster: "from " + money0(minBin),
@@ -68,12 +75,12 @@ export function renderBookingPage(S, service) {
   ).join("");
   // Size = 3-across segmented cards; length = 2-across. "rental" sits on its own
   // muted line so "4-7 day" never crowds into "rental".
-  const sizeRadios = Object.entries(S.bins).map(([size, b]) =>
+  const sizeRadios = Object.entries(S.bins).filter(([, b]) => !b.hidden).map(([size, b]) =>
     '<label class="opt size"><input type="radio" name="bin_size" value="' + size + '"><span class="card">' +
     (binPhoto[size] ? '<img src="/uploads/triplerdump_photos/triplerdump_photos/' + binPhoto[size] + '" alt="" loading="lazy">' : "") +
     (size === "20" ? '<span class="tag">Most rented</span>' : "") +
     '<span class="sz-b"><span class="sz-t"><b>' + b.label + '</b><em data-px="' + size + '">' + money0(b.prices["1-3"]) + '</em></span>' +
-    (binFor[size] ? '<small>' + binFor[size] + '</small>' : "") + '</span>' +
+    ((b.blurb || binFor[size]) ? '<small>' + escHtml(b.blurb || binFor[size]) + '</small>' : "") + '</span>' +
     '<svg class="ck" width="18" height="18"><use href="#i-check"/></svg></span></label>'
   ).join("");
   const tierRadios = Object.entries(S.tiers).map(([t, v]) =>
@@ -81,6 +88,22 @@ export function renderBookingPage(S, service) {
   ).join("");
   // Option lists for the custom dropdowns (built client-side from these arrays).
   const groundCdd = S.groundConditions.map((g) => ({ value: g, label: g }));
+  const debrisCdd = [{ value: "", label: "Not sure / mixed" }].concat((S.debrisList || []).map((g) => ({ value: g, label: g })));
+  const addonBoxes = pricing.addons.length
+    ? '<fieldset style="margin:4px 0 8px"><legend>Add-ons (optional)</legend>' + pricing.addons.map((a) =>
+        '<label class="inline"><input type="checkbox" data-addon="' + escHtml(a.k) + '"> ' + escHtml(a.label) + ' (+' + money0(a.cents) + ')</label>').join("") +
+      '<input type="hidden" name="addons" value=""></fieldset>' : "";
+  // the fuel charge up front, under the address; the page swaps in this address's charge once it's found
+  const fz = pricing.fuel;
+  const fuelHint = fz
+    ? '<p class="hint" id="fuelmsg" aria-live="polite" style="margin:-6px 0 12px">Delivery&rsquo;s included within ' + fz.free + ' miles of our yard in West Haven. Farther out, we still come to you: ' +
+      fz.words + ' (straight-line miles).</p>' : "";
+  const debrisField = (S.debrisList || []).length
+    ? '<label class="f">What&rsquo;s going in it?<span class="cdd" id="cdd-debris" data-cdd="debris">' +
+      '<button type="button" class="cdd-btn" aria-haspopup="listbox" aria-expanded="false"><span class="cdd-val"></span><span class="cdd-chev" aria-hidden="true"></span></button>' +
+      '<input type="hidden" name="debris" value=""><ul class="cdd-pop" role="listbox" tabindex="-1" hidden></ul></span></label>' : "";
+  // which days can be booked: first day (notice + same-day cutoff), closed days, the days he runs
+  const RULES = { earliest: earliestDate(S), closed: Object.keys(S.closedDates || {}).filter((d) => S.closedDates[d]), run: S.runDays || [0, 1, 2, 3, 4, 5, 6] };
   const serviceCdd = SERVICE_TYPES.map((t) => ({ value: t, label: svcShort[t] }));
   const commIntCdd = [
     { value: "", label: "Not sure yet" },
@@ -387,6 +410,7 @@ ICON_SPRITE +
 '<p class="mut" id="weekendnote" style="display:none;margin:-6px 0 12px">Junk removal runs weekends only - pick a Saturday or Sunday.</p>' +
 '<label class="f" id="dropwrap">Drop-off address<span class="ac-wrap"><input type="text" name="address" placeholder="Start typing: 1234 S Main St, Roy" autocomplete="off">' +
 '<ul class="ac-list" id="ac-address" role="listbox" hidden></ul></span><span class="ac-ok" data-ok-for="address" hidden><svg width="15" height="15"><use href="#i-check"/></svg>Address found on the map</span></label>' +
+fuelHint +
 '<div data-svc="dumpster">' +
 '<label class="inline"><input type="checkbox" id="samepick" checked> Pick-up address is the same as drop-off</label>' +
 '<label class="f hidden" id="pickwrap">Pick-up address<span class="ac-wrap"><input type="text" name="pickup_address" placeholder="Start typing the pick-up address" autocomplete="off">' +
@@ -402,6 +426,7 @@ ICON_SPRITE +
 '<label class="f hidden" id="permwrap" style="margin-top:8px">Can you get it before the bin arrives?<input type="text" name="permit_obtainable"></label></fieldset>' +
 '</div>' +
 '<p class="hint" style="margin-top:-4px">On the street, some cities want a permit. On a driveway we can set it on boards to protect the concrete; mention it below.</p>' +
+debrisField + addonBoxes +
 '</div>' +
 '</section>' +
 '<section class="step-c"><div class="step-c__h"><span class="step-c__n">3</span><div><h2>Your details</h2><p>For the confirmation text and the driver.</p></div></div>' +
@@ -446,6 +471,7 @@ ICON_SPRITE +
 '</div>' +
 '<aside class="sum" id="sumAside" aria-label="Order summary"><div class="sum__card"><div class="sum__h"><h2>Your order</h2></div><div class="sum__b">' +
 '<div class="sumbox"><div class="sumrow"><span id="sumlabel">Select options</span><span id="sumsub">-</span></div>' +
+'<div class="sumrow" id="sumfuelrow" style="display:none"><span id="sumfuellabel">Fuel charge</span><span id="sumfuel">-</span></div>' +
 '<div class="sumrow" id="sumdiscrow" style="display:none"><span id="sumdisclabel">Discount</span><span id="sumdisc">-</span></div>' +
 '<div class="sumrow"><span>Utah sales tax</span><span id="sumtax">-</span></div>' +
 '<div class="sumrow" id="sumdeprow" style="display:none"><span>Refundable deposit</span><span id="sumdep">-</span></div>' +
@@ -462,7 +488,7 @@ ICON_SPRITE +
 '<div class="miss__acts"><button type="button" id="missGo">Take me there</button><button type="button" class="ghost" id="missX">Close</button></div></div></div>' +
 '<script src="/assets/t.js" defer></script>' +
 '<script>var PRICING=' + JSON.stringify(pricing) + ';var SVC_LABELS=' + JSON.stringify(svcLabels) + ';var BIZ=' + JSON.stringify(biz.name) + ';var PHONE=' + JSON.stringify(phone) + ';var TEL=' + JSON.stringify(telHref) + ';' +
-'var CDD_GROUND=' + JSON.stringify(groundCdd) + ';var CDD_COMM=' + JSON.stringify(commIntCdd) + ';(function(){' +
+'var CDD_GROUND=' + JSON.stringify(groundCdd) + ';var CDD_DEBRIS=' + JSON.stringify(debrisCdd) + ';var RULES=' + JSON.stringify(RULES) + ';var CDD_COMM=' + JSON.stringify(commIntCdd) + ';(function(){' +
 'var f=document.getElementById("f"),out=document.getElementById("out"),confirmEl=document.getElementById("confirm"),btn=document.getElementById("submitBtn");' +
 'var resi=document.getElementById("resi"),comm=document.getElementById("comm");' +
 'function money(c){return "$"+(c/100).toFixed(2);}' +
@@ -476,9 +502,9 @@ ICON_SPRITE +
 // ---- date bounds (tomorrow .. +90 days) computed in local time ----
 'var MONTHS=["January","February","March","April","May","June","July","August","September","October","November","December"];' +
 'var MON3=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];' +
-'var _t=new Date();var MINDATE=new Date(_t.getFullYear(),_t.getMonth(),_t.getDate()+1);var MAXDATE=new Date(_t.getFullYear(),_t.getMonth(),_t.getDate()+90);' +
+'var _t=new Date();var _e=RULES.earliest.split("-");var MINDATE=new Date(+_e[0],+_e[1]-1,+_e[2]);var MAXDATE=new Date(_t.getFullYear(),_t.getMonth(),_t.getDate()+90);' +
 'function fmtDisplay(iso){var p=String(iso).split("-");return MON3[(+p[1])-1]+" "+(+p[2])+", "+p[0];}' +
-'function dateAllowed(y,m,d){var dt=new Date(y,m,d);if(dt<MINDATE||dt>MAXDATE)return false;if(curSvc()==="junk"){var wd=dt.getDay();if(wd!==0&&wd!==6)return false;}return true;}' +
+'function dateAllowed(y,m,d){var dt=new Date(y,m,d);if(dt<MINDATE||dt>MAXDATE)return false;if(RULES.closed.indexOf(isoOf(y,m,d))>=0||RULES.run.indexOf(dt.getDay())<0)return false;if(curSvc()==="junk"){var wd=dt.getDay();if(wd!==0&&wd!==6)return false;}return true;}' +
 // ---- service group show/hide + required hinting (residential) ----
 'function setGroup(svc){[].forEach.call(f.querySelectorAll("input[name=svc_choice]"),function(r){r.checked=(r.value===svc);});[].forEach.call(resi.querySelectorAll("[data-svc]"),function(g){var on=g.getAttribute("data-svc")===svc;g.classList.toggle("hidden",!on);[].forEach.call(g.querySelectorAll("input,select,textarea"),function(el){el.disabled=!on;});});}' +
 'function applyRequired(svc){' +
@@ -504,15 +530,31 @@ ICON_SPRITE +
 'function recalc(){paintPrices();var svc=curSvc();var lab=document.getElementById("sumlabel"),sub=document.getElementById("sumsub"),tx=document.getElementById("sumtax"),to=document.getElementById("sumtot");' +
 'var depRow=document.getElementById("sumdeprow"),depEl=document.getElementById("sumdep");depRow.style.display="none";' +
 'var discRow=document.getElementById("sumdiscrow");discRow.style.display="none";' +
+'var fuelRow=document.getElementById("sumfuelrow");fuelRow.style.display="none";fuelPaint();' +
 'var p=null,label="",deposit=0;' +
-'if(svc==="dumpster"){var s=sel("bin_size"),trr=sel("rental_tier");if(!s||!trr){lab.textContent="Select size + length";sub.textContent="-";tx.textContent="-";to.textContent="-";payUi(null);return;}p=PRICING.bins[s].prices[trr];label=PRICING.bins[s].label+" - "+PRICING.tiers[trr].label;}' +
+'if(svc==="dumpster"){var s=sel("bin_size"),trr=sel("rental_tier");if(!s||!trr){lab.textContent="Select size + length";sub.textContent="-";tx.textContent="-";to.textContent="-";payUi(null);return;}p=PRICING.bins[s].prices[trr];label=PRICING.bins[s].label+" - "+PRICING.tiers[trr].label;' +
+'var ks=[];[].forEach.call(f.querySelectorAll("input[data-addon]"),function(c){if(c.checked){ks.push(c.getAttribute("data-addon"));PRICING.addons.forEach(function(a){if(a.k===c.getAttribute("data-addon"))p+=a.cents;});}});if(f.addons)f.addons.value=ks.join(",");if(ks.length)label+=" + add-ons";}' +
 'else if(svc==="trailer"){var days=parseInt(f.rental_days.value,10);var sd=PRICING.services.trailer;if(!days||days<sd.minDays||days>sd.maxDays){lab.textContent="Enter rental days ("+sd.minDays+"-"+sd.maxDays+")";sub.textContent="-";tx.textContent="-";to.textContent="-";payUi(null);return;}p=sd.dayRate_cents*days;label=money(sd.dayRate_cents)+"/day x "+days+" day"+(days>1?"s":"");deposit=sd.deposit_cents;}' +
 'else if(svc==="junk"){p=PRICING.services.junk.flat_cents;label=(SVC_LABELS.junk||"Junk Removal")+" (flat)";}' +
 'else if(svc==="binswitch"){p=PRICING.services.binswitch.flat_cents;label=(SVC_LABELS.binswitch||"Bin Switch")+" (flat)";}' +
 'var disc=0;if(PROMO){disc=Math.min(p,Math.round(p*PROMO.pct/100));if(disc>0){discRow.style.display="";document.getElementById("sumdisclabel").textContent=PROMO.code+" ("+PROMO.pct+"% off)";document.getElementById("sumdisc").textContent="\\u2212"+money(disc);}}' +
+// the fuel charge is its own line, taxed, never discounted
+'var fc=fuelCents(svc);if(fc){fuelRow.style.display="";document.getElementById("sumfuellabel").textContent=FUEL.label;document.getElementById("sumfuel").textContent=money(fc);}' +
 // Total = what Stripe charges, so it includes the trailer's refundable deposit
-'var tax=Math.round((p-disc)*PRICING.taxRate);lab.textContent=label;sub.textContent=money(p);tx.textContent=money(tax);to.textContent=money(p-disc+tax+deposit);' +
-'if(deposit>0){depRow.style.display="";depEl.textContent=money(deposit)+" (refundable)";}payUi(p-disc+tax+deposit,label);}' +
+'var tax=Math.round((p+fc-disc)*PRICING.taxRate);lab.textContent=label;sub.textContent=money(p);tx.textContent=money(tax);to.textContent=money(p+fc-disc+tax+deposit);' +
+'if(deposit>0){depRow.style.display="";depEl.textContent=money(deposit)+" (refundable)";}payUi(p+fc-disc+tax+deposit,label);}' +
+// ---- fuel charge: /api/fuel prices the drop-off address (S.fuelMile); the server re-checks on booking ----
+'var FUEL=null,fuelT=null,fuelSeq=0,fuelQ="",fuelEl=document.getElementById("fuelmsg"),fuelDef=fuelEl?fuelEl.innerHTML:"";' +
+'function fuelCents(svc){return FUEL&&FUEL.known&&!FUEL.far&&FUEL.cents>0&&FUEL.services.indexOf(svc)>=0?FUEL.cents:0;}' +
+'function fuelPaint(){if(!fuelEl)return;var on=curSvc()!=="trailer";fuelEl.style.display=on?"":"none";if(!on)return;' +
+'if(!FUEL||!FUEL.known){fuelEl.innerHTML=fuelDef;fuelEl.style.color="";return;}' +
+'if(FUEL.far){fuelEl.textContent="That\\u2019s about "+FUEL.miles+" miles from our yard, past the "+FUEL.radius+" miles we deliver. Call "+PHONE+" and we\\u2019ll see what we can do.";fuelEl.style.color="var(--err)";return;}' +
+// a far drop-off hears a yes first, then the charge
+'fuelEl.textContent=FUEL.cents>0?"Good news, we deliver out your way! You\\u2019re about "+FUEL.miles+" miles from our yard, so we add "+money0(FUEL.cents)+" for fuel.":"You\\u2019re about "+FUEL.miles+" miles from our yard. Delivery\\u2019s included.";fuelEl.style.color=FUEL.cents>0?"var(--ink-2)":"var(--ok)";}' +
+'function fuelCheck(){var a=f.querySelector("[name=address]");if(!a||!fuelEl)return;var q=a.value.trim();if(q===fuelQ)return;fuelQ=q;var seq=++fuelSeq;' +
+'if(q.length<8){FUEL=null;recalc();return;}' +
+'fetch("/api/fuel?address="+encodeURIComponent(q)).then(function(r){return r.json();}).then(function(j){if(seq!==fuelSeq)return;FUEL=j&&j.known?j:null;recalc();}).catch(function(){if(seq!==fuelSeq)return;FUEL=null;recalc();});}' +
+'(function(){var a=f.querySelector("[name=address]");if(!a)return;a.addEventListener("input",function(){if(fuelT)clearTimeout(fuelT);fuelT=setTimeout(fuelCheck,800);});a.addEventListener("change",fuelCheck);})();' +
 // ---- promo code: live check against /api/promo; the server re-validates on booking ----
 'document.getElementById("promoA").addEventListener("click",function(){document.getElementById("promoW").classList.remove("hidden");this.classList.add("hidden");var pi=f.querySelector("[name=promo_code]");if(pi)pi.focus();});' +
 'var PROMO=null;var promoIn=f.querySelector("[name=promo_code]"),promoMsg=document.getElementById("promomsg"),promoT=null,promoSeq=0;' +
@@ -567,6 +609,7 @@ ICON_SPRITE +
 // ---- instantiate the four custom dropdowns (service drives the form; others are plain value pickers) ----
 'makeCdd("cdd-time",CDD_TIME,"No preference",null);' +
 'makeCdd("cdd-ground",CDD_GROUND,"Select...",null);' +
+'if(document.getElementById("cdd-debris"))makeCdd("cdd-debris",CDD_DEBRIS,"Not sure / mixed",null);' +
 'makeCdd("cdd-comm",CDD_COMM,"Not sure yet",null);' +
 // ---- keyless address autocomplete (graceful) ----
 'function attachAC(input,listId){var list=document.getElementById(listId);if(!input||!list)return;var t=null,active=-1,items=[],lastQ="";' +
@@ -642,6 +685,7 @@ ICON_SPRITE +
 'window.addEventListener("pageshow",function(ev){if(ev.persisted){btn.disabled=false;if(!ps.get("canceled")){out.classList.add("hidden");}}});' +
 'f.addEventListener("change",function(e){' +
 'if(e.target.name==="account_type"){switchAcct(e.target.value);return;}' +
+'if(e.target.hasAttribute&&e.target.hasAttribute("data-addon")){recalc();return;}' +
 'if(e.target.name==="svc_choice"){switchSvc(e.target.value);return;}' +
 'clearMiss(e.target);' +
 // service_type is a hidden input driven by the custom Service dropdown (its onChange calls switchSvc) - no change event here.

@@ -91,6 +91,7 @@ export async function markReviewClicked(env, token) {
 // request already went out or a rating exists; (2) per-client, skip if this phone
 // already left a rating on any other booking ("already reviewed before").
 export async function startReview(env, S, b) {
+  if (S && S.reviewOff) return { skipped: "review-off" }; // switched off in the console
   if (!b || b.review_sms_sent_at || b.review_rating != null) return { skipped: "already-sent" };
   const table = reviewTable(b.id);
   const ph = digits10(b.phone);

@@ -48,17 +48,23 @@ const LIVE = {
   reviews: [{ name: "Pat </script><b>x", rating: 5, date: "2026-10-01", text: "Great <b>bin</b>" }],
 };
 
-test("defaults: 5.0 from 18, seven cards, settings carry them", async () => {
+test("defaults: 5.0 from 20, twelve cards (five new dated ones first), settings carry them", async () => {
   assert.equal(DEFAULT_GOOGLE_REVIEWS.rating, 5);
-  assert.equal(DEFAULT_GOOGLE_REVIEWS.count, 18);
-  assert.equal(DEFAULT_GOOGLE_REVIEWS.reviews.length, 7);
+  assert.equal(DEFAULT_GOOGLE_REVIEWS.count, 20);
+  assert.equal(DEFAULT_GOOGLE_REVIEWS.reviews.length, 12);
+  assert.deepEqual(DEFAULT_GOOGLE_REVIEWS.reviews.slice(0, 5).map((r) => [r.name, r.date]), [
+    ["javen garcia", "2026-10-08"], ["David Hickson", "2026-10-02"], ["Chandler Drachman", "2026-10-02"],
+    ["Travis Rodeback", "2026-09-25"], ["Lee Hennerichs", "2026-09-18"],
+  ]);
+  assert.ok(DEFAULT_GOOGLE_REVIEWS.reviews.every((r) => r.rating === 5 && r.text));
+  assert.match(DEFAULT_GOOGLE_REVIEWS.reviews[4].text, /stright forward communication\.$/, "reviewer text verbatim");
   const S = await loadSettings(env());
-  assert.equal(S.googleReviews.count, 18);
+  assert.equal(S.googleReviews.count, 20);
   const S2 = await loadSettings(env([{ key: "google_reviews", value: JSON.stringify(LIVE) }]));
   assert.equal(S2.googleReviews.count, 23);
   assert.equal(S2.googleReviews.reviews[0].name, LIVE.reviews[0].name);
   // Garbage in D1 falls back field by field.
-  assert.deepEqual(mergeGoogleReviews({ rating: "x", reviews: [] }).count, 18);
+  assert.deepEqual(mergeGoogleReviews({ rating: "x", reviews: [] }).count, 20);
 });
 
 test("homepage HTML: live rating/count everywhere + review JSON, script-safe", async () => {
@@ -74,12 +80,13 @@ test("homepage HTML: live rating/count everywhere + review JSON, script-safe", a
   assert.equal(data.url, "https://www.google.com/maps?cid=8339345795908710583");
 });
 
-test("homepage HTML with no saved reviews: defaults (5.0 / 18) filled in", async () => {
+test("homepage HTML with no saved reviews: defaults (5.0 / 20) filled in", async () => {
   const html = await (await get("/", env())).text();
-  assert.equal((html.match(/data-trd-num="g_count">18</g) || []).length, 4);
+  assert.equal((html.match(/data-trd-num="g_count">20</g) || []).length, 4);
   const data = JSON.parse(html.match(/id="trd-reviews">([\s\S]*?)<\/script>/)[1]);
-  assert.equal(data.reviews.length, 7);
-  assert.equal(data.reviews[0].name, "Connie Collard");
+  assert.equal(data.reviews.length, 12);
+  assert.equal(data.reviews[0].name, "javen garcia");
+  assert.equal(data.reviews[0].text, "Highly recommended 👍🏽");
 });
 
 test("contact page: rating line rewritten too", async () => {
@@ -113,7 +120,7 @@ test("applyPlacesResponse: new reviews first, same reviewer replaced, capped at 
   assert.ok(next.reviews[0].text.length <= 260 && next.reviews[0].text.endsWith("…"));
   assert.equal(next.reviews.filter((r) => /connie/i.test(r.name)).length, 1, "no duplicate Connie");
   assert.ok(!next.reviews.some((r) => r.name === "Empty"), "text-less reviews skipped");
-  assert.equal(next.reviews.length, 3 + 6);
+  assert.equal(next.reviews.length, 12, "3 fresh + the 11 other defaults, capped at 12");
   const many = applyPlacesResponse(next, { reviews: Array.from({ length: 5 }, (_, i) => ({ rating: 5, text: { text: "t" + i }, authorAttribution: { displayName: "N" + i } })) }, "x");
   assert.equal(many.reviews.length, 12);
   assert.equal(many.count, 20, "missing count keeps the old one");
@@ -166,8 +173,10 @@ test("landing page: Book in header + hero, rate card, proof, map, reviews JSON, 
   assert.match(HOME, /href="https:\/\/bio\.triplerdump\.com\/"/);
   assert.match(HOME, /<link rel="stylesheet" href="pages\.css">/);
   assert.doesNotMatch(HOME, /_mock|mockflag|\.\.\/deploy|every one of them five stars|Every one is five stars|refund 48/i);
-  // every price on the page is a live marker
-  assert.equal((HOME.match(/data-trd="(d15_13|d15_47|d20_13|d20_47|d25_13|d25_47|junk|trailer_day|trailer_dep|binswitch|ext_day)"/g) || []).length, 14);
+  // every price on the page is a live marker: one 7-day price per bin, no 1-3 day tier
+  assert.equal((HOME.match(/data-trd="(d15_13|d15_47|d20_13|d20_47|d25_13|d25_47|junk|trailer_day|trailer_dep|binswitch|ext_day|over_ton)"/g) || []).length, 15);
+  assert.doesNotMatch(HOME, /data-trd="d(15|20|25)_13"|1–3 days|4–7 days/);
+  assert.equal((HOME.match(/data-trd-num="tons(15|20|25)"/g) || []).length, 6, "tons included: hero card + bin cards");
 });
 
 test("contact page: map embed + directions, built from build_pages.py", () => {

@@ -163,6 +163,24 @@ Your payment terms and late fee print at the bottom of every invoice
 automatically. If you're invoicing a job that's already in the system, open the
 job and use "Create an invoice for this booking" so it fills in their details.
 
+**Job / work order #:** contractors (like Utah Roofing Consultants) need to know
+which house a bill is for. Type their job number, or the homeowner's last name
+and the address, in the "Job / Work order #" box. It prints at the top of the
+invoice (PDF, email and pay page), and you can search invoices by it. The same
+box is on the console's New invoice and on "weigh and bill" for regulars billed
+after pickup. Leave it blank for everyone else.
+
+**Bin switch day:** on the console's New invoice, tap "+ Bin switch" and a
+"Switch day" box shows under it. Pick the day and the invoice line reads
+"Bin switch · Wed Nov 4". If you already booked the switch from the job, the
+day is filled in for you.
+
+**Who still owes you:** the console's Today screen ends with **Unpaid invoices**:
+every invoice not paid yet, the total waiting, and overdue ones first in red. Tap
+one to open that customer. Once the customer pays it drops off the list, usually
+within a few seconds (Stripe tells the site right away; an hourly re-check is the
+backup).
+
 **When an invoice gets paid** you get a text ("Paid! Invoice 1042: $450.00 from
 Mike Smith") within seconds of the payment, with a link to it. The wording is in
 Admin → Texts → "Invoice paid".
@@ -203,9 +221,20 @@ save. As you type, it shows you an example of what that percent does to a
 
 Don't be surprised by these — they're all deliberate:
 
-- **Refuses far-away addresses.** Anything more than 60 miles out can't book
-  online; they're told to call you instead. So if someone phones saying "the
-  website wouldn't let me," that's it working. You decide if you want the job.
+- **Refuses far-away addresses.** Anything past your delivery limit (console →
+  Setup → Where you deliver) can't book online; they're told to call you instead.
+  So if someone phones saying "the website wouldn't let me," that's it working.
+  You decide if you want the job, and you can still book it from the console.
+- **Adds a fuel charge for far drop-offs.** The first 30 miles are free. Past
+  that it's a $40 starting charge plus $1 for every mile past 30: 31 miles adds
+  $41, 48 miles adds $58. Change the free miles, the starting charge and the
+  rate a mile in the console: Setup → Where you deliver. The website's pages
+  (FAQ, city pages, price guide) say the same numbers and change when you do.
+  Miles are straight-line from the yard (a real drive is usually a bit longer).
+  It goes on every bin, junk removal and bin switch, booked online or by you in
+  the console's "Take a booking". There you see the miles and the charge under
+  the price, and "No fuel charge" takes it off that one job. Trailers never get
+  it (the renter tows).
 - **Junk removal is weekends only.** Weekday requests are refused automatically.
 - **Won't overbook you.** It knows how many bins you own and won't rent out a
   bin that's already sitting in someone's driveway.

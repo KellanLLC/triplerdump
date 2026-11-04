@@ -1,7 +1,7 @@
 // Triple R Dump - one worker: static site (via assets) + booking + CMS + review.
 import { loadSettings, itemLabel, findDiscountCode } from "./settings.js";
 import { todayISO } from "./util.js";
-import { createBooking, getAvailability, cancelAbandonedCheckout } from "./booking.js";
+import { createBooking, getAvailability, cancelAbandonedCheckout, fuelQuote } from "./booking.js";
 import { handleStripeWebhook, confirmPaidByRedirect } from "./stripe.js";
 import { renderBookedPage } from "./booked.js";
 import { buildICalFeed } from "./ical.js";
@@ -10,9 +10,10 @@ import { runScheduled } from "./cron.js";
 import { renderBookingPage } from "./page.js";
 import { renderTermsPage } from "./terms.js";
 import { renderReviewLanding, handleReviewRate, handleReviewFeedback } from "./reviewpage.js";
+import { consoleApi } from "./console-api.js";
 import { isAuthed, loginCookie, clearCookie, renderLogin, renderPanel, saveSettings, renderBookingsList, renderBookingDetail, renderInvoiceList, renderInvoiceNew, renderInvoiceDetail } from "./admin.js";
 import { createInvoice, refreshInvoiceStatus, voidInvoice, resendInvoice, parseLineItems, applyPercentDiscount } from "./invoice.js";
-import { isMarketingPath, marketingRedirect, serveMarketingPage } from "./marketing.js";
+import { isMarketingPath, marketingRedirect, serveMarketingPage, legacyRedirect, redirectLocation, wantsHtml, notFoundHtmlResponse } from "./marketing.js";
 import { prefersMarkdown, markdownNotFoundResponse, renderLlmsTxt, varyAccept } from "./agents.js";
 
 const SITE_EVENT_TYPES = new Set(["view", "book_click", "call_click", "text_click"]);
@@ -83,6 +84,8 @@ async function handle(request, env) {
       return Response.redirect(url.toString(), 301);
     }
     if (m === "OPTIONS") return new Response(null, { headers: cors() });
+    // the Pull Count console's private way in (server to server, keyed): src/console-api.js
+    if (p.startsWith("/api/console/")) return consoleApi(request, env, url);
 
     // bio.triplerdump.com = the link-in-bio page (Instagram etc.). Its root
     // serves /social/; static files (icons, video) come from the asset path
@@ -98,6 +101,14 @@ async function handle(request, env) {
     }
 
     try {
+      // ----- Legacy URLs (old Wix paths, /book/ and /terms/) -> their page -----
+      // Exact matches only (marketing.js LEGACY_REDIRECTS); /book and /terms
+      // themselves never match, so the booking page is untouched.
+      if (m === "GET" || m === "HEAD") {
+        const legacy = legacyRedirect(p);
+        if (legacy) return Response.redirect(redirectLocation(url.origin, legacy, url.search), 301);
+      }
+
       // ----- Marketing pages (static assets + live CMS prices) -----
       // wrangler.toml run_worker_first routes these here instead of serving the
       // asset directly; serveMarketingPage substitutes current prices.
@@ -253,7 +264,7 @@ async function handle(request, env) {
         const S = await loadSettings(env);
         const q = (url.searchParams.get("q") || "").trim();
         const rows = q
-          ? (await env.DB.prepare("SELECT * FROM invoices WHERE id LIKE ?1 OR number LIKE ?1 OR customer_name LIKE ?1 OR booking_id LIKE ?1 ORDER BY created_at DESC LIMIT 100").bind("%" + q + "%").all()).results
+          ? (await env.DB.prepare("SELECT * FROM invoices WHERE id LIKE ?1 OR number LIKE ?1 OR customer_name LIKE ?1 OR booking_id LIKE ?1 OR job_ref LIKE ?1 ORDER BY created_at DESC LIMIT 100").bind("%" + q + "%").all()).results
           : (await env.DB.prepare("SELECT * FROM invoices ORDER BY created_at DESC LIMIT 100").all()).results;
         return html(renderInvoiceList(S, rows || [], q));
       }
@@ -309,6 +320,7 @@ async function handle(request, env) {
           terms: String(fd.get("terms") || ""),
           notes: String(fd.get("notes") || ""),
           ask_review: fd.get("ask_review") === "on",
+          job_ref: fd.get("job_ref"),
         });
         if (!r.ok) {
           const back = "/admin/invoice/new?error=" + encodeURIComponent(r.error || "Could not create the invoice.");
@@ -374,6 +386,11 @@ async function handle(request, env) {
         const S = await loadSettings(env);
         const d = findDiscountCode(S, url.searchParams.get("code"));
         return json(d ? { ok: true, valid: true, code: d.code, pct: d.pct } : { ok: true, valid: false });
+      }
+      // The /book form's fuel charge for the drop-off address (S.fuelMile); the booking re-checks.
+      if (p === "/api/fuel" && m === "GET") {
+        const S = await loadSettings(env);
+        return json(await fuelQuote(S, url.searchParams.get("address")));
       }
       if (p === "/api/book" && m === "POST") {
         const S = await loadSettings(env);
@@ -473,8 +490,11 @@ async function handle(request, env) {
       }
 
       // Unknown path. Agents asking for Markdown get a Markdown 404 that points at
-      // llms.txt and the sitemap; everyone else gets the JSON 404 as before.
+      // llms.txt and the sitemap; browsers get the site's HTML 404 page (nav,
+      // booking, sizes, service area, phone); /api/* and everyone else get the
+      // JSON 404 as before.
       if (prefersMarkdown(request.headers.get("accept"))) return markdownNotFoundResponse(request);
+      if ((m === "GET" || m === "HEAD") && !p.startsWith("/api/") && wantsHtml(request.headers.get("accept"))) return notFoundHtmlResponse(env, request);
       const nf = json({ ok: false, error: "Not found" }, 404);
       varyAccept(nf.headers);
       return nf;

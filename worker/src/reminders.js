@@ -39,7 +39,7 @@ export async function runReminderSweep(env, S) {
     try {
       const adminLink = (S.publicBaseUrl || "").replace(/\/+$/, "") + "/admin/booking/" + b.id;
       const vals = tokenVals(S, b);
-      await sendReminderSms(S, b, fillTemplate(S.templates.reminder_sms, vals));
+      if (!(S.smsOff || []).includes("reminder_sms")) await sendReminderSms(S, b, fillTemplate(S.templates.reminder_sms, vals));
       if (S.ghlEmailUrl && b.email) {
         await sendReminderEmail(S, b, fillTemplate(S.templates.reminder_email_subject, vals), fillTemplate(S.templates.reminder_email_body, vals));
       }
@@ -72,7 +72,7 @@ async function runPickupSweep(env, S, today) {
   ).bind(soon).all()).results || [];
   for (const b of dueCustomer) {
     try {
-      await sendReminderSms(S, b, fillTemplate(S.templates.pickup_reminder, tokenVals(S, b)));
+      if (!(S.smsOff || []).includes("pickup_reminder")) await sendReminderSms(S, b, fillTemplate(S.templates.pickup_reminder, tokenVals(S, b)));
       await env.DB.prepare("UPDATE bookings SET pickup_reminder_sent_at=?1 WHERE id=?2").bind(new Date().toISOString(), b.id).run();
       customer++;
     } catch (e) { console.error("[pickup reminder] failed for", b.id, e); }

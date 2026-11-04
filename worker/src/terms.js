@@ -1,5 +1,7 @@
 // Terms / policies page at /terms. Linked from the booking form's agreement checkbox.
 // Content provided by the owner (Joseph) 2026-06-26.
+// 2026-10-29: section 6 (repeat customers + invoiced orders) at Joseph's request, and a "last updated" date so
+// nobody can read the new clause as older than it is. It applies to orders from that date on, not before.
 //
 // 2026-07-27: every DOLLAR AMOUNT now comes from S.fees (CMS-editable) instead of
 // being typed into the prose. The original transcription quoted two different prices
@@ -26,6 +28,8 @@ export function renderTermsPage(S) {
   return '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">' +
     '<meta name="viewport" content="width=device-width,initial-scale=1">' +
     '<title>Terms &amp; Policies - Triple R Dump</title>' +
+    '<meta name="description" content="Triple R Dump rental terms: weight allowances, overage and extension fees, cancellations, prohibited materials and payment authorization.">' +
+    '<link rel="canonical" href="https://www.triplerdump.com/terms">' +
     '<style>' +
     'body{margin:0;font:16px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:#0b1b2b;background:#f5f8fc}' +
     '.wrap{max-width:740px;margin:0 auto;padding:26px 18px 80px}' +
@@ -39,7 +43,7 @@ export function renderTermsPage(S) {
     '.contact div{margin:2px 0}' +
     '</style></head><body><main class="wrap">' +
     '<a class="back" href="/book">&larr; Back to booking</a>' +
-    '<h1>Terms &amp; Policies</h1><p class="sub">Triple R Dump &middot; West Haven, UT</p>' +
+    '<h1>Terms &amp; Policies</h1><p class="sub">Triple R Dump &middot; West Haven, UT &middot; Last updated October 29, 2026</p>' +
 
     '<h2>Terms and Conditions</h2>' +
     '<h3>1. Rental Period and Fees</h3><ul>' +
@@ -64,6 +68,9 @@ export function renderTermsPage(S) {
     '<h3>5. Liability and Payment</h3><ul>' +
     '<li><b>Ownership of Waste:</b> The customer retains title to and liability for all materials until they are legally disposed of at a licensed facility.</li>' +
     '<li><b>Payment Authorization:</b> By booking or accepting an invoice, the customer authorizes the company to securely store their payment card and to charge it for: the booked service; any extension days, weight overages, trip fees, or prohibited-material fines identified after pickup; and any invoiced balance that remains unpaid after its due date, including accrued late charges. This authorization stays in effect until every amount owed has been paid. Charges appear as Triple R Dump. Questions about a charge: call 801-564-3164.</li></ul>' +
+    '<h3>6. Repeat Customers and Invoiced Orders</h3><ul>' +
+    '<li><b>These terms carry over:</b> If you have ordered from us before, these terms apply to every later order too, however you place it (online, by phone, text, email or in person) and however you pay, including orders billed by invoice after the service. You do not need to agree again for each order.</li>' +
+    '<li><b>Placement risk:</b> On those orders you assume all of the risk described in Site Access and Property Damage (section 4 above) and in Property Damage &amp; Placement (below). You choose where the dumpster goes, whether that is your driveway, your lawn or anywhere else, and you are responsible for any damage to that surface or anything under it.</li></ul>' +
 
     '<h2>Return Policy</h2>' +
     '<h3>1. Cancellation &amp; Refund Policy</h3><ul>' +

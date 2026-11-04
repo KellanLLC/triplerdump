@@ -476,9 +476,11 @@ export function renderPanel(S, data) {
     '<label>Low rating alert <span class="muted">(adds {rating} {feedback}; use {admin_link})</span></label><textarea name="tpl_low_rating">' + esc(t.low_rating) + '</textarea>' +
     '<label>Invoice paid <span class="muted">(adds {number} {total}; use {admin_link})</span></label><textarea name="tpl_owner_invoice_paid">' + esc(t.owner_invoice_paid) + '</textarea>' +
     '<label>Invoice still unpaid <span class="muted">(after the last late-payment text; adds {days_late} {count}; use {admin_link})</span></label><textarea name="tpl_owner_invoice_overdue">' + esc(t.owner_invoice_overdue) + '</textarea>' +
+    '<label>Final notice went out <span class="muted">(adds {days_late}; use {admin_link})</span></label><textarea name="tpl_owner_invoice_final">' + esc(t.owner_invoice_final) + '</textarea>' +
     '<h3>Invoices</h3>' +
     '<label>Invoice text <span class="muted">(adds {number} {total} {due}; use {invoice_link})</span></label><textarea name="tpl_invoice">' + esc(t.invoice) + '</textarea>' +
     '<label>Late-payment text <span class="muted">(past the due date; adds {days_late}; use {invoice_link})</span></label><textarea name="tpl_invoice_overdue">' + esc(t.invoice_overdue) + '</textarea>' +
+    '<label>Final notice <span class="muted">(once, ' + esc(String(S.invoiceFinalNoticeDays)) + ' days past due; adds {days_late} {late_pct}; use {invoice_link}; blank = never sent)</span></label><textarea name="tpl_invoice_final">' + esc(t.invoice_final) + '</textarea>' +
     '</div>');
 
   // Everything that breaks the site if guessed at, kept out of the way but reachable.
@@ -632,7 +634,7 @@ export async function saveSettings(env, form) {
   await saveSetting(env, "invoice_reminders_on", form.invoice_reminders_on === "on" || form.invoice_reminders_on === "true");
   await saveSetting(env, "invoice_reminder_hours", Math.max(24, parseInt(form.invoice_reminder_hours, 10) || 48));
   await saveSetting(env, "invoice_reminder_max", Math.min(10, Math.max(1, parseInt(form.invoice_reminder_max, 10) || 5)));
-  await saveSetting(env, "sms_templates", { confirmation: String(form.tpl_confirmation || ""), reminder_sms: String(form.tpl_reminder_sms || ""), pickup_reminder: String(form.tpl_pickup_reminder || ""), review: String(form.tpl_review || ""), review_followup_1: String(form.tpl_review_followup_1 || ""), review_followup_2: String(form.tpl_review_followup_2 || ""), review_followup_3: String(form.tpl_review_followup_3 || ""), owner: String(form.tpl_owner || ""), owner_reminder: String(form.tpl_owner_reminder || ""), owner_pickup_reminder: String(form.tpl_owner_pickup_reminder || ""), owner_complete_nudge: String(form.tpl_owner_complete_nudge || ""), commercial: String(form.tpl_commercial || ""), low_rating: String(form.tpl_low_rating || ""), invoice: String(form.tpl_invoice || ""), owner_invoice_paid: String(form.tpl_owner_invoice_paid || ""), invoice_overdue: String(form.tpl_invoice_overdue || ""), owner_invoice_overdue: String(form.tpl_owner_invoice_overdue || "") });
+  await saveSetting(env, "sms_templates", { confirmation: String(form.tpl_confirmation || ""), reminder_sms: String(form.tpl_reminder_sms || ""), pickup_reminder: String(form.tpl_pickup_reminder || ""), review: String(form.tpl_review || ""), review_followup_1: String(form.tpl_review_followup_1 || ""), review_followup_2: String(form.tpl_review_followup_2 || ""), review_followup_3: String(form.tpl_review_followup_3 || ""), owner: String(form.tpl_owner || ""), owner_reminder: String(form.tpl_owner_reminder || ""), owner_pickup_reminder: String(form.tpl_owner_pickup_reminder || ""), owner_complete_nudge: String(form.tpl_owner_complete_nudge || ""), commercial: String(form.tpl_commercial || ""), low_rating: String(form.tpl_low_rating || ""), invoice: String(form.tpl_invoice || ""), owner_invoice_paid: String(form.tpl_owner_invoice_paid || ""), invoice_overdue: String(form.tpl_invoice_overdue || ""), owner_invoice_overdue: String(form.tpl_owner_invoice_overdue || ""), invoice_final: String(form.tpl_invoice_final || ""), owner_invoice_final: String(form.tpl_owner_invoice_final || "") });
   // Follow-up ladder timing. Stored as a 3-slot array; a 0 ends the ladder there.
   await saveSetting(env, "review_followup_hours", [form.fu_1, form.fu_2, form.fu_3].map((v) => {
     const n = Number(String(v == null ? "" : v).trim());
@@ -719,11 +721,11 @@ const statusPill = (s) =>
 export function renderInvoiceList(S, rows, q) {
   let body = '<div class="top"><h1>Invoices</h1><a href="/admin" style="color:#64748b;text-decoration:none">&larr; Settings</a></div>';
   body += '<div style="margin-bottom:12px"><a href="/admin/invoice/new" style="display:inline-block;background:#116DFF;color:#fff;padding:11px 16px;border-radius:9px;font-weight:700;text-decoration:none">+ New invoice</a></div>';
-  body += '<form method="GET" action="/admin/invoices" class="card"><label>Search by invoice no., customer, or booking ref</label><div class="row"><div><input name="q" value="' + esc(q || "") + '" placeholder="TRD-INV-… / name / TRD-…"></div><div style="flex:0 0 auto"><button>Search</button></div></div></form>';
+  body += '<form method="GET" action="/admin/invoices" class="card"><label>Search by invoice no., customer, booking ref, or job / work order</label><div class="row"><div><input name="q" value="' + esc(q || "") + '" placeholder="TRD-INV-… / name / TRD-…"></div><div style="flex:0 0 auto"><button>Search</button></div></div></form>';
   body += '<div class="card"><table><tr><th>Invoice</th><th>Status</th><th>Customer</th><th>Due</th><th>Total</th></tr>';
   for (const r of (rows || [])) {
     body += '<tr><td><a href="/admin/invoice/' + esc(r.id) + '" style="color:#116DFF;font-weight:600">' + esc(r.number || r.id) + '</a></td>' +
-      '<td>' + statusPill(r.status) + '</td><td>' + esc(r.customer_name) + '</td><td>' + esc(r.due_date || "—") + '</td><td>' + invMoney(r.total_cents) + '</td></tr>';
+      '<td>' + statusPill(r.status) + '</td><td>' + esc(r.customer_name) + (r.job_ref ? '<div class="muted">' + esc(r.job_ref) + '</div>' : '') + '</td><td>' + esc(r.due_date || "—") + '</td><td>' + invMoney(r.total_cents) + '</td></tr>';
   }
   if (!rows || !rows.length) body += '<tr><td colspan="5" class="muted">No invoices' + (q ? ' match "' + esc(q) + '"' : ' yet') + '.</td></tr>';
   body += '</table></div>';
@@ -749,7 +751,9 @@ export function renderInvoiceNew(S, prefill, error) {
     '<label>Name</label><input name="customer_name" value="' + esc(p.customer_name || "") + '" required>' +
     '<div class="row"><div><label>Email <span class="muted">(required — Stripe emails the invoice)</span></label><input name="email" type="email" value="' + esc(p.email || "") + '" required></div>' +
     '<div><label>Phone <span class="muted">(for the pay-link text)</span></label><input name="phone" value="' + esc(p.phone || "") + '"></div></div>' +
-    '<label>Company <span class="muted">(optional)</span></label><input name="company" value="' + esc(p.company || "") + '">';
+    '<label>Company <span class="muted">(optional)</span></label><input name="company" value="' + esc(p.company || "") + '">' +
+    '<label>Job / Work order # <span class="muted">(optional)</span><span class="hint">Prints at the top of the invoice, for contractors who match bills to a house: the homeowner&rsquo;s last name and the address, or their work order number.</span></label>' +
+    '<input name="job_ref" maxlength="140" value="' + esc(p.job_ref || "") + '">';
 
   body += '<h2>Line items</h2>';
   const seed = p.items || [];
@@ -803,6 +807,7 @@ export function renderInvoiceDetail(S, inv, flash) {
   body += '<div class="card">';
   body += '<div style="display:flex;border-bottom:1px solid #eef2f7;padding:5px 0"><div style="flex:0 0 42%;color:#5a6b7d">Status</div><div style="flex:1">' + statusPill(inv.status) + '</div></div>';
   body += r("Customer", inv.customer_name) + r("Email", inv.email) + r("Phone", inv.phone) + r("Company", inv.company) +
+    (inv.job_ref ? r("Job / Work order", inv.job_ref) : "") +
     (inv.booking_id ? '<div style="display:flex;border-bottom:1px solid #eef2f7;padding:5px 0"><div style="flex:0 0 42%;color:#5a6b7d">Booking</div><div style="flex:1"><a href="/admin/booking/' + esc(inv.booking_id) + '" style="color:#116DFF;font-weight:600">' + esc(inv.booking_id) + '</a></div></div>' : "") +
     r("Due", inv.due_date) + r("Sent", (inv.sent_at || "").slice(0, 10)) + r("Paid at", inv.paid_at) +
     r("Late-payment texts", (inv.overdue_reminders_sent || 0) + " sent" + (inv.overdue_last_sent_at ? " (last " + String(inv.overdue_last_sent_at).slice(0, 10) + ")" : "") + (inv.overdue_owner_alerted_at ? " · you were told to call" : "")) +

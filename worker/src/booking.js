@@ -1,7 +1,9 @@
 import { todayISO, addDays, isISODate } from "./util.js";
-import { quoteService, fillTemplate, itemLabel, lengthLabel, chargedCents, findDiscountCode } from "./settings.js";
+import { CONFIG } from "./config.js";
+import { quoteService, fillTemplate, itemLabel, lengthLabel, chargedCents, findDiscountCode, fuelFor, fuelOn } from "./settings.js";
 import { sendBookingWebhook, sendCommercialLead } from "./sms.js";
 import { createCheckout, markPaid } from "./stripe.js";
+import { PLACES } from "./places.js";
 
 const SERVICE_INTEREST_LABELS = {
   dumpster: "Dumpster",
@@ -20,7 +22,7 @@ function bizPhone(S) {
 }
 
 const REF_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
-function genRef() {
+export function genRef() {
   let s = "";
   for (let i = 0; i < 6; i++) s += REF_ALPHABET[Math.floor(Math.random() * REF_ALPHABET.length)];
   return "TRD-" + s;
@@ -35,6 +37,36 @@ function weekdayInTz(iso, tz) {
 function isWeekend(iso, tz) {
   const d = weekdayInTz(iso, tz);
   return d === 0 || d === 6;
+}
+
+// ---- which days can be booked (the console's closed days, run days, notice and same-day cutoff) ----
+const localParts = (tz, when = new Date()) => {
+  const p = Object.fromEntries(new Intl.DateTimeFormat("en-CA", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" })
+    .formatToParts(when).map((x) => [x.type, x.value]));
+  return { day: p.year + "-" + p.month + "-" + p.day, min: Number(p.hour) * 60 + Number(p.minute) };
+};
+// the first delivery day: with no notice set, the old rule (minLeadDays from today)
+export function earliestDate(S, when = new Date()) {
+  const tz = S.business.timezone;
+  if (S.leadHours === null || S.leadHours === undefined) return addDays(todayISO(tz), S.booking.minLeadDays);
+  const now = localParts(tz, when);
+  let d = localParts(tz, new Date(when.getTime() + Number(S.leadHours) * 3600e3)).day;
+  const m = /^(\d{1,2}):(\d{2})$/.exec(S.sameDayCutoff || "");
+  if (d === now.day && m && now.min >= Number(m[1]) * 60 + Number(m[2])) d = addDays(now.day, 1);
+  return d < now.day ? now.day : d;
+}
+// runs already on a day (drop-offs + pickups), against what his trucks can do (S.dailyRuns)
+export async function dayFull(env, S, iso) {
+  if (!S.dailyRuns) return false;
+  const r = await env.DB.prepare("SELECT (SELECT COUNT(*) FROM bookings WHERE delivery_date=?1 AND status IN ('pending','confirmed','paid')) + " +
+    "(SELECT COUNT(*) FROM bookings WHERE pickup_date=?1 AND pickup_date != delivery_date AND status IN ('confirmed','paid')) AS n").bind(iso).first();
+  return ((r && r.n) || 0) >= S.dailyRuns;
+}
+// a day he delivers on: not closed, and one of his run days
+export function dateOpen(S, iso) {
+  if (S.closedDates && S.closedDates[iso]) return false;
+  const wd = new Date(iso + "T12:00:00Z").getUTCDay();
+  return !Array.isArray(S.runDays) || S.runDays.includes(wd);
 }
 
 function validate(input, S) {
@@ -57,7 +89,8 @@ function validate(input, S) {
   if (phone.length < 10) errors.push("Enter a valid phone number.");
 
   const email = String(input.email || "").trim();
-  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) errors.push("Enter a valid email.");
+  // a booking Joseph takes by phone may not have an email (S.ownerBooking, from console-api.js)
+  if ((email || !S.ownerBooking) && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) errors.push("Enter a valid email.");
 
   const dropAddress = String(input.address || input.drop_address || "").trim();
   if (dropAddress.length < 5) errors.push("Enter the drop-off address.");
@@ -79,13 +112,14 @@ function validate(input, S) {
 
   if (isDumpster) {
     size = String(input.bin_size || "").trim();
-    if (!S.bins[size]) errors.push("Pick a bin size (15, 20 or 25 yard).");
+    if (!S.bins[size] || S.bins[size].hidden) errors.push("Pick a bin size.");
 
     tier = String(input.rental_tier || "").trim();
     if (!S.tiers[tier]) errors.push("Pick a rental length (1-3 or 4-7 day).");
 
     ground = String(input.ground_condition || "").trim();
-    if (!S.groundConditions.includes(ground)) errors.push("Pick the drop-off ground condition.");
+    // the console can rename the options; the original ones still pass (older links, the deploy check)
+    if (!S.groundConditions.includes(ground) && !CONFIG.groundConditions.includes(ground)) errors.push("Pick the drop-off ground condition.");
 
     const permitRaw = input.permit_needed;
     permitNeeded = (permitRaw === true || permitRaw === "yes" || permitRaw === "Yes" || permitRaw === 1 || permitRaw === "1") ? 1 : 0;
@@ -116,6 +150,9 @@ function validate(input, S) {
     errors,
     clean: {
       serviceType, size, tier, name, phone, email,
+      // add-ons ticked on the form ("ton,beams") and what's going in it, both optional
+      addonKeys: String(input.addons || "").split(",").map((k) => k.trim()).filter(Boolean),
+      debris: String(input.debris || "").trim().slice(0, 80),
       dropAddress,
       pickupAddress: String(input.pickup_address || "").trim() || dropAddress,
       date,
@@ -419,7 +456,7 @@ export async function getAvailability(env, S, size, date, tier = "1-3") {
   const counts = await overlapCounts(env, date, pickup);
   const sizeOut = counts.bySize[size] || 0;
   const sizeCap = S.bins[size].inventory;
-  const available = sizeOut < sizeCap && counts.total < S.totalCap;
+  const available = sizeOut < sizeCap && counts.total < S.totalCap && dateOpen(S, date) && !S.bins[size].hidden && !(await dayFull(env, S, date));
   return { ok: true, available, size, tier, date, pickup_date: pickup, size_out: sizeOut, size_cap: sizeCap, total_out: counts.total, total_cap: S.totalCap };
 }
 
@@ -429,10 +466,11 @@ export async function getAvailability(env, S, size, date, tier = "1-3") {
 // morning. Geocode the drop-off via Photon (same upstream as the autocomplete)
 // and measure straight-line miles from the yard.
 //
+// (Since 10/27 the Census geocoder and the town table come first; see milesFromYard.)
 // Deliberately conservative in BOTH directions:
-//  - Reject only when EVERY candidate interpretation of the address is beyond the
+//  - On Photon, reject only when EVERY candidate interpretation of the address is beyond the
 //    radius, so an ambiguous address gets the benefit of the doubt.
-//  - Fail OPEN (allow) when Photon errors, times out, or finds nothing — an outage
+//  - Fail OPEN (allow) when every lookup errors, times out, or finds nothing — an outage
 //    or an unusual-but-real address must never block a paying local customer.
 //    Gibberish addresses also pass; they always did, and Joseph triages by phone.
 function milesBetween(lat1, lon1, lat2, lon2) {
@@ -442,30 +480,100 @@ function milesBetween(lat1, lon1, lat2, lon2) {
   return 2 * R * Math.asin(Math.sqrt(a));
 }
 
-async function outsideServiceArea(S, address) {
-  const radius = Number(S.serviceRadiusMiles);
-  if (!radius || radius <= 0) return null; // 0/blank in the CMS = check disabled
+// Miles from the yard for an address: {top, min, how}, or null when nothing could place it.
+// `top` is the one answer the fuel charge goes by; `min` is what the radius check goes by.
+// Photon alone was wrong too often for this (biased toward the yard and weak on Utah grid
+// addresses: "350 N Main St, Logan" came back as Centerville, "40 W Main St, Huntsville" as
+// Goshen, 87 miles out), so, in order:
+//  1. the Census geocoder, street by street. It's fuzzy about towns ("Huntsville" matched
+//     Hanksville), so its answer counts only in Utah and when the town they typed agrees with it.
+//  2. the town the address ends with ("..., Roy, UT 84067"), from PLACES: plenty for 30-mile zones.
+//  3. neither: no fuel charge, and the radius check falls back to Photon's closest candidate
+//     (the old rule: an ambiguous address gets the benefit of the doubt).
+// ZIP+4 is cut to five digits. Answers are cached a day, so the booking reads the same miles the
+// /book page showed.
+const norm = (s) => String(s || "").toUpperCase().replace(/[^A-Z0-9 ]+/g, " ").replace(/\s+/g, " ").trim();
+const PLACE_ALIAS = { SLC: "SALT LAKE CITY", "SALT LAKE": "SALT LAKE CITY", "WEST VALLEY": "WEST VALLEY CITY", HEBER: "HEBER CITY", BRIGHAM: "BRIGHAM CITY" };
+function placeAtEnd(address) {
+  const t = " " + norm(address).replace(/ (UNITED STATES|USA|US)$/, "").replace(/ \d{5}( \d{4})?$/, "").replace(/ (UT|UTAH)$/, "");
+  let best = null;
+  for (const p of PLACES) if (t.endsWith(" " + p[0]) && (!best || p[0].length > best[0].length)) best = p;
+  if (!best) for (const [a, n] of Object.entries(PLACE_ALIAS)) if (t.endsWith(" " + a)) best = PLACES.find((p) => p[0] === n) || null;
+  return best;
+}
+
+async function censusPoint(q) {
+  const one = /\b(UT|UTAH)\b/i.test(q) ? q : q + ", UT";
+  const r = await fetch("https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?benchmark=Public_AR_Current&format=json&address=" + encodeURIComponent(one),
+    { headers: { "user-agent": "TripleRDump-Booking/1.0 (service-area check)" }, signal: AbortSignal.timeout(4000) });
+  if (!r.ok) return null;
+  const d = await r.json();
+  const m = ((d && d.result && d.result.addressMatches) || []).find((x) => x && x.coordinates && x.addressComponents && x.addressComponents.state === "UT");
+  return m ? { lat: m.coordinates.y, lon: m.coordinates.x, city: norm(m.addressComponents.city) } : null;
+}
+
+async function photonMin(c, q) {
+  const r = await fetch(
+    "https://photon.komoot.io/api/?q=" + encodeURIComponent(q) + "&limit=3&lang=en&lat=" + c.lat + "&lon=" + c.lon,
+    { headers: { "user-agent": "TripleRDump-Booking/1.0 (service-area check)" }, signal: AbortSignal.timeout(4000) }
+  );
+  if (!r.ok) return null;
+  const data = await r.json();
+  const feats = ((data && data.features) || []).filter((f) => f && f.geometry && Array.isArray(f.geometry.coordinates));
+  return feats.length ? Math.min(...feats.map((f) => milesBetween(c.lat, c.lon, f.geometry.coordinates[1], f.geometry.coordinates[0]))) : null;
+}
+
+async function milesFromYard(S, address) {
+  const q = String(address || "").replace(/\b(\d{5})-\d{4}\b/, "$1").replace(/\s+/g, " ").trim().slice(0, 120);
+  if (q.length < 5) return null;
   const c = S.serviceCenter || { lat: 41.203, lon: -112.054 }; // West Haven, UT
+  const key = new Request((S.publicBaseUrl || "https://www.triplerdump.com").replace(/\/$/, "") + "/__cache/miles2?c=" + c.lat + "," + c.lon + "&q=" + encodeURIComponent(q.toLowerCase()));
+  const cache = typeof caches !== "undefined" ? caches.default : null;
+  try { const hit = cache && await cache.match(key); if (hit) return await hit.json(); } catch {}
+
+  const place = placeAtEnd(q);
+  let out = null;
   try {
-    const r = await fetch(
-      "https://photon.komoot.io/api/?q=" + encodeURIComponent(String(address).slice(0, 120)) +
-      "&limit=3&lang=en&lat=" + c.lat + "&lon=" + c.lon,
-      { headers: { "user-agent": "TripleRDump-Booking/1.0 (service-area check)" }, signal: AbortSignal.timeout(4000) }
-    );
-    if (!r.ok) return null;
-    const data = await r.json();
-    const feats = ((data && data.features) || []).filter((f) => f && f.geometry && Array.isArray(f.geometry.coordinates));
-    if (!feats.length) return null;
-    let best = Infinity;
-    for (const f of feats) {
-      const mi = milesBetween(c.lat, c.lon, f.geometry.coordinates[1], f.geometry.coordinates[0]);
-      if (mi < best) best = mi;
+    const pt = await censusPoint(q);
+    // the town they typed has to agree: by name, or (a mailing town like "Ogden" for a West Haven
+    // street) within 8 miles of it
+    if (pt && (pt.city && (" " + norm(q) + " ").includes(" " + pt.city + " ") || place && milesBetween(pt.lat, pt.lon, place[1], place[2]) < 8)) {
+      const mi = milesBetween(c.lat, c.lon, pt.lat, pt.lon);
+      out = { top: mi, min: mi, how: "address" };
     }
-    return best > radius ? { miles: Math.round(best) } : null;
-  } catch (e) {
-    console.error("[servicearea] failing open:", e && e.message ? e.message : e);
-    return null;
+  } catch (e) { console.error("[servicearea] census:", e && e.message ? e.message : e); }
+  if (!out && place) { const mi = milesBetween(c.lat, c.lon, place[1], place[2]); out = { top: mi, min: mi, how: "town" }; }
+  if (!out) {
+    try { const mi = await photonMin(c, q); if (mi !== null) out = { top: null, min: mi, how: "map" }; }
+    catch (e) { console.error("[servicearea] failing open:", e && e.message ? e.message : e); }
   }
+  if (out) try { if (cache) await cache.put(key, new Response(JSON.stringify(out), { headers: { "cache-control": "max-age=86400" } })); } catch {}
+  return out;
+}
+
+// A town's straight-line miles from the yard and its fuel charge: the answer a booking ending in that town
+// gets when its street can't be matched (the city pages' wording, marketing.js).
+export function townFuel(S, town) {
+  const p = PLACES.find((x) => x[0] === norm(town));
+  if (!p) return null;
+  const c = S.serviceCenter || { lat: 41.203, lon: -112.054 };
+  const miles = milesBetween(c.lat, c.lon, p[1], p[2]);
+  return { miles: Math.round(miles), fuel: fuelFor(S, miles) };
+}
+
+const outside = (S, m) => { const radius = Number(S.serviceRadiusMiles); return m && radius > 0 && m.min > radius ? { miles: Math.round(m.min) } : null; };
+// services that send a truck to the address; a trailer is towed away by the renter
+const FUEL_SERVICES = ["dumpster", "junk", "binswitch"];
+
+// The /book page's live check while the customer types the drop-off address, and the console's
+// (owner: past the radius he can still book it, and createBooking charges every mile past the free ones).
+export async function fuelQuote(S, address, owner) {
+  const m = await milesFromYard(S, address);
+  if (!m) return { ok: true, known: false };
+  const far = outside(S, m);
+  const fuel = (far && !owner) || m.top === null ? null : fuelFor(S, m.top);
+  if (m.top === null && !far) return { ok: true, known: false };
+  return { ok: true, known: true, miles: Math.round(far ? m.min : m.top), far: !!far, radius: Number(S.serviceRadiusMiles) || 0, cents: fuel ? fuel.cents : 0, label: fuel ? fuel.label : "", services: FUEL_SERVICES };
 }
 
 export async function createBooking(env, S, input) {
@@ -480,15 +588,19 @@ export async function createBooking(env, S, input) {
   if (errors.length) return { ok: false, errors };
 
   const today = todayISO(S.business.timezone);
-  const earliest = addDays(today, S.booking.minLeadDays);
+  const earliest = earliestDate(S);
   const latest = addDays(today, S.booking.maxAdvanceDays);
   if (clean.date < earliest) return { ok: false, errors: [`Earliest delivery is ${earliest}.`] };
   if (clean.date > latest) return { ok: false, errors: [`We book up to ${S.booking.maxAdvanceDays} days out.`] };
+  if (!dateOpen(S, clean.date)) return { ok: false, errors: [`We're not delivering on ${clean.date}. Pick another day, or call ${bizPhone(S)}.`] };
+  if (!S.ownerBooking && await dayFull(env, S, clean.date)) return { ok: false, errors: [`We're fully booked on ${clean.date}. Try the next day, or call ${bizPhone(S)}.`] };
 
   // Outside the delivery area -> a clear no with a phone number, BEFORE any
   // capacity hold or Stripe session is created.
-  const far = await outsideServiceArea(S, clean.dropAddress);
-  if (far) {
+  const away = (Number(S.serviceRadiusMiles) > 0 || fuelOn(S)) ? await milesFromYard(S, clean.dropAddress) : null;
+  const far = Number(S.serviceRadiusMiles) > 0 ? outside(S, away) : null;
+  // Joseph can still take one past the line by phone (the console warns him first)
+  if (far && !S.ownerBooking) {
     return { ok: false, errors: [
       `That address looks to be about ${far.miles} miles from us — outside our delivery area ` +
       `(within ${Number(S.serviceRadiusMiles)} miles of West Haven). If that seems wrong, or you're close, ` +
@@ -520,13 +632,19 @@ export async function createBooking(env, S, input) {
   let q;
 
   if (svcType === "dumpster") {
-    rentalDays = S.tiers[clean.tier].maxDays;
+    // days past the rental he sold on the phone, at his daily rate (console bookings only)
+    const extraDays = S.ownerBooking ? Math.max(0, Math.min(60, parseInt(input.extra_days, 10) || 0)) : 0;
+    rentalDays = S.tiers[clean.tier].maxDays + extraDays;
     pickup = addDays(clean.date, rentalDays);
     const counts = await overlapCounts(env, clean.date, pickup);
     if ((counts.bySize[clean.size] || 0) >= S.bins[clean.size].inventory || counts.total >= S.totalCap) {
       return { ok: false, errors: [`No ${S.bins[clean.size].label} bins free around ${clean.date}. Try another date or size, or call ${bizPhone(S)} and we'll see what we can do.`] };
     }
     q = quoteService(S, "dumpster", { size: clean.size, tier: clean.tier });
+    if (q && extraDays) {
+      const sub = q.subtotal_cents + extraDays * Math.round(Number((S.fees && S.fees.extensionDay) || 0)), tax = Math.round(sub * S.taxRate);
+      q = { ...q, subtotal_cents: sub, tax_cents: tax, amount_cents: sub + tax };
+    }
   } else if (svcType === "trailer") {
     rentalDays = clean.rentalDays;
     pickup = addDays(clean.date, rentalDays);
@@ -552,10 +670,35 @@ export async function createBooking(env, S, input) {
 
   if (!q) return { ok: false, errors: ["Pricing unavailable for that selection."] };
 
+  // a price Joseph set on the phone for a one-off job (concrete only: $220 + $60 dump, 10/27). Console
+  // bookings only (S.ownerBooking), never /book. It replaces the rental's price, extra days included;
+  // add-ons and tax still go on top.
+  let custom = null;
+  if (S.ownerBooking && input.price_cents != null && input.price_cents !== "") {
+    const c = Math.round(Number(input.price_cents));
+    if (!Number.isFinite(c) || c < 0 || c > 1000000) return { ok: false, errors: ["That price doesn't look right. Type dollars, $0 to $10,000."] };
+    custom = { cents: c, list: q.subtotal_cents };
+    const tax = Math.round(c * S.taxRate);
+    q = { ...q, subtotal_cents: c, tax_cents: tax, amount_cents: c + tax };
+  }
+
   // Promo code: percent off the PRE-TAX subtotal, tax recomputed on the
   // discounted amount, deposit untouched. An unrecognized code refuses loudly —
   // silently charging full price against what the customer expected is worse
   // than making them fix a typo (or clear the box).
+  // add-ons he offers (the console's Prices), paid with the booking and taxed like the rental
+  const addons = svcType === "dumpster" ? (S.addons || []).filter((a) => a.on !== false && clean.addonKeys.includes(a.k)) : [];
+  // the fuel charge for a far drop-off (S.fuelMile, a rate per mile past the free ones), its own line like an add-on; a distance
+  // nothing could pin down (milesFromYard's top is null) charges none rather than guess.
+  // Phone bookings too (Joseph, 10/30); he can waive it on one (no_fuel, console only).
+  const fuel = !(S.ownerBooking && input.no_fuel === true) && FUEL_SERVICES.includes(svcType) && away && away.top !== null ? fuelFor(S, away.top) : null;
+  if (fuel) addons.push({ k: "fuel", label: fuel.label, cents: fuel.cents, on: true });
+  if (addons.length) {
+    const sub = q.subtotal_cents + addons.reduce((n, a) => n + Math.round(Number(a.cents)), 0);
+    const tax = Math.round(sub * S.taxRate);
+    q = { ...q, subtotal_cents: sub, tax_cents: tax, amount_cents: sub + tax };
+  }
+
   let promo = null;
   if (clean.promoCode) {
     promo = findDiscountCode(S, clean.promoCode);
@@ -564,7 +707,8 @@ export async function createBooking(env, S, input) {
         `That promo code (${clean.promoCode}) isn't valid. Check the spelling, clear the box to book without it, or call ${bizPhone(S)}.`,
       ] };
     }
-    const disc = Math.min(q.subtotal_cents, Math.round(q.subtotal_cents * promo.pct / 100));
+    // the fuel charge isn't discounted
+    const disc = Math.min(q.subtotal_cents, Math.round((q.subtotal_cents - (fuel ? fuel.cents : 0)) * promo.pct / 100));
     const tax = Math.round((q.subtotal_cents - disc) * S.taxRate);
     q = { ...q, discount_cents: disc, tax_cents: tax, amount_cents: q.subtotal_cents - disc + tax };
   }
@@ -576,6 +720,7 @@ export async function createBooking(env, S, input) {
   if (svcType === "binswitch" && clean.existingRef) {
     notes = "Existing booking ref: " + clean.existingRef;
   }
+  if (custom) notes = [notes, "Custom price $" + (custom.cents / 100).toFixed(2) + " before tax (price list $" + (custom.list / 100).toFixed(2) + ")"].filter(Boolean).join("\n");
 
   const id = genRef();
   const now = new Date().toISOString();
@@ -596,13 +741,14 @@ export async function createBooking(env, S, input) {
        (id, created_at, status, account_type, service_type, customer_name, phone, email, company, message,
         bin_size, rental_tier, delivery_date, delivery_time, pickup_date, rental_days,
         address, pickup_address, ground_condition, permit_needed, permit_obtainable,
-        agreed_terms, subtotal_cents, tax_cents, amount_cents, deposit_cents, promo_code, discount_cents, payment_type, notes)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
+        agreed_terms, subtotal_cents, tax_cents, amount_cents, deposit_cents, promo_code, discount_cents, payment_type, notes, addons, debris)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
   ).bind(
     id, now, status, clean.accountType, svcType, clean.name, clean.phone, clean.email, clean.company, message,
     clean.size, tierVal, clean.date, clean.deliveryTime, pickup, rentalDays,
     clean.dropAddress, clean.pickupAddress, groundVal, permitVal, permitObtVal,
-    1, q.subtotal_cents, q.tax_cents, q.amount_cents, depositVal, promo ? promo.code : null, discountVal, paymentType, notes || null
+    1, q.subtotal_cents, q.tax_cents, q.amount_cents, depositVal, promo ? promo.code : null, discountVal, paymentType, notes || null,
+    addons.length ? JSON.stringify(addons.map((a) => ({ k: a.k, label: a.label, cents: Math.round(Number(a.cents)) }))) : null, clean.debris || null
   ).run();
 
   const booking = {
@@ -616,10 +762,11 @@ export async function createBooking(env, S, input) {
     promo_code: promo ? promo.code : null,
     discount_cents: discountVal,
     payment_type: paymentType,
+    addons: addons.map((a) => ({ label: a.label, cents: Math.round(Number(a.cents)) })),
   };
 
   const confirmMsg = fillTemplate(S.templates.confirmation, { bin: booking.bin_size, tier: booking.rental_tier, item: itemLabel(booking), length: lengthLabel(booking), date: booking.delivery_date, pickup: booking.pickup_date, id: booking.id, name: booking.customer_name, address: booking.address, total: (chargedCents(booking) / 100).toFixed(2), phone: S.business.phone, customer_phone: booking.phone || "", note: booking.message || "" });
-  if (status === "confirmed") { try { await sendBookingWebhook(S, booking, clean.smsConsent, confirmMsg); } catch (e) { console.error("[booking webhook]", e); } }
+  if (status === "confirmed") { try { await sendBookingWebhook(S, booking, clean.smsConsent && !(S.smsOff || []).includes("confirmation"), confirmMsg); } catch (e) { console.error("[booking webhook]", e); } }
 
   let checkout = null;
   if (paymentType === "checkout") {

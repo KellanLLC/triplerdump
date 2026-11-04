@@ -22,12 +22,21 @@ const REFRESH_HOURS = 20; // hourly cron, so this lands roughly once a day
 // plus Connie Collard. `date` and `photo` (the reviewer's Google profile photo)
 // only where verified on Google Maps 2026-10-08; cards without them show no
 // date line and a coloured initial, as Google does. Verified ones go first.
+// 2026-10-09: count 18 -> 20 and five newer 5-star reviews added in front,
+// text verbatim from Google. Their dates are worked back from Google's relative
+// times ("a day ago", "a week ago", "2 weeks ago", "3 weeks ago") as of
+// 2026-10-09, so the last three are accurate to about a week. No photos.
 export const DEFAULT_GOOGLE_REVIEWS = {
   rating: 5.0,
-  count: 18,
+  count: 20,
   updatedAt: null,
   source: "manual",
   reviews: [
+    { name: "javen garcia", rating: 5, date: "2026-10-08", text: "Highly recommended 👍🏽" },
+    { name: "David Hickson", rating: 5, date: "2026-10-02", text: "Had an amazing experience. So useful and courteous. Very punctual and a pleasure to work with. I would definitely use this service again!!" },
+    { name: "Chandler Drachman", rating: 5, date: "2026-10-02", text: "Joseph with Triple R runs an Amazing company he has came through and helped me out with a bunch of projects where I needed a dumpster last second." },
+    { name: "Travis Rodeback", rating: 5, date: "2026-09-25", text: "Best price ,awesome service!" },
+    { name: "Lee Hennerichs", rating: 5, date: "2026-09-18", text: "They were so helpful on our house flip project. They came out everyday through the junk removal and trashout process and had a new dumpster dropped off each time on time. I would strongly recommend this company to anyone who is needing a dumpster and stright forward communication." },
     { name: "Connie Collard", rating: 5, date: "2026-07", photo: "https://lh3.googleusercontent.com/a/ACg8ocJie9oenj4e12rCCBpbKGN1dtYf5E-ZrjwKTPn_yOqMwYzPlQ=w72-h72-p-rp-mo-br100", text: "Triple R Dump is amazing! We've used them a couple of times and they are great! Very accommodating and nice to work with! Highly recommend!" },
     { name: "Scott", rating: 5, date: "2026-05", photo: "https://lh3.googleusercontent.com/a/ACg8ocJ0nzisT5pWRpAgWYCNd-r9-kpYlNx-eNIQqXUnaRhbTn3w-g=w72-h72-p-rp-mo-br100", text: "Easy booking and they delivered right on time. The driver was professional and careful not to damage the driveway. Smooth pickup, no hidden fees or surprises." },
     { name: "Jorge Martinez", rating: 5, date: "2026-05", photo: "https://lh3.googleusercontent.com/a/ACg8ocLZdnkd70XSTzpmQsKTZxNKiivfqcX_xHQvLlrOnikcWuobDg=w72-h72-p-rp-mo-ba12-br100", text: "Couldn't be happier, everything went smoothly start to finish. Joseph communicated clearly, answered all my questions, and made the whole process incredibly easy." },
