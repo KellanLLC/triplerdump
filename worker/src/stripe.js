@@ -10,6 +10,7 @@
 
 import { fillTemplate, itemLabel, lengthLabel, chargedCents } from "./settings.js";
 import { sendBookingWebhook } from "./sms.js";
+import { refreshInvoiceStatus } from "./invoice.js"; // circular with invoice.js, fine: only called at request time
 
 // Maps a booking to Joseph's Stripe product (live-mode ids from product-ids.md).
 const PRODUCTS = {
@@ -197,14 +198,16 @@ export async function createCheckout(env, S, booking) {
 // Implements Stripe's scheme: signed_payload = `${t}.${rawBody}`, compared to v1.
 async function verifyStripeSig(rawBody, sigHeader, secret) {
   if (!sigHeader || !secret) return false;
-  const parts = {};
+  let t = "";
+  const v1s = [];
   for (const kv of sigHeader.split(",")) {
     const idx = kv.indexOf("=");
-    if (idx > 0) parts[kv.slice(0, idx).trim()] = kv.slice(idx + 1).trim();
+    if (idx <= 0) continue;
+    const k = kv.slice(0, idx).trim(), v = kv.slice(idx + 1).trim();
+    if (k === "t") t = v;
+    else if (k === "v1") v1s.push(v); // one per active secret while a secret is being rolled
   }
-  const t = parts.t;
-  const v1 = parts.v1;
-  if (!t || !v1) return false;
+  if (!t || !v1s.length) return false;
   // Reject stale/replayed events (5-minute tolerance).
   if (Math.abs(Math.floor(Date.now() / 1000) - Number(t)) > 300) return false;
 
@@ -214,10 +217,12 @@ async function verifyStripeSig(rawBody, sigHeader, secret) {
   const expected = [...new Uint8Array(sigBytes)].map((b) => b.toString(16).padStart(2, "0")).join("");
 
   // Constant-time-ish compare.
-  if (expected.length !== v1.length) return false;
-  let diff = 0;
-  for (let n = 0; n < expected.length; n++) diff |= expected.charCodeAt(n) ^ v1.charCodeAt(n);
-  return diff === 0;
+  return v1s.some((v1) => {
+    if (expected.length !== v1.length) return false;
+    let diff = 0;
+    for (let n = 0; n < expected.length; n++) diff |= expected.charCodeAt(n) ^ v1.charCodeAt(n);
+    return diff === 0;
+  });
 }
 
 // Marks a booking paid (idempotent) and fires the confirmation webhook. The
@@ -230,8 +235,11 @@ export async function markPaid(env, S, ref, session) {
   if (b.status === "paid" || b.paid_at) return; // already handled
 
   const pi = (session && session.payment_intent) || null;
-  await env.DB.prepare("UPDATE bookings SET status='paid', paid_at=?1, stripe_payment_intent=?2 WHERE id=?3")
+  // Claimed: the webhook and the /booked redirect can land at the same moment, and
+  // only the one that flips the row sends the confirmation.
+  const claim = await env.DB.prepare("UPDATE bookings SET status='paid', paid_at=?1, stripe_payment_intent=?2 WHERE id=?3 AND paid_at IS NULL AND status<>'paid'")
     .bind(new Date().toISOString(), pi, ref).run();
+  if (!(claim.meta && claim.meta.changes === 1)) return;
   b.status = "paid";
 
   try {
@@ -286,6 +294,18 @@ export async function handleStripeWebhook(env, S, request) {
     if (ref && session.payment_status === "paid") {
       try { await markPaid(env, S, ref, session); }
       catch (e) { console.error("[stripe webhook] markPaid failed", e && e.message ? e.message : e); }
+    }
+  }
+  // An invoice was paid or voided: run the same check the hourly sweep runs. It
+  // re-reads the invoice from Stripe, so the event only says "look now".
+  if (event.type === "invoice.paid" || event.type === "invoice.voided" || event.type === "invoice.marked_uncollectible") {
+    const inv = event.data && event.data.object;
+    const row = inv && inv.id
+      ? await env.DB.prepare("SELECT id FROM invoices WHERE stripe_invoice_id=?1").bind(inv.id).first()
+      : null;
+    if (row) {
+      try { await refreshInvoiceStatus(env, S, row.id); }
+      catch (e) { console.error("[stripe webhook] invoice refresh failed", row.id, e && e.message ? e.message : e); }
     }
   }
   return { status: 200 };

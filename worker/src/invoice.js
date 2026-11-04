@@ -7,9 +7,10 @@
 // payable after it is sent. Commercial jobs had no payment path at all before this —
 // they were quote-requests that ended in an owner text.
 //
-// Payment confirmation is deliberately WEBHOOK-FREE, matching confirmPaidByRedirect()
-// in stripe.js: STRIPE_WEBHOOK_SECRET is not set in prod, so we re-read the invoice
-// from Stripe (on admin view + the daily cron) instead of trusting a callback.
+// Payment confirmation always re-reads the invoice from Stripe (refreshInvoiceStatus)
+// instead of trusting a callback. Three things ask for that re-read: Stripe's
+// invoice.paid webhook (seconds after payment, stripe.js), an admin page view, and
+// the hourly sweep (the backup if a webhook is missed).
 import { stripeKey } from "./stripe.js";
 import { fillTemplate } from "./settings.js";
 import { sendInvoiceSms, sendOwnerInvoicePaid, sendOwnerInvoiceOverdue } from "./sms.js";

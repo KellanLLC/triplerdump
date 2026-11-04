@@ -164,7 +164,7 @@ automatically. If you're invoicing a job that's already in the system, open the
 job and use "Create an invoice for this booking" so it fills in their details.
 
 **When an invoice gets paid** you get a text ("Paid! Invoice 1042: $450.00 from
-Mike Smith") within about an hour, with a link to it. The wording is in
+Mike Smith") within seconds of the payment, with a link to it. The wording is in
 Admin → Texts → "Invoice paid".
 
 **Review texts for invoiced jobs:** on the New invoice screen, "Text a review

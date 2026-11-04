@@ -17,7 +17,7 @@ after; the exact API call is in the top of `CLAUDE.md`.
 | `index.js` | The front door. Looks at the URL and hands the request to the right file. |
 | `cron.js` | Every timed job, in one list. Start here for "why did that text go out?" |
 | `booking.js` | Creates bookings: prices, bin availability, service area, holds, promo codes. |
-| `stripe.js` | Stripe Checkout (card payments) and confirming a payment. |
+| `stripe.js` | Stripe Checkout (card payments), confirming a payment, and the Stripe webhook (`/api/stripe-webhook`: invoice paid/voided + checkout completed, signed with `STRIPE_WEBHOOK_SECRET_LIVE`). |
 | `invoice.js` | Invoices: create, send, void, "paid" check, late-payment texts. |
 | `review.js` | Review asks and the follow-up nudges (for bookings and invoices). |
 | `reviewpage.js` | The `/r/...` page where customers pick stars. |
@@ -48,7 +48,7 @@ was already saved. Change it in the admin panel instead.
 | When | Job |
 |---|---|
 | Every hour | Free bins held by checkouts nobody finished (after 60 min) |
-| Every hour | Check open invoices with Stripe; when one is paid, text Joseph and (if ticked) ask for a review |
+| Every hour | Check open invoices with Stripe; when one is paid, text Joseph and (if ticked) ask for a review. Backup only: Stripe's webhook normally does this within seconds |
 | Every hour | Review nudges to people who haven't answered |
 | Daily, 10am | Delivery and pickup reminders; "job never closed" nudge to Joseph |
 | Daily, 10am | Late-payment texts for overdue invoices |
@@ -69,7 +69,7 @@ Each one is sent **once** unless it says otherwise. Wording is in Admin → Text
 | Review nudges 1-3 | Customer | +24h, +24h, +48h, only if they haven't tapped the link |
 | Low rating alert | Joseph | Customer gives 1-3 stars and writes feedback |
 | Invoice | Customer | When the invoice is created, and when Joseph taps Resend |
-| Invoice paid | Joseph | Within an hour of payment |
+| Invoice paid | Joseph | Seconds after payment (Stripe webhook); the hourly check catches any missed |
 | Late payment | Customer | Every 48h after the due date, up to 5 times |
 | Invoice still unpaid | Joseph | After the last late-payment text |
 | Commercial quote request | Joseph | When a business fills out the quote form |

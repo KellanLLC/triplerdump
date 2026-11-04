@@ -1,3 +1,21 @@
+*** STRIPE WEBHOOK LIVE 2026-11-03 (worker v ddd34dc2 via deploy.mjs, previous 1428b51b, checkout probe OK; previews back OFF) ***
+- Why: Joseph saw Ray White Roofing (Trevor Hansen) invoices IFDQ3KBA $909.99 + TNOBJDPD $400.71 as unpaid at 4:54 PM;
+  Trevor had paid at 4:37/4:39 and the hourly sweep flipped them at 5:00. Invoices now flip within seconds.
+- Stripe endpoint we_1UXrmJC5darb2tzHTVO9mMXE (live, created via API with the .env current-stripe-api key; that key CAN
+  write webhook_endpoints) -> https://www.triplerdump.com/api/stripe-webhook, events invoice.paid, invoice.voided,
+  invoice.marked_uncollectible, checkout.session.completed, checkout.session.async_payment_succeeded.
+  Signing secret = worker secret STRIPE_WEBHOOK_SECRET_LIVE (9 secrets now; copy in ../.env stripe-webhook-secret-live).
+  deploy.mjs REQUIRES it now + smoke-checks POST /api/stripe-webhook unsigned -> 400.
+- stripe.js: invoice events look up invoices.stripe_invoice_id and run refreshInvoiceStatus (re-reads Stripe; the event
+  is only a nudge, so a forged/stale "paid" can't mark anything). markPaid now CLAIMS the row (UPDATE ... AND paid_at
+  IS NULL) so webhook + /booked redirect racing send one confirmation. verifyStripeSig accepts multiple v1 (secret roll).
+  The hourly sweepInvoices + /booked redirect stay as backups. test/stripe-webhook.test.mjs (npm test 88/88).
+- Verified live: signed invoice.paid for an already-paid invoice -> 200, no duplicate text; wrong secret -> 400; a real
+  Stripe event (a $1 no-email charge_automatically invoice, finalized + voided, customer deleted after) delivered with
+  pending_webhooks 0. A voided $1 invoice in_1UXrpYC5darb2tzHJUgCkUQd remains in Stripe's history (harmless).
+- To turn it off: disable the endpoint in Stripe (Developers > Webhooks); everything falls back to the hourly check.
+- NOT COMMITTED. admin.js guide tab still says invoice texts come "within the hour" (still true; not redeployed for it).
+
 *** LINKS PAGE ON bio.triplerdump.com 2026-10-08 (worker v a56db2df via deploy.mjs; checkout probe OK) ***
 - https://bio.triplerdump.com/ = the links page (Workers custom domain, added via API; cert auto).
   index.js SOCIAL_HOST: on that host "/" serves /social/, /api/t is kept (views logged as /social/),

@@ -14,7 +14,7 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const REQUIRED_SECRETS = ["ADMIN_PASSWORD","ADMIN_SECRET","CALENDAR_TOKEN","GHL_SMS_WEBHOOK_URL","STRIPE_SECRET_KEY","STRIPE_SECRET_KEY_LIVE"];
+const REQUIRED_SECRETS = ["ADMIN_PASSWORD","ADMIN_SECRET","CALENDAR_TOKEN","GHL_SMS_WEBHOOK_URL","STRIPE_SECRET_KEY","STRIPE_SECRET_KEY_LIVE","STRIPE_WEBHOOK_SECRET_LIVE"];
 const REQUIRED_BINDINGS = ["env.DB","env.ASSETS","env.SITE_ORIGIN"];
 const SITE = "https://www.triplerdump.com";
 const D1 = "c9394039-46ce-4d42-99cc-4fc195d7ded0";
@@ -54,6 +54,7 @@ async function smoke(base, { withBooking, live = false }) {
     ["/dumpster-rental/20-yard/", "GET", null, 200],
     ["/contact/", "GET", null, 200],
     ["/api/t", "POST", '{"t":"smoke"}', 204], // not an allowed type: answers 204, writes nothing
+    ["/api/stripe-webhook", "POST", '{"type":"smoke"}', 400], // unsigned: refused before anything is read
   ];
   for (const [p, m, body, want] of checks) {
     let status = "ERR";
