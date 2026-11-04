@@ -1,10 +1,14 @@
-*** BRANDED SHARE CARDS (og:image) 2026-11-03 (worker v e552157a via deploy.mjs, previous ddd34dc2, checkout probe OK;
+*** BRANDED SHARE CARDS (og:image) 2026-11-03 (worker v e552157a; v2 reviews 5e4f8b88; v3 badge + real G 7b319ed3; previous ddd34dc2, checkout probe OK;
     previews back OFF) ***
 - Boston ran a share-preview checker on the homepage: photo was 1600x1200 (wrong ratio, cropped), no headline/CTA,
   og:description 152 ch, title "63" ch. Now every page has its own 1200x630 card in assets/og/<slug>.jpg (36 + home):
-  navy panel with logo, headline (city/size line in blue), three facts true for that service, "Book at triplerdump.com"
-  + 801-564-3164, the page's own photo on the right, hazard tape along the bottom. NO prices/ratings in the images
-  (an image can't follow the CMS). og:image:width/height/alt added.
+  navy panel with logo, headline (city/size line in blue), GOOGLE PROOF (big "5.0" + gold stars + "29 Google reviews",
+  read from the LIVE homepage when build_og.py runs), "Book at triplerdump.com" + 801-564-3164; the page's photo in its
+  own diagonal panel; a white Google-review card on the photo's sky with a VERBATIM 5-star quote that fits the page
+  (QUOTES / QUOTE_FOR: Nadine's wooden-beams-driveway quote on home, Clayton's 15->20 switch on size pages, Lee's
+  every-day swaps on bin switch/junk). Home photo = Joseph with a 25 yd bin. Logo lockup top-left = Joseph's ROUND BADGE (the real logo: _archive/logo.png, 849 px; same art as assets/apple-touch-icon.png; it's AI-made with typos inside the bin, invisible at card size) + the stencil wordmark + 'Family owned & operated'. Google mark = Google's official 4-colour G (inline SVG), on a white chip on navy. Hazard tape along the bottom. NO prices
+  (they change from the console). RE-RUN build_og.py (+ copy assets/og/*.jpg into deploy/, deploy) when the review
+  count has grown noticeably; an old count only understates. og:image:width/height/alt added.
 - build_og.py renders them with headless Edge (site fonts via Google Fonts, 16 cards per screenshot, cut with PIL).
   build_pages.py writes assets/og/cards.json and uses a card only once its file exists. After a title/photo change:
   python build_pages.py && python build_og.py && python build_pages.py. build_deploy.py copies assets/og/*.jpg as-is
