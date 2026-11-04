@@ -179,6 +179,16 @@ for ref in sorted(page_refs - set(refs)):
     total += os.path.getsize(dst)
     print(f"(pages) {ref}:  {size_in//1024} -> {os.path.getsize(dst)//1024} KB  ({note})")
 
+# Social share cards (build_og.py): og:image is an absolute URL the scan above can't see,
+# and the JPEGs are final (re-encoding would blur the text), so the folder is copied as-is.
+og_src = os.path.join(ROOT, "assets", "og")
+if os.path.isdir(og_src):
+    os.makedirs(os.path.join(DST, "assets", "og"), exist_ok=True)
+    for name in sorted(os.listdir(og_src)):
+        if name.endswith(".jpg"):
+            shutil.copy2(os.path.join(og_src, name), os.path.join(DST, "assets", "og", name))
+            total += os.path.getsize(os.path.join(og_src, name))
+
 # Workers Static Assets must not upload these if they ever reappear.
 with open(os.path.join(DST, ".assetsignore"), "w", encoding="utf-8") as f:
     f.write(".git\n.assetsignore\n")

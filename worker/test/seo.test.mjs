@@ -82,7 +82,7 @@ test("homepage through the worker: one 7-day price, tons + $/ton from D1, no tok
   assert.match(html, /data-trd="d15_47">\$320 <small>up to 7 days<\/small>/);
   assert.match(html, /data-trd-num="tons25">4</);
   assert.match(html, /data-trd="over_ton">\$70</);
-  assert.match(html, /<title>Dumpster Rental Ogden, Roy &amp; West Haven, UT \| Triple R Dump<\/title>/);
+  assert.match(html, /<title>Dumpster Rental Ogden, Roy & West Haven, UT \| Triple R Dump<\/title>/);
   assert.match(html, /<meta name="description" content="[^"]*from \$320 for up to 7 days/);
   const ld = JSON.parse(html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)[1]);
   assert.equal(ld.logo, ORIGIN + "/assets/apple-touch-icon.png");
@@ -149,7 +149,7 @@ test("city pages: the 14 kept cities, retired list matches build_pages.py, photo
   assert.match(bc, /<h2>Recent job in <em>Brigham City<\/em>\.<\/h2>/);
   assert.match(bc, /<figcaption>A Triple R Dump roll-off delivered in Brigham City, September 2026\.<\/figcaption>/);
   assert.match(bc, /<img class="ph__pic" src="\/uploads\/jobs\/dumpster-rental-brigham-city-ut\.jpg" srcset="[^"]+" sizes="100vw" width="1280" height="960" alt="[^"]+" fetchpriority="high">/);
-  assert.match(bc, /<meta property="og:image" content="https:\/\/www\.triplerdump\.com\/uploads\/jobs\/dumpster-rental-brigham-city-ut\.jpg">/);
+  assert.match(bc, /<meta property="og:image" content="https:\/\/www\.triplerdump\.com\/assets\/og\/service-area-brigham-city\.jpg">/);
   const imgs = [...bc.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)].map((m) => JSON.parse(m[1])).filter((o) => o["@type"] === "ImageObject");
   assert.equal(imgs.length, 2);
   assert.deepEqual(imgs[0].contentLocation, { "@type": "Place", name: "Brigham City, UT" });

@@ -584,6 +584,7 @@ def fit_desc(*cands, lo=120, hi=155):
     return min(cands, key=lambda c: abs(len(rendered(c)) - (lo + hi) / 2))
 
 META = []  # (path, title, description) of every page written, for the build report
+OG_CARDS = []  # every page's share card (slug, title, photo) -> assets/og/cards.json, read by build_og.py
 
 # Alt text for the stock photos (what is actually in each one).
 IMG_ALT = {
@@ -1061,6 +1062,15 @@ def page(path, title, description, body, schemas, og_image=None, robots=None, ca
 </main>
 {footer()}'''
     og = og_image or HERO_IMG
+    # The branded 1200x630 share card (build_og.py renders it from this list), or the photo until it exists.
+    slug = path.strip("/").replace("/", "-") or "home"
+    OG_CARDS.append({"slug": slug, "title": title, "photo": og})
+    card = f"/assets/og/{slug}.jpg"
+    og_meta = ""
+    if os.path.exists(os.path.join(ROOT, card.lstrip("/"))):
+        og = card
+        og_meta = ('\n  <meta property="og:image:width" content="1200">\n  <meta property="og:image:height" content="630">'
+                   f'\n  <meta property="og:image:alt" content="{esc(plain(title).split(" | ")[0])}, Triple R Dump">')
     og = og if og.startswith("http") else SITE + og
     rob = f'\n  <meta name="robots" content="{robots}">' if robots else ""
     canon = f'\n  <link rel="canonical" href="{url}">' if canonical else ""
@@ -1081,7 +1091,7 @@ def page(path, title, description, body, schemas, og_image=None, robots=None, ca
   <meta property="og:url" content="{url}">
   <meta property="og:title" content="{esc(title)}">
   <meta property="og:description" content="{esc(description)}">
-  <meta property="og:image" content="{og}">
+  <meta property="og:image" content="{og}">{og_meta}
   <meta name="twitter:card" content="summary_large_image">{pre}
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1713,6 +1723,15 @@ write("social/index.html", f'''<!DOCTYPE html>
   <meta name="description" content="Book a dumpster online, call the owner, or find Triple R Dump on Google, Instagram and Facebook. Roll-off dumpster rental in West Haven, Utah, dump fee included.">
   <meta name="robots" content="noindex, follow">
   <link rel="canonical" href="https://bio.triplerdump.com/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Triple R Dump">
+  <meta property="og:url" content="https://bio.triplerdump.com/">
+  <meta property="og:title" content="Triple R Dump · Dumpster Rental in West Haven, UT">
+  <meta property="og:description" content="Book a dumpster online, call the owner, or find us on Google, Instagram and Facebook.">
+  <meta property="og:image" content="{SITE}/assets/og/home.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
   <link rel="icon" href="/favicon.ico" sizes="any">
   <link rel="icon" href="/assets/favicon-32x32.png" type="image/png" sizes="32x32">
   <link rel="icon" href="/assets/favicon-16x16.png" type="image/png" sizes="16x16">
@@ -1745,6 +1764,10 @@ def sitemap_url(p, pr, lastmod, imgs):
 write("sitemap.xml", '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">\n'
       + "".join(sitemap_url(*u) for u in urls) + "</urlset>\n")
 write("robots.txt", "User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /api/\nDisallow: /booked\nDisallow: /r/\nDisallow: /inv/\nDisallow: /calendar/\n\nSitemap: " + SITE + "/sitemap.xml\n")
+
+os.makedirs(os.path.join(ROOT, "assets", "og"), exist_ok=True)
+with open(os.path.join(ROOT, "assets", "og", "cards.json"), "w", encoding="utf-8", newline="\n") as f:
+    json.dump(OG_CARDS, f, indent=1)
 
 print(f"\n{len(urls)} URLs in the sitemap, {sum(len(u[3]) for u in urls)} image entries.")
 print("\nTitles / descriptions as rendered with today's live values (title <= 60, description 120-155):")

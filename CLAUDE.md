@@ -1,3 +1,19 @@
+*** BRANDED SHARE CARDS (og:image) 2026-11-03 (worker v e552157a via deploy.mjs, previous ddd34dc2, checkout probe OK;
+    previews back OFF) ***
+- Boston ran a share-preview checker on the homepage: photo was 1600x1200 (wrong ratio, cropped), no headline/CTA,
+  og:description 152 ch, title "63" ch. Now every page has its own 1200x630 card in assets/og/<slug>.jpg (36 + home):
+  navy panel with logo, headline (city/size line in blue), three facts true for that service, "Book at triplerdump.com"
+  + 801-564-3164, the page's own photo on the right, hazard tape along the bottom. NO prices/ratings in the images
+  (an image can't follow the CMS). og:image:width/height/alt added.
+- build_og.py renders them with headless Edge (site fonts via Google Fonts, 16 cards per screenshot, cut with PIL).
+  build_pages.py writes assets/og/cards.json and uses a card only once its file exists. After a title/photo change:
+  python build_pages.py && python build_og.py && python build_pages.py. build_deploy.py copies assets/og/*.jpg as-is
+  (no recompression; og:image is an absolute URL its scanner can't see). Per-service facts / odd titles: FACTS, LINES.
+- Homepage: og:description shortened (~100 ch); title + og:title use a bare "&" (valid HTML5; checkers counted &amp;
+  as 5 chars -> "63", real length 59). /social/ (bio.triplerdump.com) had NO share tags at all; now has them + home card.
+- Tests updated (agents + seo), npm test 88/88. Changed HTML + cards copied into deploy/ (build_deploy.py NOT re-run).
+  Verified live: tags on /, card URLs 200 image/jpeg, Roy/15yd/guide pages point at their cards, bio page too.
+
 *** STRIPE WEBHOOK LIVE 2026-11-03 (worker v ddd34dc2 via deploy.mjs, previous 1428b51b, checkout probe OK; previews back OFF) ***
 - Why: Joseph saw Ray White Roofing (Trevor Hansen) invoices IFDQ3KBA $909.99 + TNOBJDPD $400.71 as unpaid at 4:54 PM;
   Trevor had paid at 4:37/4:39 and the hourly sweep flipped them at 5:00. Invoices now flip within seconds.

@@ -4,7 +4,7 @@
 // Run: cd worker && npm test
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import worker from "../src/index.js";
 import { prefersMarkdown, htmlToMarkdown, varyAccept } from "../src/agents.js";
@@ -232,9 +232,14 @@ test("homepage metadata: canonical, lang, og:image, og:type", () => {
   const img = html.match(/<meta property="og:image" content="([^"]+)">/);
   assert.ok(img, "og:image present");
   assert.match(img[1], /^https:\/\/www\.triplerdump\.com\//, "absolute URL");
-  // The image must be one the deploy ships (referenced elsewhere in index.html).
-  const rel = img[1].replace("https://www.triplerdump.com/", "");
-  assert.ok(html.includes('src="' + rel + '"'), "og:image is the hero photo build_deploy.py copies");
+  // The branded 1200x630 share card build_og.py renders (build_deploy.py ships assets/og/ as-is).
+  assert.equal(img[1], "https://www.triplerdump.com/assets/og/home.jpg");
+  assert.ok(existsSync(ROOT + "assets/og/home.jpg"), "card file exists");
+  assert.match(html, /<meta property="og:image:width" content="1200">\s*<meta property="og:image:height" content="630">/);
+  // Share previews cut descriptions around 125 characters and titles past 60.
+  const desc = html.match(/<meta property="og:description" content="([^"]+)">/)[1];
+  assert.ok(desc.replace("${{TRD:d15_47}}", "$320").length <= 125, "og:description <= 125");
+  assert.ok(html.match(/<title>([^<]+)<\/title>/)[1].length <= 60, "title <= 60");
 });
 
 test("htmlToMarkdown: tables, entities, nested skips", () => {
