@@ -1,3 +1,11 @@
+*** SHARE CARDS RESTYLED 2026-11-04 (worker v b736eff5 via deploy.mjs, previous 7b319ed3, checkout probe OK; previews back OFF) ***
+- Boston sent a competitor's card (3DA Dumpsters) and said "do this style". build_og.py now: page photo FULL BLEED under a
+  left-dark gradient, badge + wordmark top left, blue pin + location line (city pages "Roy, UT · Weber County", COUNTY map),
+  two-line headline (grey "Dumpster rental," / white promise, COPY dict per page), bottom row = blue phone button + gold
+  stars + Google G + "5.0 on Google · 29 reviews · Book online any hour". The quote card + hazard tape are GONE. Still no
+  prices on the image. Same re-run rule (python build_og.py, copy assets/og/*.jpg into deploy/assets/og, deploy).
+  NOT in this entry's scope: the entry below describes the older v3 layout.
+
 *** BRANDED SHARE CARDS (og:image) 2026-11-03 (worker v e552157a; v2 reviews 5e4f8b88; v3 badge + real G 7b319ed3; previous ddd34dc2, checkout probe OK;
     previews back OFF) ***
 - Boston ran a share-preview checker on the homepage: photo was 1600x1200 (wrong ratio, cropped), no headline/CTA,

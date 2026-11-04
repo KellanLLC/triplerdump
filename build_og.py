@@ -7,19 +7,15 @@ build_pages.py lists every page it writes in assets/og/cards.json (slug, title, 
 points og:image at assets/og/<slug>.jpg once that file exists (the photo until then, hence
 the second build_pages.py run the first time). The homepage (hand-built index.html) is "home".
 
-What a card has to do: it shows up as a ~500 px thumbnail in a feed or a text thread, so
-only big things count. Three of them, in reading order:
-  1. what + where, as the headline (city or bin size in blue);
-  2. proof: the Google star rating and review count, big, read from the LIVE homepage at
-     build time (so re-run this when the count grows; the numbers are only ever as old as
-     the last build, and an older count just understates);
-  3. a real customer, word for word from Google: a white review card on the photo's sky,
-     where it doesn't cover the bin. Each page gets the quote that fits it (QUOTE_FOR).
-Plus the logo, a Book online + phone line, and the bins' hazard tape. No prices: those
+The look: the page's real job photo full bleed, darkened from the left so the type reads;
+the logo top left; a blue location line with a pin; a two-line headline (what, in grey, then
+the promise, in white); and a bottom row with the phone as a blue button plus the Google
+stars, rating and review count. The rating and count are read from the LIVE homepage at build
+time (re-run this when the count grows; an older count just understates). No prices: those
 change from the console and an image can't follow.
 
-Rendered by headless Edge in Barlow / Barlow Condensed (the site's fonts, from Google
-Fonts), a batch of cards stacked on one tall page, then cut apart with PIL.
+Rendered by headless Edge in Barlow (the site's font, from Google Fonts), a batch of cards
+stacked on one tall page, then cut apart with PIL.
 """
 import html, json, os, re, shutil, subprocess, tempfile, urllib.request
 from PIL import Image
@@ -30,25 +26,47 @@ EDGE = r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"
 W, H, BATCH = 1200, 630, 16
 SITE = "https://www.triplerdump.com"
 HOME_PHOTO = "/uploads/triplerdump_photos/triplerdump_photos/03_25yd_bin_side.jpeg"  # Joseph with a 25 yd bin
+NEAR = "Ogden · Roy · West Haven, UT"
 
-# Verbatim excerpts of 5-star Google reviews (worker/src/reviews.js has the full texts).
-QUOTES = {
-    "nadine": ("Dropped off the dumpster exactly when they said, and set it on wooden beams so it wouldn't damage my driveway.", "Nadine R."),
-    "clayton": ("Midway through I needed a bigger bin and Joseph switched me from a 15 to a 20 yd, no headache.", "Clayton C."),
-    "jordyn": ("Scheduling was a breeze and he delivered right on time.", "Jordyn H."),
-    "lee": ("They came out everyday through the junk removal and trashout process and had a new dumpster dropped off each time on time.", "Lee H."),
-    "david": ("Very punctual and a pleasure to work with. I would definitely use this service again!!", "David H."),
-    "greg": ("Joe got us set up fast with the perfect dumpster, and delivery, pickup, and hauling were all on time.", "Greg"),
+COUNTY = {
+    "west-haven": "Weber County", "roy": "Weber County", "hooper": "Weber County", "ogden": "Weber County",
+    "north-ogden": "Weber County", "plain-city": "Weber County", "clinton": "Davis County", "syracuse": "Davis County",
+    "clearfield": "Davis County", "layton": "Davis County", "bountiful": "Davis County", "brigham-city": "Box Elder County",
+    "tremonton": "Box Elder County", "springville": "Utah County", "logan": "Cache County",
+    "cottonwood-heights": "Salt Lake County",
 }
-QUOTE_FOR = {
-    "home": "nadine", "dumpster-rental": "clayton", "dumpster-rental-15-yard": "clayton", "dumpster-rental-20-yard": "clayton",
-    "dumpster-rental-25-yard": "greg", "junk-removal": "lee", "bin-switch": "lee", "dump-trailer-rental": "david",
-    "contact": "jordyn", "faq": "nadine", "bbb": "david", "guides-what-size-dumpster-do-i-need": "clayton",
-}
-ROTATION = ["nadine", "jordyn", "greg", "david"]  # every other page, in turn
 
-def quote_for(slug, i):
-    return QUOTES[QUOTE_FOR.get(slug) or ROTATION[i % len(ROTATION)]]
+# (location line, grey line, white line) per page; city pages are built in copy_for().
+COPY = {
+    "home": (NEAR, "Dumpster rental,", "booked online in minutes."),
+    "dumpster-rental": (NEAR, "15, 20 and 25 yard bins,", "one price for up to 7 days."),
+    "dumpster-rental-15-yard": ("Ogden · Weber & Davis County", "15 yard dumpsters,", "dump fee included."),
+    "dumpster-rental-20-yard": ("Ogden · Weber & Davis County", "20 yard dumpsters,", "dump fee included."),
+    "dumpster-rental-25-yard": ("Ogden · Weber & Davis County", "25 yard dumpsters,", "dump fee included."),
+    "junk-removal": (NEAR, "Junk removal,", "we load it and haul it."),
+    "dump-trailer-rental": ("West Haven · Ogden, UT", "Dump trailer rental,", "load it at your own pace."),
+    "bin-switch": ("Ogden · Weber County", "Bin switch-out,", "full bin out, empty bin in."),
+    "service-area": ("Logan to Springville, UT", "Dumpster rental,", "across Northern Utah."),
+    "faq": (NEAR, "Sizes, prices and rules,", "answered straight."),
+    "bbb": ("BBB accredited · West Haven, UT", "Dumpster rental,", "family owned & operated."),
+    "contact": ("West Haven, UT", "Call, text,", "or book online."),
+    "guides": ("Guides · Northern Utah", "Dumpster rental guides,", "straight answers."),
+    "guides-dumpster-rental-cost-utah": ("Guide · Utah", "How much does a", "dumpster rental cost?"),
+    "guides-what-size-dumpster-do-i-need": ("Guide · Sizes by project", "What size dumpster", "do I need?"),
+    "guides-dumpster-permit-ogden-weber-davis": ("Guide · Ogden, Weber & Davis", "Do I need a", "dumpster permit?"),
+    "guides-what-can-go-in-a-dumpster": ("Guide · Rules and drop-offs", "What can go", "in a dumpster?"),
+    "guides-dumpster-vs-junk-removal-vs-dump-trailer": ("Guide · Which to pick", "Dumpster, junk removal", "or dump trailer?"),
+    "guides-city-dumpster-days-weber-davis": ("Guide · Roy and Ogden, 2026", "Free city", "dumpster days."),
+}
+
+def copy_for(slug, title):
+    if slug in COPY:
+        return COPY[slug]
+    m = re.match(r"^service-area-(.+)$", slug)
+    if m and m.group(1) in COUNTY:
+        city = re.match(r"^Dumpster Rental (.+?), UT", html.unescape(title)).group(1)
+        return (f"{city}, UT · {COUNTY[m.group(1)]}", "Dumpster rental,", "dump fee included.")
+    return COPY["home"]
 
 def live_rating():
     """(rating, count) as the live homepage shows them (D1 google_reviews, refreshed by the cron)."""
@@ -63,7 +81,7 @@ def file_url(p):
 def icon(name):
     return open(os.path.join(ROOT, "assets", "icons", name + ".svg"), encoding="utf-8").read()
 
-STAR, PHONE = icon("star-fill"), icon("phone")
+STAR, PHONE, PIN = icon("star-fill"), icon("phone"), icon("map-pin")
 # Google's own four-colour "G" (the mark Google shows next to its reviews), not the one-colour icon.
 GOOGLE = ('<svg class="gg" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">'
   '<path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>'
@@ -73,99 +91,64 @@ GOOGLE = ('<svg class="gg" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg
 # Joseph's round badge (mountains, truck + bin, "Family owned & operated"): the real logo, 849 px source.
 BADGE = "/_archive/logo.png"
 
-def headline(title):
-    """(main line, highlighted line) from a page title; highlight may be ''."""
-    main = html.unescape(title).split(" | ")[0].strip()
-    for pat in (r"^(\d+ Yard Dumpster Rental) in (.+)$", r"^(Dumpster Rental|Junk Removal|Dump Trailer Rental) (?:in )?(.+?, UT)$",
-                r"^(Dumpster Rental) (Service Area)$", r"^(Dumpster Swap-Out), (.+)$"):
-        m = re.match(pat, main)
-        if m:
-            return m.group(1), m.group(2)
-    return main, ""
-
-# Titles that read badly when split automatically.
-LINES = {"contact": ("Call, text", "or book online")}
-
 def card(c, rating, count):
-    a, b = c["lines"]
-    text, who = c["quote"]
-    h1 = (f"<span>{html.escape(a)}</span><em>{html.escape(b)}</em>" if b else html.escape(a))
+    where, grey, white = c["copy"]
     return f'''<div class="card">
   <div class="photo" style="background-image:url('{file_url(c["photo"])}')"></div>
-  <div class="left">
-    <div class="brand"><img class="badge" src="{file_url(BADGE)}" alt="">
-      <span class="brand__r"><img class="logo" src="{file_url('/assets/triple-r-dump-light.png')}" alt=""><span class="tag">Family owned &amp; operated · West Haven, UT</span></span></div>
-    <h1>{h1}</h1>
-    <div class="proof">
-      <span class="score">{rating}</span>
-      <span class="proof__r"><span class="stars">{STAR * 5}</span><span class="count"><i class="gchip">{GOOGLE}</i>{count} Google reviews</span></span>
+  <div class="shade"></div>
+  <div class="brand"><img class="badge" src="{file_url(BADGE)}" alt=""><img class="logo" src="{file_url('/assets/triple-r-dump-light.png')}" alt=""></div>
+  <div class="body">
+    <div class="where">{PIN}{html.escape(where)}</div>
+    <h1><span class="grey">{html.escape(grey)}</span><span>{html.escape(white)}</span></h1>
+    <div class="row">
+      <span class="btn">{PHONE}801-564-3164</span>
+      <span class="proof"><span class="stars">{STAR * 5}</span><i class="gchip">{GOOGLE}</i>{rating} on Google · {count} reviews · Book online any hour</span>
     </div>
-    <div class="cta"><span class="btn">Book at triplerdump.com</span><span class="tel">{PHONE}801-564-3164</span></div>
   </div>
-  <figure class="review">
-    <div class="review__top"><span class="stars">{STAR * 5}</span><span class="g">{GOOGLE}Google</span></div>
-    <blockquote>&ldquo;{html.escape(text)}&rdquo;</blockquote>
-    <figcaption>{html.escape(who)}</figcaption>
-  </figure>
-  <div class="tape"></div>
 </div>'''
 
 CSS = '''
-html,body{margin:0;padding:0;background:#0d131d}
-.card{position:relative;width:1200px;height:630px;overflow:hidden;background:#0d131d;color:#f3f5f8;font-family:Barlow,sans-serif}
-.card::before{content:"";position:absolute;inset:0;background:radial-gradient(110% 90% at 0% 0%,#18223a 0%,#0d131d 65%)}
-.photo{position:absolute;top:0;right:0;bottom:0;width:560px;background-size:cover;background-position:center;
-  clip-path:polygon(90px 0,100% 0,100% 100%,0 100%)}
-.left{position:absolute;left:60px;top:40px;bottom:58px;width:560px;display:flex;flex-direction:column}
-.brand{display:flex;align-items:center;gap:16px}
-.badge{width:96px;height:auto;display:block;filter:drop-shadow(0 6px 14px rgba(0,0,0,.45))}
-.brand__r{display:flex;flex-direction:column;gap:9px}
-.logo{width:260px;height:auto;display:block}
-.tag{font:600 16px/1 Barlow,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#bde9fb}
-h1{margin:auto 0 0;font-size:96px;font-family:'Barlow Condensed',sans-serif;font-weight:800;text-transform:uppercase;line-height:.92;letter-spacing:-.005em;color:#fff}
-h1 span,h1 em{display:block;white-space:nowrap}
-h1 em{font-style:italic;color:#3d8bff}
-.proof{display:flex;align-items:center;gap:16px;margin:30px 0 auto}
-.score{font:800 74px/.8 'Barlow Condensed',sans-serif;color:#fff}
-.proof__r{display:flex;flex-direction:column;gap:7px}
-.proof .stars{display:flex;gap:3px;color:#fbbc05}
-.proof .stars svg{width:34px;height:34px}
-.count{display:flex;align-items:center;gap:9px;font:600 23px/1 Barlow,sans-serif;color:#cfd6e2}
-.gchip{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:50%;background:#fff}
-.gchip .gg{width:19px;height:19px}
-.cta{display:flex;align-items:center;gap:22px;white-space:nowrap}
-.btn{background:#116dff;color:#fff;font:700 25px/1 'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:.03em;padding:16px 22px;border-radius:4px}
-.tel{display:flex;align-items:center;gap:9px;font:700 28px/1 'Barlow Condensed',sans-serif;letter-spacing:.02em;color:#fff}
-.tel svg{width:26px;height:26px;color:#3d8bff}
-.review{position:absolute;top:36px;right:36px;width:380px;margin:0;padding:18px 22px 17px;background:#fff;color:#0f1726;
-  border-radius:10px;box-shadow:0 22px 50px rgba(0,0,0,.45)}
-.review__top{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px}
-.review .stars{display:flex;gap:2px;color:#fbbc05}
-.review .stars svg{width:21px;height:21px}
-.g{display:flex;align-items:center;gap:6px;font:600 17px/1 Barlow,sans-serif;color:#5a667a}
-.g .gg{width:19px;height:19px}
-blockquote{margin:0;font:600 22px/1.27 Barlow,sans-serif;letter-spacing:-.005em}
-figcaption{margin-top:10px;font:600 17px/1 Barlow,sans-serif;color:#5a667a}
-figcaption::before{content:"— "}
-.tape{position:absolute;left:0;right:0;bottom:0;height:14px;background:repeating-linear-gradient(135deg,#fff 0 16px,#d42a20 16px 32px)}
+html,body{margin:0;padding:0;background:#0b1018}
+.card{position:relative;width:1200px;height:630px;overflow:hidden;background:#0b1018;color:#fff;font-family:Barlow,sans-serif}
+.photo{position:absolute;inset:0;background-size:cover;background-position:center}
+.shade{position:absolute;inset:0;background:
+  linear-gradient(90deg,rgba(9,13,21,.95) 0%,rgba(9,13,21,.88) 42%,rgba(9,13,21,.45) 70%,rgba(9,13,21,.1) 100%),
+  linear-gradient(0deg,rgba(9,13,21,.8) 0%,rgba(9,13,21,0) 55%),
+  linear-gradient(180deg,rgba(9,13,21,.55) 0%,rgba(9,13,21,0) 30%)}
+.brand{position:absolute;left:56px;top:42px;display:flex;align-items:center;gap:16px}
+.badge{width:92px;height:auto;display:block;filter:drop-shadow(0 6px 14px rgba(0,0,0,.5))}
+.logo{width:250px;height:auto;display:block;filter:drop-shadow(0 3px 8px rgba(0,0,0,.5))}
+.body{position:absolute;left:56px;right:56px;bottom:52px}
+.where{display:flex;align-items:center;gap:10px;font:700 22px/1 Barlow,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:#5ea0ff}
+.where svg{width:26px;height:26px;flex:none}
+h1{margin:20px 0 34px;font:800 78px/1.02 Barlow,sans-serif;letter-spacing:-.012em;text-shadow:0 2px 18px rgba(0,0,0,.35)}
+h1 span{display:block;width:max-content;white-space:nowrap}
+h1 .grey{color:#c3c8d1}
+.row{display:flex;align-items:center;gap:26px;white-space:nowrap}
+.btn{display:flex;align-items:center;gap:12px;background:#116dff;color:#fff;font:700 34px/1 Barlow,sans-serif;padding:17px 26px 17px 22px;border-radius:5px;box-shadow:0 10px 24px rgba(0,0,0,.35)}
+.btn svg{width:30px;height:30px}
+.proof{display:flex;align-items:center;gap:10px;font:600 23px/1 Barlow,sans-serif;color:#eef1f6}
+.proof .stars{display:flex;gap:2px;color:#fbbc05}
+.proof .stars svg{width:25px;height:25px}
+.gchip{display:inline-flex;align-items:center;justify-content:center;width:27px;height:27px;border-radius:50%;background:#fff;margin-left:4px}
+.gchip .gg{width:17px;height:17px}
 '''
 
-# Shrink each headline until every line fits the column and the whole thing sits on three lines;
-# shrink a long quote so the review card never grows past the photo's sky.
+# Shrink a headline until both lines fit the card; shrink the proof line if a big count pushes it wide.
 FIT = '''document.fonts.ready.then(() => {
   document.querySelectorAll("h1").forEach((h) => {
-    const lines = [...h.querySelectorAll("span,em")]; let px = 96;
-    while (px > 48 && (lines.some((l) => l.scrollWidth > 560) || h.scrollWidth > 560 || h.offsetHeight > px * 0.92 * 3 + 2)) h.style.fontSize = (px -= 2) + "px";
+    let px = 78;
+    while (px > 44 && [...h.children].some((l) => l.scrollWidth > 1000)) h.style.fontSize = (px -= 2) + "px";
   });
-  document.querySelectorAll("blockquote").forEach((q) => {
-    let px = 22;
-    while (px > 17 && q.closest(".review").offsetHeight > 200) q.style.fontSize = (px -= 1) + "px";
+  document.querySelectorAll(".row").forEach((r) => {
+    const p = r.querySelector(".proof"); let px = 23;
+    while (px > 16 && r.scrollWidth > 1088) p.style.fontSize = (px -= 1) + "px";
   });
 });'''
 
 def render(batch, png, rating, count):
     doc = f'''<!DOCTYPE html><html><head><meta charset="utf-8">
-<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,700;0,800;1,800&family=Barlow:wght@600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@600;700;800&display=swap" rel="stylesheet">
 <style>{CSS}</style></head><body>{"".join(card(c, rating, count) for c in batch)}<script>{FIT}</script></body></html>'''
     tmp = tempfile.mkdtemp(prefix="og-")
     page = os.path.join(tmp, "cards.html")
@@ -179,11 +162,9 @@ def main():
     rating, count = live_rating()
     print(f"live Google rating {rating}, {count} reviews")
     pages = json.load(open(os.path.join(OUT, "cards.json"), encoding="utf-8"))
-    cards = [{"slug": "home", "lines": ("Dumpster Rental", "Ogden · Roy · West Haven"), "photo": HOME_PHOTO}]
+    cards = [{"slug": "home", "copy": COPY["home"], "photo": HOME_PHOTO}]
     for p in pages:
-        cards.append({"slug": p["slug"], "lines": LINES.get(p["slug"]) or headline(p["title"]), "photo": p["photo"]})
-    for i, c in enumerate(cards):
-        c["quote"] = quote_for(c["slug"], i)
+        cards.append({"slug": p["slug"], "copy": copy_for(p["slug"], p["title"]), "photo": p["photo"]})
     for i in range(0, len(cards), BATCH):
         batch = cards[i:i + BATCH]
         png = os.path.join(tempfile.gettempdir(), f"og-batch-{i}.png")
