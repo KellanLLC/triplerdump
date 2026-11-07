@@ -1,3 +1,15 @@
+*** LAST-REMINDER LINE ON UNPAID INVOICES 2026-11-06 (console only: trykellan Pages deployment 1e336f3f, previous a0659164;
+    trykellan commit ab0e368, no remote; worker unchanged) ***
+- Joseph asked (via Boston) for a "last notified" indicator on the console's Unpaid invoices list. Each row now has a third
+  line: "Last reminder 27 hours ago (2 of 5) · next Sun 10 AM", "No reminder yet · first one Wed 10 AM", "Last reminder 19
+  days ago · all 5 sent, no more", "No mobile number, so no reminder texts", "Final notice texted <date>", or "reminder
+  texts are off". real-data.js now selects overdue_reminders_sent / overdue_last_sent_at / overdue_owner_alerted_at and the
+  invoice_reminder_* settings (data.ivRemind); console remindOf() mirrors invoice.js runInvoiceOverdueReminders (10 AM,
+  day after due, every-2 h slack, max then stop). Checked locally against LIVE D1 (read-only) at 375 px; live console is
+  behind sign-in so not opened. Same commit also checks in the trykellan work deployed 10/27-10/30 but never committed.
+- STILL OPEN (Joseph's other ask): "every 48 hrs UNTIL they pay" = lifting the 5-text cap (invoice_reminder_max, clamped
+  1-10 in invoice.js). Asked Boston; not changed. Ray Epps (TRD-INV-57M9N9) is the only invoice past the cap.
+
 *** SHARE CARDS RESTYLED 2026-11-04 (worker v b736eff5 via deploy.mjs, previous 7b319ed3, checkout probe OK; previews back OFF) ***
 - Boston sent a competitor's card (3DA Dumpsters) and said "do this style". build_og.py now: page photo FULL BLEED under a
   left-dark gradient, badge + wordmark top left, blue pin + location line (city pages "Roy, UT · Weber County", COUNTY map),
