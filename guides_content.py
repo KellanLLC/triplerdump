@@ -233,7 +233,7 @@ GUIDES = [
       ("Ogden: an encroachment permit for the public way", [
         "Ogden City Code 7-4-2 makes it unlawful to place an encroachment on any portion of the public way without an encroachment permit from the mayor or the mayor's designee. " + _x(OGDEN_CODE, "Ogden City Code 7-4-2"),
         "Ogden's right-of-way page says the right-of-way includes city streets, curb and gutter, park strips and sidewalks, and that the right-of-way line is often several feet behind the sidewalk or curb. In other words, the strip of grass in front of your house may still be city property. " + _x(OGDEN_ROW, "Ogden City right-of-way page"),
-        "If your Ogden bin has to go on the street, call Ogden City Engineering at 801-629-8990 before your delivery date and ask which permit applies to a roll-off dumpster and what the current fee is. We do not quote the fee here because it is set by the city and can change. If you can fit the bin in the driveway instead, the question goes away. More on " + _a("/service-area/ogden/", "dumpster rental in Ogden") + ".",
+        "If your Ogden bin has to go on the street, call Ogden City Engineering at 801-629-8990 before your delivery date and ask which permit applies to a roll-off dumpster and what the current fee is. We do not quote the fee here because it is set by the city and can change. If you can fit the bin in the driveway instead, the question goes away. More on " + _a("/dumpster-rental/ogden/", "dumpster rental in Ogden") + ".",
       ]),
       ("Other cities we serve", [
         "We have not found a published, official dumpster rule for Roy, Layton, Bountiful, Brigham City or North Ogden, and we are not going to guess at one. If you need street placement in any city, call that city's public works or engineering office (the number is on the city website) and ask three things: does a roll-off on the street need a permit, what does it cost, and how long can it stay.",
@@ -461,7 +461,7 @@ GUIDES = [
       ("What it costs if you rent instead", [
         "Tires, refrigerators and electronics cannot go in our bins either; " + _a("/guides/what-can-go-in-a-dumpster/", "here is where they go instead") + ".",
         "Our bins are one price for up to 7 days with delivery, pickup and the dump fee included: ${{TRD:d15_47}} for a " + _a("/dumpster-rental/15-yard/", "15 yard dumpster") + ", ${{TRD:d20_47}} for a 20 yard and ${{TRD:d25_47}} for a 25 yard, plus Utah sales tax. Most people who missed a city cleanup day are fine with the 15.",
-        "If you would rather not load it yourself, " + _a("/junk-removal/", "weekend junk removal") + " is ${{TRD:junk}} for one load. We serve " + _a("/service-area/roy/", "Roy") + ", " + _a("/service-area/ogden/", "Ogden") + " and the rest of Weber, Davis, Box Elder, Cache, Morgan and Salt Lake counties, and Utah County as far south as Springville. " + _a("/book", "Book online") + " or call (801) 564-3164.",
+        "If you would rather not load it yourself, " + _a("/junk-removal/", "weekend junk removal") + " is ${{TRD:junk}} for one load. Need " + _a("/dumpster-rental/ogden/", "dumpster rental in Ogden") + " or " + _a("/service-area/roy/", "Roy") + "? We serve the rest of Weber, Davis, Box Elder, Cache, Morgan and Salt Lake counties too, and Utah County as far south as Springville. " + _a("/book", "Book online") + " or call (801) 564-3164.",
       ]),
     ],
     "table": {

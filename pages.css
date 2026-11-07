@@ -103,6 +103,8 @@ h2{font-size:clamp(2.1rem,1.3rem + 2.9vw,3.5rem);line-height:1.02;letter-spacing
 .hero__eyebrow{margin:0 0 18px;display:inline-flex;align-items:center;gap:9px;font-family:var(--disp);font-weight:700;font-size:.88rem;letter-spacing:.2em;text-transform:uppercase;color:var(--sky)}
 .hero h1{margin:0 0 22px;max-width:15ch;font-size:clamp(2.7rem,1rem + 5.4vw,5.2rem);line-height:.95;letter-spacing:-.012em;color:rgba(243,245,248,.8);text-wrap:balance;text-shadow:0 2px 30px rgba(9,14,22,.5)}
 .hero h1 em{color:#fff}
+.hero h1 a{color:inherit;text-decoration:underline;text-decoration-thickness:.05em;text-underline-offset:.1em;text-decoration-color:rgba(255,255,255,.45)}
+.hero h1 a:hover{text-decoration-color:#fff}
 .hero__lede{margin:0 0 22px;max-width:46ch;font-size:clamp(1rem,.94rem + .3vw,1.13rem);line-height:1.56;color:rgba(255,255,255,.9);text-shadow:0 1px 3px rgba(9,14,22,.72)}
 .hero__stars{display:inline-flex;flex-wrap:wrap;align-items:center;gap:6px 12px;margin:0 0 24px;font-size:1rem;color:rgba(255,255,255,.92);text-shadow:0 1px 3px rgba(9,14,22,.8)}
 .hero__stars .stars{filter:drop-shadow(0 1px 2px rgba(9,14,22,.7))}

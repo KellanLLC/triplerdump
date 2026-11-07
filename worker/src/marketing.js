@@ -8,7 +8,7 @@
 import { loadSettings, fuelOn, fuelWords } from "./settings.js";
 import { townFuel } from "./booking.js";
 import { reviewNumbers, reviewsJson } from "./reviews.js";
-import { prefersMarkdown, pageMarkdown, markdownNotFoundResponse, varyAccept, MARKDOWN_TYPE } from "./agents.js";
+import { prefersMarkdown, pageMarkdown, markdownNotFoundResponse, varyAccept, MARKDOWN_TYPE, CITY_MOVED } from "./agents.js";
 
 const MARKETING_RE = /^\/(index\.html)?$|^\/(dumpster-rental|junk-removal|dump-trailer-rental|bin-switch|service-area|faq|bbb|contact|social|guides)(\/|$)/;
 
@@ -61,6 +61,7 @@ export function redirectLocation(origin, target, search) {
 export function marketingRedirect(p) {
   const m = p.match(/^\/service-area\/([a-z-]+)\/?$/);
   if (m && RETIRED_CITIES.has(m[1])) return "/service-area/";
+  if (m && Object.prototype.hasOwnProperty.call(CITY_MOVED, m[1])) return CITY_MOVED[m[1]];
   if (p === "/index.html") return "/";
   if (p !== "/" && !p.endsWith("/") && !/\.[a-z0-9]+$/i.test(p)) return p + "/";
   return null;

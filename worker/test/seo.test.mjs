@@ -82,7 +82,7 @@ test("homepage through the worker: one 7-day price, tons + $/ton from D1, no tok
   assert.match(html, /data-trd="d15_47">\$320 <small>up to 7 days<\/small>/);
   assert.match(html, /data-trd-num="tons25">4</);
   assert.match(html, /data-trd="over_ton">\$70</);
-  assert.match(html, /<title>Dumpster Rental Ogden, Roy & West Haven, UT \| Triple R Dump<\/title>/);
+  assert.match(html, /<title>Dumpster Rental West Haven, Ogden & Roy, UT \| Triple R Dump<\/title>/);
   assert.match(html, /<meta name="description" content="[^"]*from \$320 for up to 7 days/);
   const ld = JSON.parse(html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)[1]);
   assert.equal(ld.logo, ORIGIN + "/assets/apple-touch-icon.png");
@@ -143,6 +143,14 @@ test("city pages: the 14 kept cities, retired list matches build_pages.py, photo
   const retired = ALL_CITIES.filter((s) => !KEPT.includes(s)).sort();
   assert.deepEqual([...RETIRED_CITIES].sort(), retired, "marketing.js RETIRED_CITIES == build_pages.py");
   assert.equal(marketingRedirect("/service-area/riverdale/"), "/service-area/");
+  // Ogden moved into the /dumpster-rental/ folder (URL = the search phrase); the old URL 301s there.
+  assert.equal(marketingRedirect("/service-area/ogden/"), "/dumpster-rental/ogden/");
+  assert.equal(marketingRedirect("/service-area/ogden"), "/dumpster-rental/ogden/");
+  assert.equal(marketingRedirect("/dumpster-rental/ogden/"), null);
+  for (const rel of generatedPages()) assert.doesNotMatch(read(rel), /\/service-area\/ogden\//, rel + " links the old Ogden URL");
+  assert.doesNotMatch(read("index.html") + read("sitemap.xml"), /\/service-area\/ogden\//);
+  const ogCrumbs = read("dumpster-rental/ogden/index.html");
+  assert.match(ogCrumbs, /"item": "https:\/\/www\.triplerdump\.com\/dumpster-rental\/"/, "Ogden breadcrumb goes through /dumpster-rental/");
   assert.deepEqual(CITY_PAGES.map((c) => c[1]).sort(), [...KEPT].sort(), "llms.txt city list == kept cities");
 
   const bc = await (await get("/service-area/brigham-city/")).text();
@@ -164,7 +172,7 @@ test("city pages: the 14 kept cities, retired list matches build_pages.py, photo
 
   const roy = await (await get("/service-area/roy/")).text();
   assert.match(roy, /href="https:\/\/www\.royutah\.gov\/departments\/public_works\/community_programs\.php" target="_blank" rel="noopener nofollow"/);
-  const ogden = await (await get("/service-area/ogden/")).text();
+  const ogden = await (await get("/dumpster-rental/ogden/")).text();
   assert.match(ogden, /ogdencity\.gov\/1113\/Dial-A-Dumpster" target="_blank" rel="noopener nofollow"/);
   assert.match(ogden, /ogdencity\.gov\/274\/The-City-Right-of-Way/);
 });
@@ -288,7 +296,7 @@ test("same-day is promised only for near cities (min <= 25)", async () => {
 test("city FAQs are city-specific: no generic permit/dumpster-days/price questions, none repeated", () => {
   const all = [];
   for (const slug of KEPT) {
-    const qs = [...read("service-area/" + slug + "/index.html").matchAll(/"@type": "Question",\s*"name": "([^"]+)"/g)].map((m) => m[1]);
+    const qs = [...read((slug === "ogden" ? "dumpster-rental/" : "service-area/") + slug + "/index.html").matchAll(/"@type": "Question",\s*"name": "([^"]+)"/g)].map((m) => m[1]);
     assert.ok(qs.length >= 3, slug);
     for (const q of qs) {
       if (/^Do I need a permit for a dumpster in /.test(q)) assert.equal(slug, "ogden", q);
@@ -307,7 +315,7 @@ test("review fixes: photo times, Dial-A-Dumpster scope, no self-citation, full a
   assert.match(bc, /Brigham City, Utah, in early morning light/);
   assert.doesNotMatch(bc + read("index.html"), /at sunset|morning sun/);
   assert.match(read("service-area/roy/index.html"), /set on the street in front of a home in Roy, Utah, with the roll-off truck behind it/);
-  const og = read("service-area/ogden/index.html");
+  const og = read("dumpster-rental/ogden/index.html");
   assert.match(og, /not for personal home projects such as remodeling, moving in or out, or clearing out basements, garages or sheds/);
   assert.doesNotMatch(og, /for yard cleanup/);
   assert.doesNotMatch(read("guides_content.py"), /S_TERMS|TRD_TERMS/);

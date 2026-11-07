@@ -1,3 +1,21 @@
+*** OGDEN PAGE MOVED + HOMEPAGE STOPS COMPETING 2026-11-07 later (worker v 3e6eff8c via deploy.mjs, previous 0bd53027,
+    checkout probe OK; previews back OFF) ***
+- Boston: in GSC "dumpster rental ogden" shows the HOMEPAGE most, /service-area/ogden/ second (cannibalization: the
+  homepage title led with "Dumpster Rental Ogden"; the Ogden page's 36 inlinks were nearly all the bare word "Ogden").
+  He OK'd all three fixes:
+  1) Ogden page now /dumpster-rental/ogden/ (slug = the phrase, nested under the dumpster-rental hub; breadcrumb Home >
+     Dumpster rental > Ogden). build_pages.py CITY_PATH/city_url()/city_crumbs(); agents.js CITY_MOVED/cityPath()
+     (llms.txt); marketing.js marketingRedirect 301s /service-area/ogden(/) there (query kept). Old folder deleted (repo +
+     deploy/). Share card copied to assets/og/dumpster-rental-ogden.jpg (build_og.py regex takes either prefix).
+     ONLY Ogden moved on purpose (bible: one page at a time). If it climbs in 3-4 weeks, add Roy/Layton/... to CITY_PATH +
+     CITY_MOVED (keep both in step; a test checks no page links the old Ogden URL).
+  2) Homepage title "Dumpster Rental West Haven, Ogden & Roy, UT | Triple R Dump" (+ og:title); H1 "Ogden" and "Roy" are
+     now links to their pages (pages.css .hero h1 a: inherit colour, faint underline). Size-page H1s link "Ogden" too.
+  3) Junk-removal guide line now links "dumpster rental in Ogden". City "Also serving" links were already keyword anchors.
+- npm test 91/91 (tests updated: homepage title/markdown H1, Ogden paths, new redirect asserts). Verified live: old URL 301
+  (with and without slash), canonical + breadcrumb + sitemap + llms.txt on the new URL. TODO Boston: GSC URL inspection >
+  Request indexing for https://www.triplerdump.com/dumpster-rental/ogden/ (GSC MCP still has no credentials).
+
 *** SEO BIBLE SCAN 2026-11-07 (worker v 0bd53027 via deploy.mjs, previous 71986913, checkout probe OK; previews back OFF) ***
 - Boston: "scan website thru the seo bible" (Desktop/kellan roll off/docs/seo-bible.md, Edward Sturm rules). Crawled all
   37 sitemap URLs. PASSING: keyword-first titles/H1s, 0 em dashes, FAQs written out (no accordions), real photos, prices

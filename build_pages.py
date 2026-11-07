@@ -875,10 +875,23 @@ PAGE_JS = '''<script>
 def kept():
     return [c for c in CITIES if c["slug"] in KEPT_CITIES]
 
+# City pages live at /service-area/<slug>/, except the ones moved under the
+# /dumpster-rental/ folder so the URL reads as the search phrase ("dumpster
+# rental ogden", SEO bible: slug = keyword). The old URL 301s here
+# (worker/src/marketing.js CITY_MOVED). Moved one at a time, Ogden first (2026-11-07).
+CITY_PATH = {"ogden": "/dumpster-rental/ogden/"}
+
+def city_url(slug):
+    return CITY_PATH.get(slug, f"/service-area/{slug}/")
+
+def city_crumbs(name, path):
+    parent = ("Dumpster rental", "/dumpster-rental/") if path.startswith("/dumpster-rental/") else ("Service area", "/service-area/")
+    return [("Home", "/"), parent, (name, path)]
+
 def footer():
     sizes = '<li><a href="/dumpster-rental/">Dumpster sizes &amp; prices</a></li>' + "".join(f'<li><a href="/dumpster-rental/{s["slug"]}/">{s["yd"]} yard dumpster rental</a></li>' for s in SIZES)
     svcs = "".join(f'<li><a href="/{s["slug"]}/">{s["name"]}</a></li>' for s in SERVICES)
-    cities = "".join(f'<li><a href="/service-area/{c["slug"]}/">{c["name"]}</a></li>' for c in sorted(kept(), key=lambda c: c["min"]))
+    cities = "".join(f'<li><a href="{city_url(c["slug"])}">{c["name"]}</a></li>' for c in sorted(kept(), key=lambda c: c["min"]))
     guides = '<a href="/guides/">Guides</a>' if GUIDES else ""
     return f'''
 <footer class="ft">
@@ -1143,7 +1156,7 @@ for s in SIZES:
     others = [x for x in SIZES if x["slug"] != s["slug"]]
     body = hero(
         f"{s['tag']} · {s['loads']}",
-        f"{yd} yard dumpster rental<br><em>Ogden, Weber &amp; Davis.</em>",
+        f"{yd} yard dumpster rental<br><em><a href=\"{city_url('ogden')}\">Ogden</a>, Weber &amp; Davis.</em>",
         esc(s["lead"]),
         s["img"],
         f"/book?size={yd}",
@@ -1286,7 +1299,7 @@ def city_card(c):
     if c["slug"] in RETIRED_CITIES:
         return f'''<li><div class="city"><span class="city__n">{esc(c["name"])}</span><span class="city__m">{mins}</span><span class="city__l">{esc(c["line"])}</span></div></li>'''
     photo = f'<span class="city__ph">{icon("i-cam", 13)}Job photos</span>' if c["slug"] in JOBS else ""
-    return f'''<li><a href="/service-area/{c["slug"]}/" class="city"><span class="city__n">{esc(c["name"])}</span><span class="city__m">{mins}{icon("i-chev", 14)}</span><span class="city__l">{esc(c["line"])}</span>{photo}<span class="ridge"></span></a></li>'''
+    return f'''<li><a href="{city_url(c["slug"])}" class="city"><span class="city__n">{esc(c["name"])}</span><span class="city__m">{mins}{icon("i-chev", 14)}</span><span class="city__l">{esc(c["line"])}</span>{photo}<span class="ridge"></span></a></li>'''
 
 def jobs_strip(slugs):
     """Photo cards, one per city, each linking to that city's page."""
@@ -1294,7 +1307,7 @@ def jobs_strip(slugs):
     for slug in slugs:
         name, orient, date, alt = JOBS[slug][0]
         city = CITY_NAME[slug]
-        cards.append(f'\n      <a class="jobc rv-in" href="/service-area/{slug}/">{job_img(name, orient, alt, sizes="(max-width: 760px) 100vw, 33vw")}'
+        cards.append(f'\n      <a class="jobc rv-in" href="{city_url(slug)}">{job_img(name, orient, alt, sizes="(max-width: 760px) 100vw, 33vw")}'
                      f'<span class="jobc__t"><b>Dumpster rental in {esc(city)}</b><small>{month_year(date)}</small></span><span class="ridge"></span></a>')
     return f'\n    <div class="jobcs">{"".join(cards)}\n    </div>'
 
@@ -1360,7 +1373,7 @@ def geo_km(a, b):
 # (side card, description, ticker, contact facts).
 FAR_MIN = 25
 for c in kept():
-    path = f"/service-area/{c['slug']}/"
+    path = city_url(c["slug"])
     x = CITY_EXTRA[c["slug"]]
     name = c["name"]
     far = c["min"] > FAR_MIN
@@ -1397,7 +1410,7 @@ for c in kept():
         hero_img,
         "/book",
         "Book online",
-        [("Home", "/"), ("Service area", "/service-area/"), (name, path)],
+        city_crumbs(name, path),
         pin=True, job=job,
     ) + ticker(far) + sec("paper", f'''
     <div class="two">
@@ -1414,15 +1427,15 @@ for c in kept():
     body += sec("dark",
         head("Bins &amp; rates", "One price.<br><em>Up to 7 days.</em>", 'Dump fee included. <a href="/dumpster-rental/">Compare dumpster sizes side by side.</a>') + rate_table()
         + '\n    <p class="note">Junk gone today? <a href="/junk-removal/">Junk removal</a>, weekends. Hauling it yourself? <a href="/dump-trailer-rental/">Dump trailer rental</a>, by the day. Bin filled early? <a href="/bin-switch/">Bin switch</a>, same trip.</p>'
-        + f'\n    <p class="note">Also serving: {", ".join(f"<a href=\"/service-area/{n['slug']}/\">dumpster rental in {esc(n['name'])}</a>" for n in near)}, and <a href="/service-area/">every other city we serve</a>.</p>'
+        + f'\n    <p class="note">Also serving: {", ".join(f"<a href=\"{city_url(n['slug'])}\">dumpster rental in {esc(n['name'])}</a>" for n in near)}, and <a href="/service-area/">every other city we serve</a>.</p>'
     ) + faq_block(city_faq, title=f"Dumpster rental in {esc(name)}: <em>questions</em>", tone="paper" if photos else "stone") + cta("stone" if photos else "paper", far=far)
     service = {"@context": "https://schema.org", "@type": "Service", "name": f"Dumpster rental in {name}, UT", "serviceType": "Roll-off dumpster rental", "provider": PROVIDER,
                "areaServed": {"@type": "City", "name": name, "containedInPlace": {"@type": "AdministrativeArea", "name": f"{c['county']} County, Utah"}}, "url": SITE + path,
                "offers": {"@type": "AggregateOffer", "lowPrice": T("d15_47"), "highPrice": T("d25_47"), "priceCurrency": "USD", "offerCount": 3}}
     if photos:
         service["image"] = [SITE + job_src(n) for n, _, _, _ in photos]
-    schemas = [ld(service), faq_ld(city_faq), breadcrumbs([("Home", "/"), ("Service area", "/service-area/"), (name, path)])] + image_ld(c["slug"], name)
-    write(f"service-area/{c['slug']}/index.html", page(path, title, desc, body, schemas,
+    schemas = [ld(service), faq_ld(city_faq), breadcrumbs(city_crumbs(name, path))] + image_ld(c["slug"], name)
+    write(path.strip("/") + "/index.html", page(path, title, desc, body, schemas,
           og_image=job_src(job[0]) if job else hero_img, preload=preload_img(job[0], job[1]) if job else ""))
     urls.append((path, "0.7", TODAY, job_images(c["slug"], name)))
 

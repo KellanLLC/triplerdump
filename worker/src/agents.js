@@ -280,6 +280,16 @@ const money = (cents) => (Number.isFinite(cents) ? "$" + (cents % 100 === 0 ? St
 // Where Triple R Dump delivers (2026-10-09; keep in step with build_pages.py
 // AREA_TEXT and the city pages).
 export const SERVICE_AREA = "Weber, Davis, Box Elder, Cache, Morgan and Salt Lake County, and Utah County as far south as Springville";
+// City pages moved from /service-area/<slug>/ into the /dumpster-rental/ folder so
+// the URL reads as the search phrase ("dumpster rental ogden"). Keep in step with
+// CITY_PATH in build_pages.py (marketing.js does the redirect); the old URL 301s to the new one.
+export const CITY_MOVED = { ogden: "/dumpster-rental/ogden/" };
+
+// Public path of a kept city page.
+export function cityPath(slug) {
+  return CITY_MOVED[slug] || "/service-area/" + slug + "/";
+}
+
 export const CITY_PAGES = [
   ["West Haven", "west-haven"], ["Roy", "roy"], ["Hooper", "hooper"], ["Plain City", "plain-city"], ["Clinton", "clinton"],
   ["Ogden", "ogden"], ["Syracuse", "syracuse"], ["Clearfield", "clearfield"], ["Layton", "layton"], ["North Ogden", "north-ogden"],
@@ -389,7 +399,7 @@ export function renderLlmsTxt(S, origin) {
     "",
     "## City pages",
     "",
-    ...CITY_PAGES.map(([name, slug]) => "- [Dumpster rental in " + name + "](" + origin + "/service-area/" + slug + "/)"),
+    ...CITY_PAGES.map(([name, slug]) => "- [Dumpster rental in " + name + "](" + origin + cityPath(slug) + ")"),
     "",
     "## Guides",
     "",

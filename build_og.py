@@ -62,7 +62,7 @@ COPY = {
 def copy_for(slug, title):
     if slug in COPY:
         return COPY[slug]
-    m = re.match(r"^service-area-(.+)$", slug)
+    m = re.match(r"^(?:service-area|dumpster-rental)-(.+)$", slug)
     if m and m.group(1) in COUNTY:
         city = re.match(r"^Dumpster Rental (.+?), UT", html.unescape(title)).group(1)
         return (f"{city}, UT · {COUNTY[m.group(1)]}", "Dumpster rental,", "dump fee included.")

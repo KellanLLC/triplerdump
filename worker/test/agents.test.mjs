@@ -82,7 +82,7 @@ test("homepage: Accept text/markdown -> Markdown body, live prices, Vary: Accept
   const md = await res.text();
   assert.ok(md.startsWith("---\ntitle: "), "front matter first");
   assert.match(md, /^url: https:\/\/www\.triplerdump\.com\/$/m);
-  assert.match(md, /^# Dumpster rental in West Haven, Ogden & Roy\.$/m);
+  assert.match(md, /^# Dumpster rental in West Haven, \[Ogden\]\([^)]*\/dumpster-rental\/ogden\/\) & \[Roy\]\([^)]*\/service-area\/roy\/\)\.$/m);
   assert.match(md, /^## Straight prices\. Dump fee included\.$/m);
   assert.match(md, /^\*\*\$319\*\* up to 7 days$/m, "D1 price substituted before conversion (one price, 7 days)");
   assert.doesNotMatch(md, /1–3 days|4–7 days/, "no two-tier wording left");
