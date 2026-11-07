@@ -77,7 +77,7 @@ export function renderBookingPage(S, service) {
   // muted line so "4-7 day" never crowds into "rental".
   const sizeRadios = Object.entries(S.bins).filter(([, b]) => !b.hidden).map(([size, b]) =>
     '<label class="opt size"><input type="radio" name="bin_size" value="' + size + '"><span class="card">' +
-    (binPhoto[size] ? '<img src="/uploads/triplerdump_photos/triplerdump_photos/' + binPhoto[size] + '" alt="" loading="lazy">' : "") +
+    (binPhoto[size] ? '<img src="/uploads/triplerdump_photos/triplerdump_photos/' + binPhoto[size] + '" alt="' + size + ' yard roll-off dumpster" loading="lazy">' : "") +
     (size === "20" ? '<span class="tag">Most rented</span>' : "") +
     '<span class="sz-b"><span class="sz-t"><b>' + b.label + '</b><em data-px="' + size + '">' + money0(b.prices["1-3"]) + '</em></span>' +
     ((b.blurb || binFor[size]) ? '<small>' + escHtml(b.blurb || binFor[size]) + '</small>' : "") + '</span>' +

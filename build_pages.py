@@ -139,7 +139,7 @@ SIZES = [
         "best": "Garage cleanouts, small remodels, yard waste, moving.",
         "fits": "Fits in a standard driveway without blocking the garage.",
         "loads": "about five pickup-truck loads",
-        "lead": "The 15 yard is the bin for a weekend. A garage that has not been seen in years, a bathroom remodel, the yard after a storm, a move that left a pile behind. It fits in a standard driveway, it holds about five pickup loads, and the dump fee is already in the price.",
+        "lead": "15 yard dumpster rental: the bin for a weekend. A garage that has not been seen in years, a bathroom remodel, the yard after a storm, a move that left a pile behind. It fits in a standard driveway, it holds about five pickup loads, and the dump fee is already in the price.",
         "good": ["Garage and shed cleanouts", "Bathroom and small kitchen remodels", "Yard waste, branches, sod", "Moving and apartment clean-outs", "Roof tear-offs on a small roof", "Carpet, cabinets, drywall from one room"],
         "faq": [
             ("How much fits in a 15 yard dumpster?", "About five full-size pickup loads. Think a two-car garage cleanout, a bathroom remodel, or the debris from one or two rooms. If you are staring at a kitchen, the 20 yard is the safer call."),
@@ -153,7 +153,7 @@ SIZES = [
         "best": "Kitchen remodels, landscaping, flooring, estate cleanouts.",
         "fits": "Still driveway-sized. The right answer when you are not sure.",
         "loads": "about seven pickup-truck loads",
-        "lead": "The 20 yard is the one we rent most, and the one we point people at when they are not sure. Kitchen remodels, flooring through a whole main level, a landscaping tear-out, an estate cleanout. Still fits a driveway, holds about seven pickup loads, and the dump fee is included.",
+        "lead": "20 yard dumpster rental: the size we rent most, and the one we point people at when they are not sure. Kitchen remodels, flooring through a whole main level, a landscaping tear-out, an estate cleanout. Still fits a driveway, holds about seven pickup loads, and the dump fee is included.",
         "good": ["Kitchen remodels and cabinet tear-outs", "Flooring and carpet, whole floor", "Landscaping, fence and deck tear-downs", "Estate and whole-garage cleanouts", "Roof tear-offs on a standard home", "Basement finishes and remodels"],
         "faq": [
             ("Why is the 20 yard your most-rented bin?", "Because it covers the most jobs for the least money. It is the size that handles a kitchen, a floor, or a yard without running out of room, and it still fits in a driveway. When a 15 feels tight, the 20 is the safer call for a little more."),
@@ -167,7 +167,7 @@ SIZES = [
         "best": "Construction, roofing, full-home cleanouts, commercial jobs.",
         "fits": "Needs a longer space: a long driveway, a job site, or the street with a permit.",
         "loads": "about nine pickup-truck loads",
-        "lead": "The 25 yard is the big one: construction debris, a full roof, a whole-house cleanout, a commercial job that is going to keep filling it. About nine pickup loads. It needs a longer footprint than the others, so tell us where it is going and we will say whether it fits.",
+        "lead": "25 yard dumpster rental: the big one. Construction debris, a full roof, a whole-house cleanout, a commercial job that is going to keep filling it. About nine pickup loads. It needs a longer footprint than the others, so tell us where it is going and we will say whether it fits.",
         "good": ["New construction and demolition debris", "Full roof tear-offs", "Whole-home and hoarding cleanouts", "Commercial and retail fit-outs", "Multi-room remodels", "Bulky furniture, decking, fencing in volume"],
         "faq": [
             ("Do I need a permit for a 25 yard bin?", "Only if it has to sit on a public street. In a driveway or on your own lot, no. If it is going on the street, your city may want a permit; the booking form asks, and we can tell you what your city does."),
@@ -184,7 +184,7 @@ SERVICES = [
         "title": "Junk Removal Ogden, Roy & West Haven, UT | ${{TRD:junk}} Flat",
         "description": "Full-service junk removal in Ogden, Roy, West Haven and Weber County: we load it, haul it and pay the dump. ${{TRD:junk}} flat, weekends. Call 801-564-3164.",
         "h1": "Junk removal in<br>West Haven &amp; Ogden.<br><em>We do the lifting.</em>",
-        "lead": "Some jobs do not want a bin sitting there for three days; they want it gone by lunch. That is junk removal. We bring the truck and the hands, load it, haul it and pay the dump. One flat rate. Weekends only, so the weekday fleet stays on the bins.",
+        "lead": "Junk removal is for the jobs that do not want a bin sitting there for three days; they want it gone by lunch. We bring the truck and the hands, load it, haul it and pay the dump. One flat rate. Weekends only, so the weekday fleet stays on the bins.",
         "sections": [
             ("What the flat rate covers", ["The truck, the crew, the loading, the hauling and the dump fee, for one load. Furniture, appliances, the pile in the garage, the shed that finally came down, the leftovers after a move or an estate. If you have more than a load, call and we will price it straight before anyone drives over."]),
             ("Weekends only", ["Junk removal runs Saturdays and Sundays. The booking form only lets you pick a weekend date; try a weekday and it tells you so. Pick the day, tell us roughly what and where, pay online, and we show up."]),
@@ -202,7 +202,7 @@ SERVICES = [
         "title": "Dump Trailer Rental West Haven & Ogden, UT | ${{TRD:trailer_day}}/Day",
         "description": "Rent a dump trailer by the day in West Haven, near Ogden and Roy: ${{TRD:trailer_day}} a day, 1-14 days, ${{TRD:trailer_dep}} refundable deposit. Haul and dump it yourself. 801-564-3164.",
         "h1": "Dump trailer rental<br>in West Haven, UT.<br><em>By the day.</em>",
-        "lead": "If you have the truck and the time, a dump trailer is the cheapest way to move a lot of material: your own runs to the dump, a move, hauling gravel or branches. ${{TRD:trailer_day}} a day, one to fourteen days, with a ${{TRD:trailer_dep}} deposit that comes back when the trailer does.",
+        "lead": "Dump trailer rental is the cheapest way to move a lot of material if you have the truck and the time: your own runs to the dump, a move, hauling gravel or branches. ${{TRD:trailer_day}} a day, one to fourteen days, with a ${{TRD:trailer_dep}} deposit that comes back when the trailer does.",
         "sections": [
             ("How it works", ["Book the days online, pay the rental plus the refundable deposit, and pick the trailer up from us in West Haven. Haul whatever you need, dump it yourself, bring it back clean on the last day. The deposit comes back to your card once it is checked in."]),
             ("When it is the right call", ["Moving house with a pickup. Your own dump runs at your own pace. Gravel, mulch, soil in. Branches and yard waste out. Anything where you would rather do the driving than pay for a bin to sit."]),
@@ -220,7 +220,7 @@ SERVICES = [
         "title": "Dumpster Swap-Out, Ogden & Weber County | ${{TRD:binswitch}} Bin Switch",
         "description": "Bin full before the job is done? We haul it and drop a fresh dumpster in the same trip, ${{TRD:binswitch}} plus the new rental. Ogden, Roy, West Haven and Davis County.",
         "h1": "Dumpster swap-out in<br>West Haven &amp; Ogden.<br><em>Full bin? Same trip.</em>",
-        "lead": "A remodel that found another wall. A roof with one more layer than anyone thought. A cleanout that kept going. When the bin fills before the job ends, a switch hauls the full one away and drops a fresh one in the same trip, so nothing sits and nobody waits.",
+        "lead": "A dumpster swap-out is for the remodel that found another wall, the roof with one more layer than anyone thought, the cleanout that kept going. When the bin fills before the job ends, a switch hauls the full one away and drops a fresh one in the same trip, so nothing sits and nobody waits.",
         "sections": [
             ("How it works", ["Book the switch online or call, and tell us the job you are on. The driver pulls the full bin, runs it to the dump, and sets an empty one in the same spot, same visit. The switch is ${{TRD:binswitch}}; the new bin's rental and dump fee are billed like any other rental."]),
             ("Before you need one", ["If you think you might fill it, start one size up. A 20 costs only a little more than a 15 and saves a ${{TRD:binswitch}} switch. If you are not sure, call and describe the job; we have placed enough bins to guess well."]),
@@ -1368,7 +1368,6 @@ for c in kept():
     city_faq = [(q, a.replace("{phone}", BIZ["phone"])) for q, a in x["faq"]]
     covers = f" We also cover {', '.join(x['covers'][:-1]) + ' and ' + x['covers'][-1] if len(x['covers']) > 1 else x['covers'][0]} from here." if x["covers"] else ""
     near = sorted([n for n in kept() if n["slug"] != c["slug"]], key=lambda n: geo_km(c["slug"], n["slug"]))[:5]
-    dist = "minutes from the shop" if c["min"] == 0 else f"about {c['min']} minutes from our shop in West Haven"
     p = T("d15_47")
     title = fit(f"Dumpster Rental {name}, UT | ${p} · Dump Fee Included",
                 f"{name} Dumpster Rental | ${p} · Dump Fee Included",
@@ -1383,7 +1382,8 @@ for c in kept():
     note = f"\n        <p>{x['note']}</p>" if x.get("note") else ""
     side_items = (["Next-day or a scheduled date; book a few days ahead"] if far else ["Same-day and next-day available"]) + \
                  ["Driveway, lot or job site; street spots per city rules", "Bins set on boards on request"]
-    lede = f"15, 20 and 25 yard roll-off bins delivered to {esc(name)}, {dist}. One price for up to 7 days, dump fee included, and the person who answers the phone is the owner."
+    yard = "from our family yard right here in town" if c["min"] == 0 else f"from our family yard in West Haven, about {c['min']} minutes away"
+    lede = f"Dumpster rental in {esc(name)}, UT, {yard}: 15, 20 and 25 yard roll-off bins. One price for up to 7 days, dump fee included, and the person who answers the phone is the owner."
     guides_line = ""
     if "dumpster-permit-ogden-weber-davis" in GUIDE_BY_SLUG and "city-dumpster-days-weber-davis" in GUIDE_BY_SLUG:
         guides_line = (' Bin going on the street? Read <a href="/guides/dumpster-permit-ogden-weber-davis/">do I need a dumpster permit</a>.'

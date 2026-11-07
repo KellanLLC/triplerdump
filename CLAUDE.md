@@ -1,3 +1,18 @@
+*** SEO BIBLE SCAN 2026-11-07 (worker v 0bd53027 via deploy.mjs, previous 71986913, checkout probe OK; previews back OFF) ***
+- Boston: "scan website thru the seo bible" (Desktop/kellan roll off/docs/seo-bible.md, Edward Sturm rules). Crawled all
+  37 sitemap URLs. PASSING: keyword-first titles/H1s, 0 em dashes, FAQs written out (no accordions), real photos, prices
+  on every page, phone by every button, footer links every money page (35 inlinks), robots + sitemap clean, AI crawlers
+  allowed, TTFB ~0.1 s, (c) 2026, city main copy 48-69% similar (no pure name swaps).
+- FIXED (bible rule: search phrase starts the first sentence): city ledes now "Dumpster rental in Roy, UT, from our family
+  yard in West Haven, about 5 minutes away: ..."; size ledes "15 yard dumpster rental: ..."; junk/trailer/swap-out ledes
+  start with their phrase. /book bin photos got alt text. Only those lines changed (31 lines); HTML copied into deploy/.
+- NOT done on purpose: slug changes (/service-area/roy/ lacks "dumpster-rental") and title rewrites, because the bible
+  says hold big changes ~3 months after the Oct 22-27 Maps proximity swing. GSC MCP has no credentials
+  (~/.claude/gsc/service-account.json missing), so the query-mining steps (sections 4/7/19) were not run.
+- GAPS for later: no "Triple R Dump reviews" page (/reviews/ 301s to /#reviews); no scenario pages (roofing tear-off,
+  estate cleanout, contractors); 9 of 16 city pages have no job photo; Logan/Springville/Cottonwood Heights are 45-75 min
+  out (bible: far cities need a real location to rank in Maps; organic only).
+
 *** LAST-REMINDER LINE ON UNPAID INVOICES 2026-11-06 (console only: trykellan Pages deployment 1e336f3f, previous a0659164;
     trykellan commit ab0e368, no remote; worker unchanged) ***
 - Joseph asked (via Boston) for a "last notified" indicator on the console's Unpaid invoices list. Each row now has a third
