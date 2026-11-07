@@ -475,7 +475,7 @@ export function renderPanel(S, data) {
     '<label>Commercial quote request <span class="muted">(adds {company} {interest} {timeframe} {email} {details})</span></label><textarea name="tpl_commercial">' + esc(t.commercial) + '</textarea>' +
     '<label>Low rating alert <span class="muted">(adds {rating} {feedback}; use {admin_link})</span></label><textarea name="tpl_low_rating">' + esc(t.low_rating) + '</textarea>' +
     '<label>Invoice paid <span class="muted">(adds {number} {total}; use {admin_link})</span></label><textarea name="tpl_owner_invoice_paid">' + esc(t.owner_invoice_paid) + '</textarea>' +
-    '<label>Invoice still unpaid <span class="muted">(after the last late-payment text; adds {days_late} {count}; use {admin_link})</span></label><textarea name="tpl_owner_invoice_overdue">' + esc(t.owner_invoice_overdue) + '</textarea>' +
+    '<label>Invoice still unpaid <span class="muted">(once, after that many late-payment texts; adds {days_late} {count}; use {admin_link})</span></label><textarea name="tpl_owner_invoice_overdue">' + esc(t.owner_invoice_overdue) + '</textarea>' +
     '<label>Final notice went out <span class="muted">(adds {days_late}; use {admin_link})</span></label><textarea name="tpl_owner_invoice_final">' + esc(t.owner_invoice_final) + '</textarea>' +
     '<h3>Invoices</h3>' +
     '<label>Invoice text <span class="muted">(adds {number} {total} {due}; use {invoice_link})</span></label><textarea name="tpl_invoice">' + esc(t.invoice) + '</textarea>' +
@@ -506,7 +506,7 @@ export function renderPanel(S, data) {
     '<p class="what">Once an invoice is past its due date, the customer gets a text with the pay link, then again every few days, until they pay. After the last one, you get a text instead so you can call them. The wording is in the Texts tab.</p>' +
     '<label style="font-weight:400"><input type="checkbox" name="invoice_reminders_on" style="width:auto"' + (S.invoiceRemindersOn !== false ? " checked" : "") + '> Send late-payment texts</label>' +
     '<div class="row"><div><label>Every<span class="hint">Hours between texts. 48 = every other day.</span></label><input name="invoice_reminder_hours" inputmode="numeric" value="' + esc(S.invoiceReminderHours) + '"></div>' +
-    '<div><label>Stop after<span class="hint">Texts per invoice, then you get told.</span></label><input name="invoice_reminder_max" inputmode="numeric" value="' + esc(S.invoiceReminderMax) + '"></div></div>' +
+    '<div><label>Tell me after<span class="hint">Texts keep going until they pay; after this many you also get a text to call them.</span></label><input name="invoice_reminder_max" inputmode="numeric" value="' + esc(S.invoiceReminderMax) + '"></div></div>' +
     '</div>');
 
   // Read-only tab: the save bar is hidden here, since there is nothing to save.
@@ -810,7 +810,7 @@ export function renderInvoiceDetail(S, inv, flash) {
     (inv.job_ref ? r("Job / Work order", inv.job_ref) : "") +
     (inv.booking_id ? '<div style="display:flex;border-bottom:1px solid #eef2f7;padding:5px 0"><div style="flex:0 0 42%;color:#5a6b7d">Booking</div><div style="flex:1"><a href="/admin/booking/' + esc(inv.booking_id) + '" style="color:#116DFF;font-weight:600">' + esc(inv.booking_id) + '</a></div></div>' : "") +
     r("Due", inv.due_date) + r("Sent", (inv.sent_at || "").slice(0, 10)) + r("Paid at", inv.paid_at) +
-    r("Late-payment texts", (inv.overdue_reminders_sent || 0) + " sent" + (inv.overdue_last_sent_at ? " (last " + String(inv.overdue_last_sent_at).slice(0, 10) + ")" : "") + (inv.overdue_owner_alerted_at ? " · you were told to call" : "")) +
+    r("Late-payment texts", (inv.overdue_reminders_sent || 0) + " sent" + (inv.overdue_last_sent_at ? " (last " + String(inv.overdue_last_sent_at).slice(0, 10) + ")" : "") + (inv.overdue_owner_alerted_at ? " · you were told to call (texts keep going)" : "")) +
     r("Review", !inv.ask_review ? "not requested for this invoice" : inv.review_rating != null ? inv.review_rating + " stars" : inv.review_sms_sent_at ? "asked " + String(inv.review_sms_sent_at).slice(0, 10) + (inv.review_clicked_at ? " · they opened the link" : "") : inv.review_checked_at ? "skipped (no phone, already reviewed, or asked recently / via the booking)" : "will be asked when paid");
   body += '</div>';
 

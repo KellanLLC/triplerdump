@@ -47,9 +47,9 @@ const DEFAULT_TEMPLATES = {
   // {customer_phone} {admin_link}.
   owner_invoice_paid: "Paid! Invoice {number}: ${total} from {name}. Details: {admin_link}",
   // Late-payment texts (sent at the daily reminder hour, every invoiceReminderHours
-  // after the due date, up to invoiceReminderMax). Adds {days_late}.
+  // after the due date, until they pay). Adds {days_late}.
   invoice_overdue: "Hi {name}, a reminder from Triple R Dump: invoice {number} for {total} was due {due} ({days_late} days ago). Pay here: {invoice_link} Questions? {phone}",
-  // Owner heads-up once the customer has had every reminder and still hasn't paid.
+  // Owner heads-up, once, after invoiceReminderMax reminders (the texts keep going).
   owner_invoice_overdue: "{name} still hasn't paid invoice {number} ({total}, {days_late} days late) after {count} reminder texts. Worth a call: {customer_phone}. {admin_link}",
   // The final notice: ONE text, invoiceFinalNoticeDays after the due date (Joseph 10/29: "a text that
   // goes out after 60 days ... we will have to take legal action in small claims court"). Only what
@@ -143,7 +143,7 @@ export function defaultSettings(env = {}) {
     invoiceTaxDefault: true,
     invoiceRemindersOn: true,   // late-payment texts to the customer
     invoiceReminderHours: 48,   // gap between late-payment texts
-    invoiceReminderMax: 5,      // then stop and text the owner instead
+    invoiceReminderMax: 5,      // after this many, text the owner once too (the texts keep going until paid)
     invoiceFinalNoticeDays: 60, // the final notice text, this many days past due; 0 = none on new invoices
     // Promo codes (CMS "Discounts" tab): [{code, pct, active}]. Empty = feature
     // dormant — the /book field still renders but no code ever matches.

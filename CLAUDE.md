@@ -7,8 +7,13 @@
   invoice_reminder_* settings (data.ivRemind); console remindOf() mirrors invoice.js runInvoiceOverdueReminders (10 AM,
   day after due, every-2 h slack, max then stop). Checked locally against LIVE D1 (read-only) at 375 px; live console is
   behind sign-in so not opened. Same commit also checks in the trykellan work deployed 10/27-10/30 but never committed.
-- STILL OPEN (Joseph's other ask): "every 48 hrs UNTIL they pay" = lifting the 5-text cap (invoice_reminder_max, clamped
-  1-10 in invoice.js). Asked Boston; not changed. Ray Epps (TRD-INV-57M9N9) is the only invoice past the cap.
+- SAME NIGHT, NO MORE 5-TEXT STOP (worker v 71986913 via deploy.mjs, previous b736eff5, checkout probe OK; previews back
+  OFF; console Pages 1c6ee257). Boston: "Remove the 5 text limit". runInvoiceOverdueReminders texts every 48 h until paid;
+  invoice_reminder_max (still 5, Admin "Tell me after") now = when Joseph gets his ONE "worth a call" text, right after
+  that text goes out. Query excludes overdue_owner_alerted_at only when there's no phone, so Ray Epps (alerted 10/20 under
+  the old stop) gets text 6 at the next 10 AM tick (11/07) with no second owner text; no D1 write needed.
+  test/invoice-overdue.test.mjs (npm test 91/91). Console line: "Last reminder 19 days ago (5 sent) · next one tomorrow
+  10 AM" (amber once past 5). OWNER-GUIDE + HOW-IT-WORKS updated.
 
 *** SHARE CARDS RESTYLED 2026-11-04 (worker v b736eff5 via deploy.mjs, previous 7b319ed3, checkout probe OK; previews back OFF) ***
 - Boston sent a competitor's card (3DA Dumpsters) and said "do this style". build_og.py now: page photo FULL BLEED under a

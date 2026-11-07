@@ -71,7 +71,7 @@ Each one is sent **once** unless it says otherwise. Wording is in Admin → Text
 | Invoice | Customer | When the invoice is created, and when Joseph taps Resend |
 | Invoice paid | Joseph | Seconds after payment (Stripe webhook); the hourly check catches any missed |
 | Late payment | Customer | Every 48h after the due date, up to 5 times |
-| Invoice still unpaid | Joseph | After the last late-payment text |
+| Invoice still unpaid | Joseph | Once, after the 5th late-payment text (the texts keep going until paid) |
 | Commercial quote request | Joseph | When a business fills out the quote form |
 
 Never asked twice for a review: anyone who already rated, or was asked in the last

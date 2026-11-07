@@ -374,9 +374,11 @@ export async function resendInvoice(env, S, id) {
 // Late-payment texts. Runs once a day at the reminder hour (see cron.js). For every
 // open invoice past its due date that has a phone: re-check Stripe first (never
 // chase someone who just paid), then text the pay link if the last reminder was at
-// least invoiceReminderHours ago. After invoiceReminderMax texts it stops for good
-// and texts the owner once instead. Paying or voiding ends it automatically, since
-// only status='sent' rows are picked up.
+// least invoiceReminderHours ago, and keep going until they pay (Joseph 11/06: "every
+// 48hrs until they pay"; it used to stop after 5). After invoiceReminderMax texts the
+// owner also gets ONE heads-up to call them; the texts carry on. An invoice with no
+// phone can't be texted, so the owner is told once and that's it. Paying or voiding
+// ends it automatically, since only status='sent' rows are picked up.
 export async function runInvoiceOverdueReminders(env, S) {
   if (S.invoiceRemindersOn === false) return { skipped: "off" };
   const tz = (S.business && S.business.timezone) || "America/Denver";
@@ -387,7 +389,7 @@ export async function runInvoiceOverdueReminders(env, S) {
   const cutoff = new Date(Date.now() - (every - 2) * 3600 * 1000).toISOString();
   const { results } = await env.DB.prepare(
     "SELECT id FROM invoices WHERE status='sent' AND due_date <> '' AND due_date < ?1" +
-    " AND overdue_owner_alerted_at IS NULL" +
+    " AND (overdue_owner_alerted_at IS NULL OR COALESCE(phone, '') <> '')" +
     " AND (overdue_last_sent_at IS NULL OR overdue_last_sent_at <= ?2) LIMIT 50"
   ).bind(today, cutoff).all();
 
@@ -406,13 +408,14 @@ export async function runInvoiceOverdueReminders(env, S) {
         phone: (S.business && S.business.phone) || "", customer_phone: row.phone || "",
         admin_link: base + "/admin/invoice/" + row.id,
       };
-      if (count >= max || !row.phone) {
-        // Out of reminders (or nobody to text): tell the owner once, then stop.
+      // The owner's one heads-up: no phone to text (then nothing more happens), or `max` texts gone out.
+      const tellOwner = async (n) => {
+        if (row.overdue_owner_alerted_at) return;
         await env.DB.prepare("UPDATE invoices SET overdue_owner_alerted_at=?1 WHERE id=?2").bind(new Date().toISOString(), row.id).run();
-        await sendOwnerInvoiceOverdue(S, { ...vals, name: row.customer_name || "" });
+        await sendOwnerInvoiceOverdue(S, { ...vals, count: n, name: row.customer_name || "" });
         alerted++;
-        continue;
-      }
+      };
+      if (!row.phone) { await tellOwner(count); continue; }
       const msg = fillTemplate((S.templates && S.templates.invoice_overdue) || "", vals);
       if (!msg.trim()) continue; // template blanked in the CMS = feature off
       const r = await sendInvoiceSms(S, row.phone, msg);
@@ -421,6 +424,7 @@ export async function runInvoiceOverdueReminders(env, S) {
           "UPDATE invoices SET overdue_reminders_sent=COALESCE(overdue_reminders_sent,0)+1, overdue_last_sent_at=?1 WHERE id=?2"
         ).bind(new Date().toISOString(), row.id).run();
         sent++;
+        if (count + 1 >= max) await tellOwner(count + 1);
       }
     } catch (e) {
       console.error("[invoice overdue]", id, e && e.message);

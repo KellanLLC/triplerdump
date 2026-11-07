@@ -194,10 +194,11 @@ is skipped. **Untick it for deposits or jobs you haven't done yet.** Invoices
 made before Sep 24, 2026 never send a review text.
 
 **Late payers:** once an invoice is past its due date, the customer gets a text
-with the pay link at 10am, then every 48 hours, until they pay (up to 5 texts).
+with the pay link at 10am, then every 48 hours, until they pay (no limit).
 It re-checks with Stripe first, so nobody who already paid gets chased. After the
-5th, it stops and texts **you** to give them a call. Paying or voiding the invoice
-stops it. Admin → Invoices has the on/off switch, the 48 hours and the 5; the
+5th, it also texts **you** once to give them a call, and keeps texting them. Paying
+or voiding the invoice stops it. The console's Unpaid invoices list shows each one's
+last reminder and the next. Admin → Invoices has the on/off switch, the 48 hours and the 5; the
 wording is in Admin → Texts ("Late-payment text" and "Invoice still unpaid").
 
 ### Discount codes
