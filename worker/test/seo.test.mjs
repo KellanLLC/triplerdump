@@ -123,7 +123,7 @@ test("size hub /dumpster-rental/ goes through the worker; size pages use one Off
   const hub = await (await get("/dumpster-rental/")).text();
   assert.match(hub, /<table class="cmp">/);
   assert.match(hub, /<td><b>\$375<\/b><\/td><td>3 tons<\/td>/);
-  assert.match(hub, /"@type": "FAQPage"/);
+  assert.doesNotMatch(hub, /"@type": "FAQPage"/, "no FAQ schema (SEO bible: FAQ rich results are gone)");
   const y20 = await (await get("/dumpster-rental/20-yard/")).text();
   const svc = JSON.parse([...y20.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)].map((m) => m[1]).find((j) => j.includes('"Service"')));
   assert.equal(svc.offers["@type"], "Offer");
@@ -135,7 +135,7 @@ test("size hub /dumpster-rental/ goes through the worker; size pages use one Off
 });
 
 test("city pages: the 14 kept cities, retired list matches build_pages.py, photos + ImageObject", async () => {
-  assert.equal(KEPT.length, 16);
+  assert.equal(KEPT.length, 15); // Springville retired 2026-11-07
   for (const slug of ["north-ogden", "clinton", "bountiful"]) {
     assert.equal(RETIRED_CITIES.has(slug), false, slug);
     assert.equal(marketingRedirect("/service-area/" + slug + "/"), null, slug + " is a page again");
@@ -166,9 +166,8 @@ test("city pages: the 14 kept cities, retired list matches build_pages.py, photo
   assert.match(bc, /<a href="\/service-area\/[a-z-]+\/">dumpster rental in [A-Z]/, "descriptive Also-serving anchors");
   assert.doesNotMatch(bc, /business license/i);
 
-  const sv = await (await get("/service-area/springville/")).text();
-  assert.doesNotMatch(sv, /Call to book/, "Springville books online (radius 85 mi)");
-  assert.match(sv, /href="\/book/, "Springville links to /book");
+  // Springville retired 2026-11-07 (75 mi, past the SEO bible's 50-mile line): 301 to the hub.
+  assert.equal(marketingRedirect("/service-area/springville/"), "/service-area/");
 
   const roy = await (await get("/service-area/roy/")).text();
   assert.match(roy, /href="https:\/\/www\.royutah\.gov\/departments\/public_works\/community_programs\.php" target="_blank" rel="noopener nofollow"/);
@@ -244,7 +243,7 @@ test("guides go through the worker with live prices; llms.txt lists the real gui
 test("sitemap: image namespace + job photos, fresh lastmod, new pages in, noindex pages out", () => {
   const sm = read("sitemap.xml");
   assert.match(sm, /xmlns:image="http:\/\/www\.google\.com\/schemas\/sitemap-image\/1\.1"/);
-  for (const p of ["/dumpster-rental/", "/service-area/brigham-city/", "/service-area/springville/", "/service-area/cottonwood-heights/", "/service-area/north-ogden/"]) {
+  for (const p of ["/dumpster-rental/", "/service-area/brigham-city/", "/service-area/cottonwood-heights/", "/service-area/north-ogden/"]) {
     assert.match(sm, new RegExp(`<loc>${ORIGIN}${p}</loc>`), p);
   }
   assert.doesNotMatch(sm, /not-found|\/social\//);
@@ -280,7 +279,7 @@ test("prohibited items match /terms everywhere: no 'handling fee', no small cont
 });
 
 test("same-day is promised only for near cities (min <= 25)", async () => {
-  for (const slug of ["bountiful", "cottonwood-heights", "springville"]) {
+  for (const slug of ["bountiful", "cottonwood-heights", "logan"]) {
     const html = await (await get("/service-area/" + slug + "/")).text();
     const desc = html.match(/<meta name="description" content="([^"]*)"/)[1];
     assert.doesNotMatch(desc, /same-day/i, slug + " description");
@@ -296,7 +295,7 @@ test("same-day is promised only for near cities (min <= 25)", async () => {
 test("city FAQs are city-specific: no generic permit/dumpster-days/price questions, none repeated", () => {
   const all = [];
   for (const slug of KEPT) {
-    const qs = [...read((slug === "ogden" ? "dumpster-rental/" : "service-area/") + slug + "/index.html").matchAll(/"@type": "Question",\s*"name": "([^"]+)"/g)].map((m) => m[1]);
+    const qs = [...read((slug === "ogden" ? "dumpster-rental/" : "service-area/") + slug + "/index.html").matchAll(/<div class="faq"><h3>([^<]+)<\/h3>/g)].map((m) => m[1]);
     assert.ok(qs.length >= 3, slug);
     for (const q of qs) {
       if (/^Do I need a permit for a dumpster in /.test(q)) assert.equal(slug, "ogden", q);
@@ -341,7 +340,7 @@ test("Logan + Tremonton: real pages, no job-photo claims, generic hero, not same
     const desc = html.match(/<meta name="description" content="([^"]*)"/)[1];
     assert.doesNotMatch(desc, /same-day/i);
     assert.match(html, /Next-day or a scheduled date; book a few days ahead/);
-    const qs = [...html.matchAll(/"@type": "Question",\s*"name": "([^"]+)"/g)];
+    const qs = [...html.matchAll(/<div class="faq"><h3>([^<]+)<\/h3>/g)];
     assert.ok(qs.length >= 3 && qs.length <= 4, slug + " FAQ count");
     assert.match(read("sitemap.xml"), new RegExp(`<loc>${ORIGIN}/service-area/${slug}/</loc>`));
     assert.match(read("service-area/brigham-city/index.html"), new RegExp(`href="/service-area/${slug}/">dumpster rental in `));

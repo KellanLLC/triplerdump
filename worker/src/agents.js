@@ -293,7 +293,7 @@ export function cityPath(slug) {
 export const CITY_PAGES = [
   ["West Haven", "west-haven"], ["Roy", "roy"], ["Hooper", "hooper"], ["Plain City", "plain-city"], ["Clinton", "clinton"],
   ["Ogden", "ogden"], ["Syracuse", "syracuse"], ["Clearfield", "clearfield"], ["Layton", "layton"], ["North Ogden", "north-ogden"],
-  ["Brigham City", "brigham-city"], ["Tremonton", "tremonton"], ["Logan", "logan"], ["Bountiful", "bountiful"], ["Cottonwood Heights", "cottonwood-heights"], ["Springville", "springville"],
+  ["Brigham City", "brigham-city"], ["Tremonton", "tremonton"], ["Logan", "logan"], ["Bountiful", "bountiful"], ["Cottonwood Heights", "cottonwood-heights"],
 ];
 // Guides written by build_pages.py from guides_content.py (slug, title).
 // Keep in step with guides_content.py GUIDES (a test checks the slugs exist).

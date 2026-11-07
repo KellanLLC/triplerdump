@@ -181,7 +181,7 @@ SERVICES = [
     {
         "slug": "junk-removal", "name": "Junk Removal", "price": "${{TRD:junk}}", "unit": "flat rate",
         "book": "/book?service=junk", "img": P + "06_bin_rental_3.jpeg",
-        "title": "Junk Removal Ogden, Roy & West Haven, UT | ${{TRD:junk}} Flat",
+        "title": "Junk Removal Ogden & Roy, UT | ${{TRD:junk}} Flat | Triple R Dump",
         "description": "Full-service junk removal in Ogden, Roy, West Haven and Weber County: we load it, haul it and pay the dump. ${{TRD:junk}} flat, weekends. Call 801-564-3164.",
         "h1": "Junk removal in<br>West Haven &amp; Ogden.<br><em>We do the lifting.</em>",
         "lead": "Junk removal is for the jobs that do not want a bin sitting there for three days; they want it gone by lunch. We bring the truck and the hands, load it, haul it and pay the dump. One flat rate. Weekends only, so the weekday fleet stays on the bins.",
@@ -199,7 +199,7 @@ SERVICES = [
     {
         "slug": "dump-trailer-rental", "name": "Dump Trailer Rental", "price": "${{TRD:trailer_day}}", "unit": "per day",
         "book": "/book?service=trailer", "img": P + "14_gallery_photo_4.jpg",
-        "title": "Dump Trailer Rental West Haven & Ogden, UT | ${{TRD:trailer_day}}/Day",
+        "title": "Dump Trailer Rental Ogden, UT | ${{TRD:trailer_day}}/Day | Triple R Dump",
         "description": "Rent a dump trailer by the day in West Haven, near Ogden and Roy: ${{TRD:trailer_day}} a day, 1-14 days, ${{TRD:trailer_dep}} refundable deposit. Haul and dump it yourself. 801-564-3164.",
         "h1": "Dump trailer rental<br>in West Haven, UT.<br><em>By the day.</em>",
         "lead": "Dump trailer rental is the cheapest way to move a lot of material if you have the truck and the time: your own runs to the dump, a move, hauling gravel or branches. ${{TRD:trailer_day}} a day, one to fourteen days, with a ${{TRD:trailer_dep}} deposit that comes back when the trailer does.",
@@ -217,7 +217,7 @@ SERVICES = [
     {
         "slug": "bin-switch", "name": "Bin Switch", "price": "${{TRD:binswitch}}", "unit": "per switch",
         "book": "/book?service=binswitch", "img": P + "13_gallery_photo_3.jpeg",
-        "title": "Dumpster Swap-Out, Ogden & Weber County | ${{TRD:binswitch}} Bin Switch",
+        "title": "Dumpster Swap-Out Ogden | ${{TRD:binswitch}} Bin Switch | Triple R Dump",
         "description": "Bin full before the job is done? We haul it and drop a fresh dumpster in the same trip, ${{TRD:binswitch}} plus the new rental. Ogden, Roy, West Haven and Davis County.",
         "h1": "Dumpster swap-out in<br>West Haven &amp; Ogden.<br><em>Full bin? Same trip.</em>",
         "lead": "A dumpster swap-out is for the remodel that found another wall, the roof with one more layer than anyone thought, the cleanout that kept going. When the bin fills before the job ends, a switch hauls the full one away and drops a fresh one in the same trip, so nothing sits and nobody waits.",
@@ -296,8 +296,11 @@ CITIES = [
 # Then Tremonton and Logan (approved by Boston, both closer than Springville):
 # NO job photos there, so no "Recent job" section, no past-job claims, and a
 # generic hero photo (never another city's job photo, whose caption would lie).
+# 2026-11-07: Springville retired (75 mi out, past the SEO bible's 50-mile line for
+# city pages without a real location there). We still deliver there; its job photo
+# stays on the hub, unlinked, and the old URL 301s to /service-area/.
 KEPT_CITIES = ["west-haven", "roy", "hooper", "ogden", "plain-city", "syracuse", "clearfield", "layton",
-               "north-ogden", "clinton", "bountiful", "brigham-city", "springville", "cottonwood-heights",
+               "north-ogden", "clinton", "bountiful", "brigham-city", "cottonwood-heights",
                "tremonton", "logan"]
 RETIRED_CITIES = [c["slug"] for c in CITIES if c["slug"] not in KEPT_CITIES]
 
@@ -1031,9 +1034,8 @@ def faq_block(faqs, title="Questions people ask", tone="paper", raw=False):
     items = "".join(f'\n      <div class="faq"><h3>{e(q)}</h3><p>{e(a)}</p></div>' for q, a in faqs)
     return sec(tone, head("Straight answers", title) + f'\n    <div class="faqs">{items}\n    </div>')
 
-def faq_ld(faqs):
-    return ld({"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [
-        {"@type": "Question", "name": plain(q), "acceptedAnswer": {"@type": "Answer", "text": plain(a)}} for q, a in faqs]})
+# No FAQPage JSON-LD (removed 2026-11-07): Google no longer shows FAQ rich results
+# and the SEO bible says it adds nothing. The FAQs stay as visible text.
 
 def cta(tone="stone", far=False):
     delivery = "Next-day or a scheduled date; book a few days ahead" if far else "Same-day and next-day most days"
@@ -1148,7 +1150,9 @@ for s in SIZES:
     yd = s["yd"]
     path = f"/dumpster-rental/{s['slug']}/"
     p47, tons = T(f"d{yd}_47"), T(f"tons{yd}")
-    title = fit(f"{yd} Yard Dumpster Rental in Ogden, Weber & Davis | ${p47}",
+    # Keyword | benefit | brand (SEO bible title formula), else the old unbranded forms.
+    title = fit(f"{yd} Yard Dumpster Rental Ogden, UT | ${p47} | Triple R Dump",
+                f"{yd} Yard Dumpster Rental in Ogden, Weber & Davis | ${p47}",
                 f"{yd} Yard Dumpster Rental Ogden, UT | ${p47}")
     desc = fit_desc(
         f"{yd} yard roll-off dumpster rental in Ogden, Roy, Layton and across Weber & Davis: ${p47} for up to 7 days, {tons} tons and the dump fee included. {BIZ['phone']}",
@@ -1189,7 +1193,6 @@ for s in SIZES:
             "description": desc, "image": SITE + s["img"], "provider": PROVIDER, "areaServed": AREA_LD, "url": SITE + path,
             "offers": {"@type": "Offer", "name": f"{yd} yard roll-off, up to 7 days, dump fee included", "price": p47, "priceCurrency": "USD",
                        "availability": "https://schema.org/InStock", "url": SITE + f"/book?size={yd}"}}),
-        faq_ld(s["faq"]),
         breadcrumbs([("Home", "/"), ("Dumpster sizes", "/dumpster-rental/"), (f"{yd} yard", path)]),
     ]
     write(f"dumpster-rental/{s['slug']}/index.html", page(path, title, desc, body, schemas, og_image=s["img"]))
@@ -1250,7 +1253,6 @@ write("dumpster-rental/index.html", page(
     [
         ld({"@context": "https://schema.org", "@type": "ItemList", "name": "Roll-off dumpster sizes", "itemListElement": [
             {"@type": "ListItem", "position": i + 1, "name": f"{s['yd']} Yard Dumpster Rental", "url": SITE + f"/dumpster-rental/{s['slug']}/"} for i, s in enumerate(SIZES)]}),
-        faq_ld(HUB_FAQ),
         breadcrumbs([("Home", "/"), ("Dumpster sizes", "/dumpster-rental/")]),
     ],
     og_image=P + "02_20yd_bin_side.jpeg",
@@ -1287,7 +1289,6 @@ for s in SERVICES:
         ld({"@context": "https://schema.org", "@type": "Service", "name": s["name"], "serviceType": s["name"], "description": s["description"], "provider": PROVIDER,
             "areaServed": AREA_LD,
             "offers": {"@type": "Offer", "price": s["price"].strip("$"), "priceCurrency": "USD", "url": SITE + s["book"]}, "url": SITE + path}),
-        faq_ld(s["faq"]),
         breadcrumbs([("Home", "/"), (s["name"], path)]),
     ]
     write(f"{s['slug']}/index.html", page(path, s["title"], s["description"], body, schemas, og_image=s["img"]))
@@ -1307,8 +1308,9 @@ def jobs_strip(slugs):
     for slug in slugs:
         name, orient, date, alt = JOBS[slug][0]
         city = CITY_NAME[slug]
-        cards.append(f'\n      <a class="jobc rv-in" href="{city_url(slug)}">{job_img(name, orient, alt, sizes="(max-width: 760px) 100vw, 33vw")}'
-                     f'<span class="jobc__t"><b>Dumpster rental in {esc(city)}</b><small>{month_year(date)}</small></span><span class="ridge"></span></a>')
+        tag, end = (f'a class="jobc rv-in" href="{city_url(slug)}"', "a") if slug in KEPT_CITIES else ('div class="jobc rv-in"', "div")
+        cards.append(f'\n      <{tag}>{job_img(name, orient, alt, sizes="(max-width: 760px) 100vw, 33vw")}'
+                     f'<span class="jobc__t"><b>Dumpster rental in {esc(city)}</b><small>{month_year(date)}</small></span><span class="ridge"></span></{end}>')
     return f'\n    <div class="jobcs">{"".join(cards)}\n    </div>'
 
 HUB_COUNTIES = ["Weber", "Davis", "Box Elder", "Cache", "Salt Lake", "Utah", "Morgan"]
@@ -1382,7 +1384,8 @@ for c in kept():
     covers = f" We also cover {', '.join(x['covers'][:-1]) + ' and ' + x['covers'][-1] if len(x['covers']) > 1 else x['covers'][0]} from here." if x["covers"] else ""
     near = sorted([n for n in kept() if n["slug"] != c["slug"]], key=lambda n: geo_km(c["slug"], n["slug"]))[:5]
     p = T("d15_47")
-    title = fit(f"Dumpster Rental {name}, UT | ${p} · Dump Fee Included",
+    title = fit(f"Dumpster Rental {name}, UT | From ${p} | Triple R Dump",
+                f"Dumpster Rental {name}, UT | ${p} · Dump Fee Included",
                 f"{name} Dumpster Rental | ${p} · Dump Fee Included",
                 f"Dumpster Rental {name}, UT | From ${p}")
     speed = "Next-day or scheduled delivery" if far else "Same-day delivery"
@@ -1434,7 +1437,7 @@ for c in kept():
                "offers": {"@type": "AggregateOffer", "lowPrice": T("d15_47"), "highPrice": T("d25_47"), "priceCurrency": "USD", "offerCount": 3}}
     if photos:
         service["image"] = [SITE + job_src(n) for n, _, _, _ in photos]
-    schemas = [ld(service), faq_ld(city_faq), breadcrumbs(city_crumbs(name, path))] + image_ld(c["slug"], name)
+    schemas = [ld(service), breadcrumbs(city_crumbs(name, path))] + image_ld(c["slug"], name)
     write(path.strip("/") + "/index.html", page(path, title, desc, body, schemas,
           og_image=job_src(job[0]) if job else hero_img, preload=preload_img(job[0], job[1]) if job else ""))
     urls.append((path, "0.7", TODAY, job_images(c["slug"], name)))
@@ -1463,7 +1466,7 @@ write("faq/index.html", page(
     fit_desc(f"What size dumpster you need, what ${T('d15_47')} includes, how long you keep it, what can't go in and where we deliver. Straight answers from Triple R Dump.",
              "What size dumpster you need, what the price includes, how long you keep it, what can't go in and where we deliver. Straight answers."),
     faq_body,
-    [faq_ld(FAQ), breadcrumbs([("Home", "/"), ("FAQ", "/faq/")])],
+    [breadcrumbs([("Home", "/"), ("FAQ", "/faq/")])],
     og_image=job_src(faq_job[0]),
 ))
 urls.append(("/faq/", "0.6", TODAY, []))
@@ -1593,7 +1596,7 @@ if GUIDES:
         body = hero(
             g.get("kicker", "Guide"),
             g["h1"],
-            esc(plain(g["description"])),
+            g["lead"],  # the answer, right under the H1 (SEO bible: answer first)
             None if job else img,
             "/book",
             "Book online",
@@ -1602,7 +1605,7 @@ if GUIDES:
         ) + ticker() + sec("paper", f'''
     <div class="two">
       <article class="prose">
-        <p class="answer">{g["lead"]}</p>{guide_body_html(g)}
+{guide_body_html(g)}
         <p class="byline">By Joseph Rodrigues, owner of Triple R Dump · Updated {month_year(GUIDES_UPDATED)}</p>
       </article>{side_card("Need a bin?", f"${T('d15_47')}<small>15 yard, up to 7 days, dump fee included</small>", ["20 yard $" + T("d20_47") + ", 25 yard $" + T("d25_47"), "Same-day delivery most days", "The owner answers the phone"], "/book", "Book online", BIZ["tel"], f"or call {BIZ['phone']}")}
     </div>''')
@@ -1623,8 +1626,6 @@ if GUIDES:
                 "publisher": BUSINESS_REF, "mainEntityOfPage": SITE + path}),
             breadcrumbs([("Home", "/"), ("Guides", "/guides/"), (plain(g["title"]), path)]),
         ]
-        if g.get("faq"):
-            schemas.insert(1, faq_ld(g["faq"]))
         write(f"guides/{g['slug']}/index.html", page(path, plain(g["title"]), plain(g["description"]), body, schemas, og_image=img, og_type="article",
                                                        preload=preload_img(job[0], job[1]) if job else ""))
         urls.append((path, "0.6", GUIDES_UPDATED, [(SITE + img, plain(g.get("img_alt", "")))] if jobname else []))

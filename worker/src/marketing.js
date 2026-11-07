@@ -26,6 +26,8 @@ export function isMarketingPath(p) {
 export const RETIRED_CITIES = new Set([
   "riverdale", "south-ogden", "washington-terrace", "farr-west",
   "kaysville", "farmington", "morgan", "salt-lake-city",
+  // 2026-11-07: 75 mi out, past the SEO bible's 50-mile line for city pages.
+  "springville",
 ]);
 
 // Old Wix-era URLs (and the slash spellings of the two worker pages) that people

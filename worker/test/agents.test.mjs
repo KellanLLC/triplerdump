@@ -127,7 +127,7 @@ test("generated pages convert too (FAQ headings, 15yd tokens resolved)", async (
   const faq = await (await get("/faq/", "text/markdown")).text();
   assert.match(faq, /^### What size dumpster do I need\?$/m);
   const y15 = await (await get("/dumpster-rental/15-yard/", "text/markdown")).text();
-  assert.match(y15, /^title: "15 Yard Dumpster Rental in Ogden, Weber & Davis \| \$319"$/m);
+  assert.match(y15, /^title: "15 Yard Dumpster Rental Ogden, UT \| \$319 \| Triple R Dump"$/m);
   assert.match(y15, /^- Garage and shed cleanouts$/m, "lists become Markdown lists");
   assert.doesNotMatch(y15, /\{\{TRD:/);
 });
@@ -206,7 +206,8 @@ test("/llms.txt: llmstxt.org shape, when-to-use guidance, live prices", async ()
   assert.doesNotMatch(t, /4-7 days|four counties/);
   assert.match(t, /Utah County as far south as Springville/);
   assert.match(t, /^- \[Dumpster rental in Brigham City\]\(https:\/\/www\.triplerdump\.com\/service-area\/brigham-city\/\)$/m);
-  assert.match(t, /^- \[Dumpster rental in Springville\]\(https:\/\/www\.triplerdump\.com\/service-area\/springville\/\)$/m);
+  assert.doesNotMatch(t, /service-area\/springville/, "Springville page retired 2026-11-07");
+  assert.match(t, /^- \[Dumpster rental in Ogden\]\(https:\/\/www\.triplerdump\.com\/dumpster-rental\/ogden\/\)$/m);
   assert.match(t, /^- \[Dumpster sizes and prices\]\(https:\/\/www\.triplerdump\.com\/dumpster-rental\/\)/m);
   assert.match(t, /^## Guides$/m);
   assert.match(t, /^- Junk removal: \$550 flat \(weekends only\)$/m);

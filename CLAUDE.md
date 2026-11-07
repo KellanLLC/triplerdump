@@ -1,3 +1,24 @@
+*** SEO BIBLE FIXES 2026-11-07 night (worker v 748b5e70 then a1603fbe via deploy.mjs, previous 3e6eff8c, checkout probe
+    OK both; previews back OFF) ***
+- Boston: "fix those" (the bible gaps), skip the top-menu one. His picks: retire Springville only; WAIT on moving the other
+  15 city URLs until Ogden shows results (3-4 weeks).
+  1) SPRINGVILLE PAGE RETIRED (75 mi, past the bible's 50-mile line for city pages without a real location). Removed from
+     KEPT_CITIES (build_pages.py) + CITY_PAGES (agents.js); marketing.js RETIRED_CITIES has it, so /service-area/springville/
+     301s to /service-area/. We STILL DELIVER there (radius, fuel, "as far south as Springville" wording unchanged). Its
+     job photo stays in the hub strip as an unlinked card (jobs_strip: retired = <div>); homepage city list shows it as a
+     <span>; homepage JSON-LD keeps the City without a url. Logan (~39 mi) + Cottonwood Heights (~43 mi) stay. 15 city pages.
+  2) FAQPage JSON-LD REMOVED sitewide (faq_ld gone; FAQs stay as visible text). Tests now read the visible FAQ <h3>s.
+  3) GUIDES: the answer (g["lead"]) is now the hero text right under the H1 (was the meta description); the duplicate
+     answer box below the hero is gone.
+  4) TITLES = keyword | benefit | brand where it fits 60: cities "Dumpster Rental Roy, UT | From $320 | Triple R Dump"
+     (Cottonwood Heights falls back unbranded), sizes "15 Yard Dumpster Rental Ogden, UT | $320 | Triple R Dump", junk
+     "Junk Removal Ogden & Roy, UT | $550 Flat | Triple R Dump", trailer "Dump Trailer Rental Ogden, UT | $200/Day | Triple
+     R Dump", swap-out "Dumpster Swap-Out Ogden | $220 Bin Switch | Triple R Dump". (West Haven dropped from the junk +
+     trailer titles to fit; "Dump Fee Included" dropped from city titles, still in the descriptions and on the page.)
+  NOT FIXABLE BY US: 9 city pages without a job photo; needs Joseph's real photos from Ogden, Layton, Syracuse, Hooper,
+  Plain City, Clearfield, West Haven, Tremonton, Logan (never reuse another city's photo).
+- npm test 91/91. Live re-scan: 36 sitemap pages 200, 0 problems, 0 broken links/assets.
+
 *** OGDEN PAGE MOVED + HOMEPAGE STOPS COMPETING 2026-11-07 later (worker v 3e6eff8c via deploy.mjs, previous 0bd53027,
     checkout probe OK; previews back OFF) ***
 - Boston: in GSC "dumpster rental ogden" shows the HOMEPAGE most, /service-area/ogden/ second (cannibalization: the

@@ -32,9 +32,8 @@ const X = "×";
 const NOTE = "Delivery is included within 30 miles of our West Haven yard (straight line); farther out we add a $40 fuel charge plus $1 for every mile past 30, shown before you pay.";
 
 test("far towns state their own fuel charge, from the same town table a booking uses", async () => {
-  const spr = await page("/service-area/springville/");
-  assert.match(spr, new RegExp("Springville is about 75 miles from our yard in a straight line, so a fuel charge of about \\$85 goes on \\(\\$40 \\+ 45 miles " + X + " \\$1\\)"));
-  assert.doesNotMatch(spr, /the drive is on us/);
+  const ch = await page("/service-area/cottonwood-heights/");
+  assert.match(ch, /Cottonwood Heights is about 43 miles from our yard in a straight line, so a fuel charge of about \$53 goes on \(\$40 \+ 13 miles × \$1\)/);
   const logan = await page("/service-area/logan/");
   assert.match(logan, /Logan is about 39 miles from our yard in a straight line, so a fuel charge of about \$49 goes on/);
   assert.doesNotMatch(logan, /canyon\?", "No\./);
@@ -62,7 +61,7 @@ test("the cost guide, the FAQ, the hub and the homepage explain it; nothing says
 
 test("his own numbers flow through, and off means the pages say so", async () => {
   const mine = [{ key: "fuel_per_mile", value: JSON.stringify({ free: 40, base: 2500, cents: 150 }) }];
-  assert.match(await page("/service-area/springville/", mine), new RegExp("about 75 miles .* about \\$77\\.50 goes on \\(\\$25 \\+ 35 miles " + X + " \\$1\\.50\\)"));
+  assert.match(await page("/service-area/cottonwood-heights/", mine), /about 43 miles .* about \$29\.50 goes on \(\$25 \+ 3 miles × \$1\.50\)/);
   assert.match(await page("/service-area/logan/", mine), /Logan is inside the 40 miles from our yard where delivery is included/);
   const off = [{ key: "fuel_per_mile", value: JSON.stringify({ free: 30, base: 0, cents: 0 }) }];
   assert.match(await page("/service-area/logan/", off), /There is no fuel charge to Logan\./);
