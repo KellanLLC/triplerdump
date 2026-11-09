@@ -1,3 +1,22 @@
+*** EDIT A SENT INVOICE + NOTICE 2026-11-09 later (worker v 7ac0f5de via deploy.mjs, previous 3066ba65, checkout probe OK;
+    previews back OFF; console = trykellan Pages deployment e89a7673) -- SUPERSEDES the job-only route in the entry below ***
+- Boston: "make more configurable", and if the customer needs a notice: "hey name your invoice has been edited, <note>"
+  (e.g. Joseph put the wrong price). invoice.js editInvoice replaces setInvoiceJobRef: job, items, taxable, due_date, notify,
+  note. Same Stripe revision + row-first order. When lines change: delete the draft's copied invoice items (line.parent.
+  invoice_item_details.invoice_item), re-add via addChargeLines (shared with createInvoice), tax redone with totalsFor; if
+  Stripe's total isn't what Joseph was shown the draft is deleted. Unchanged lines are left alone (no re-tax). New due date
+  moves final_notice_date (due + invoiceFinalNoticeDays) unless already sent.
+- notify on: Stripe emails the new invoice, template invoice_edited texts the customer ({note} + usual invoice tokens,
+  /admin Texts tab "Invoice edited", tpl_invoice_edited wired into saveSettings); the note also prints as the invoice memo
+  (Stripe description). notify off: nothing goes out, memo cleared.
+- POST /api/console/invoice/<id>/edit (owners; /job is gone). Console: row shows "Job: ..." + one "Edit"; opens the New
+  invoice sheet in edit mode (iv.edit): job, due date, chips, lines, tax, totals, "Let them know it changed" + note + preview.
+- Edit-mode totals take the credit BEFORE tax (matches totalsFor). KNOWN MISMATCH, not touched: the New invoice sheet shows
+  tax on the gross and the credit after tax, but createInvoice bills tax on the net, so a new invoice with a scrap credit
+  can bill a different total than the sheet showed.
+- npm test 100/100 (test/invoice-edit.test.mjs). Real editInvoice run on Stripe SANDBOX (price + added line + job + due + note;
+  clear job silently; tax off; PDF checked); sample console at 375 px. NOT run on a live invoice; live console not opened.
+
 *** JOB LINE ON A SENT INVOICE 2026-11-09 (worker v 3066ba65 via deploy.mjs, previous a1603fbe, checkout probe OK; previews
     back OFF; console = trykellan Pages deployment 94241a73) ***
 - Joseph: "editing invoices that I've already sent that I forgot to put the job number on". Stripe refuses every edit to a

@@ -49,6 +49,8 @@ const DEFAULT_TEMPLATES = {
   // Late-payment texts (sent at the daily reminder hour, every invoiceReminderHours
   // after the due date, until they pay). Adds {days_late}.
   invoice_overdue: "Hi {name}, a reminder from Triple R Dump: invoice {number} for {total} was due {due} ({days_late} days ago). Pay here: {invoice_link} Questions? {phone}",
+  // Sent when Joseph edits a sent invoice and leaves "Let them know" on. {note} = what he typed, can be blank.
+  invoice_edited: "Hey {name}, your invoice from Triple R Dump has been edited. {note} New total {total}, due {due}. See it and pay here: {invoice_link} Questions? {phone}",
   // Owner heads-up, once, after invoiceReminderMax reminders (the texts keep going).
   owner_invoice_overdue: "{name} still hasn't paid invoice {number} ({total}, {days_late} days late) after {count} reminder texts. Worth a call: {customer_phone}. {admin_link}",
   // The final notice: ONE text, invoiceFinalNoticeDays after the due date (Joseph 10/29: "a text that

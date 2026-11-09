@@ -15,7 +15,7 @@ import { stripeKey } from "./stripe.js";
 import { fillTemplate } from "./settings.js";
 import { sendInvoiceSms, sendOwnerInvoicePaid, sendOwnerInvoiceOverdue, sendOwnerInvoiceFinal } from "./sms.js";
 import { startReview } from "./review.js";
-import { todayISO, addDays } from "./util.js";
+import { todayISO, addDays, isISODate } from "./util.js";
 
 const API = "https://api.stripe.com/v1/";
 
@@ -100,6 +100,24 @@ function dueDateToUnix(ymd) {
   return Number.isFinite(t) ? Math.floor(t / 1000) : null;
 }
 
+// Writes the charges and the tax line onto a draft invoice.
+// NOTE: invoiceitems does NOT accept `unit_amount` on this API version ("Received unknown parameter:
+// unit_amount. Did you mean unit_amount_decimal?", verified 2026-07-27). Use unit_amount_decimal WITH
+// quantity so the invoice shows a real "2 x $75.00" line; a flat `amount` collapses qty into a lump sum.
+async function addChargeLines(key, customerId, invoiceId, items, tax_cents, S) {
+  const add = (fields) => stripeCall(key, "invoiceitems", { customer: customerId, invoice: invoiceId, currency: "usd", ...fields });
+  for (const it of items) {
+    const r = await add({ unit_amount_decimal: String(it.unit_cents), quantity: String(it.qty), description: it.description });
+    if (!r.ok) return r;
+  }
+  if (tax_cents > 0) {
+    const pct = ((Number(S.taxRate) || 0) * 100).toFixed(3).replace(/\.?0+$/, "");
+    const r = await add({ unit_amount_decimal: String(tax_cents), quantity: "1", description: "Utah sales tax (" + pct + "%)" });
+    if (!r.ok) return r;
+  }
+  return { ok: true };
+}
+
 /**
  * Creates + sends a Stripe invoice, then records it in D1.
  * `data`: { customer_name, email, phone, company, booking_id, items[], due_date,
@@ -168,33 +186,8 @@ export async function createInvoice(env, S, data) {
   const stripeInvoiceId = inv.data.id;
 
   // 3. Line items, bound to the draft.
-  // NOTE: invoiceitems does NOT accept `unit_amount` on this API version ("Received
-  // unknown parameter: unit_amount. Did you mean unit_amount_decimal?", verified
-  // 2026-07-27). Use unit_amount_decimal WITH quantity so the invoice shows a real
-  // "2 x $75.00" line; a flat `amount` would collapse qty into one lump sum.
-  for (const it of items) {
-    const r = await stripeCall(key, "invoiceitems", {
-      customer: customerId,
-      invoice: stripeInvoiceId,
-      currency: "usd",
-      unit_amount_decimal: String(it.unit_cents),
-      quantity: String(it.qty),
-      description: it.description,
-    });
-    if (!r.ok) return { ok: false, error: r.message };
-  }
-  if (tax_cents > 0) {
-    const pct = ((Number(S.taxRate) || 0) * 100).toFixed(3).replace(/\.?0+$/, "");
-    const r = await stripeCall(key, "invoiceitems", {
-      customer: customerId,
-      invoice: stripeInvoiceId,
-      currency: "usd",
-      unit_amount_decimal: String(tax_cents),
-      quantity: "1",
-      description: "Utah sales tax (" + pct + "%)",
-    });
-    if (!r.ok) return { ok: false, error: r.message };
-  }
+  const added = await addChargeLines(key, customerId, stripeInvoiceId, items, tax_cents, S);
+  if (!added.ok) return { ok: false, error: added.message };
 
   // 4. Send — finalizes AND emails in one call, returning the payable link.
   const sent = await stripeCall(key, "invoices/" + encodeURIComponent(stripeInvoiceId) + "/send", {});
@@ -351,24 +344,46 @@ export async function voidInvoice(env, S, id) {
   return { ok: true };
 }
 
-// Puts a job / work order line on an invoice that has already gone out (Joseph 11/09: "invoices
-// that I've already sent that I forgot to put the job number on"). Stripe won't edit a sent invoice
-// (only metadata; verified in sandbox), so this is Stripe's own revision: a copy with the same lines
-// and total that replaces the original (voided the moment the copy is finalized) and gets the next
-// number (-0001 -> -0002). Same row here, so /inv/<id>, the late-payment texts, the final notice and
-// due_date all carry on. Paid and voided invoices can't be revised.
-export async function setInvoiceJobRef(env, S, id, value) {
-  const job = jobRefOf(value);
-  if (!job) return { ok: false, error: "Type the job or work order number first." };
+// Edits an invoice that has already gone out: job line, charges, tax, due date (Joseph 11/09: forgot the
+// job number, or "did the price wrong on accident"). Stripe won't edit a sent invoice (only metadata;
+// verified in sandbox), so this is Stripe's own revision: a corrected copy that replaces the original
+// (voided the moment the copy is finalized) and gets the next number (-0001 -> -0002). Same row here, so
+// /inv/<id>, the late-payment texts and the final notice carry on. Paid and voided invoices can't be
+// revised. notify: emails the new invoice and texts template invoice_edited with Joseph's {note}; the
+// note also prints on the invoice. notify false: nothing goes to the customer.
+export async function editInvoice(env, S, id, input = {}) {
   const row = await env.DB.prepare("SELECT * FROM invoices WHERE id=?1").bind(id).first();
   if (!row) return { ok: false, error: "Invoice not found." };
   if (row.status === "paid") return { ok: false, error: "That invoice is already paid, so Stripe won't let it change." };
   if (row.status === "void") return { ok: false, error: "That invoice was voided." };
   if (!row.stripe_invoice_id) return { ok: false, error: "That invoice isn't in Stripe." };
-  if (row.job_ref === job) return { ok: true, unchanged: true, number: row.number || "", job_ref: job, emailed: false };
+
+  const oldJob = row.job_ref || "", job = input.job_ref === undefined ? oldJob : jobRefOf(input.job_ref);
+  let oldItems = [];
+  try { oldItems = JSON.parse(row.line_items || "[]"); } catch { oldItems = []; }
+  const items = !Array.isArray(input.items) ? oldItems : input.items.map((i) => ({
+    description: String((i && i.description) || "").trim().slice(0, 200),
+    qty: Math.max(1, Math.round(Number(i && i.qty) || 1)),
+    unit_cents: Math.round(Number(i && i.unit_cents) || 0),
+  })).filter((i) => i.description && i.unit_cents !== 0);
+  if (!items.length) return { ok: false, error: "An invoice needs at least one charge." };
+  const wasTaxed = Number(row.tax_cents) > 0, taxable = input.taxable === undefined ? wasTaxed : !!input.taxable;
+  // Compared the way the console shows a line, so an untouched "Bin × 2" doesn't count as a change.
+  const shape = (list) => JSON.stringify(list.map((i) => [i.description.replace(/ × \d+$/, ""), i.qty * i.unit_cents]));
+  const linesChanged = taxable !== wasTaxed || shape(items) !== shape(oldItems);
+  const totals = linesChanged ? totalsFor(items, S.taxRate, taxable)
+    : { subtotal_cents: row.subtotal_cents, tax_cents: row.tax_cents, total_cents: row.total_cents };
+  if (!(totals.total_cents > 0)) return { ok: false, error: "The total has to be more than $0." };
+
+  const tz = (S.business && S.business.timezone) || "America/Denver";
+  const askedDue = input.due_date ? String(input.due_date) : "";
+  if (askedDue && !isISODate(askedDue)) return { ok: false, error: "That due date doesn't look right." };
+  if (askedDue && askedDue !== row.due_date && askedDue < todayISO(tz)) return { ok: false, error: "Pick a due date of today or later." };
+  const newDue = askedDue || row.due_date || "";
+  if (job === oldJob && !linesChanged && newDue === (row.due_date || "")) return { ok: true, unchanged: true, number: row.number || "" };
+
   const { key } = stripeKey(env, S);
   if (!key) return { ok: false, error: "Stripe key not configured." };
-
   const oldId = row.stripe_invoice_id;
   const cur = await stripeCall(key, "invoices/" + encodeURIComponent(oldId), null, "GET");
   if (!cur.ok) return { ok: false, error: cur.message };
@@ -378,23 +393,36 @@ export async function setInvoiceJobRef(env, S, id, value) {
   if (!draft.ok) return { ok: false, error: draft.message };
   const newId = draft.data.id, path = "invoices/" + encodeURIComponent(newId);
   const dropDraft = () => stripeCall(key, path, null, "DELETE");
-  // Never let a replacement bill a different amount than the one it replaces.
-  if (draft.data.total !== cur.data.total) {
+
+  if (linesChanged) {
+    const listed = await stripeCall(key, path + "/lines?limit=100", null, "GET");
+    if (!listed.ok) { await dropDraft(); return { ok: false, error: listed.message }; }
+    for (const line of listed.data.data || []) {
+      const item = line.parent && line.parent.invoice_item_details && line.parent.invoice_item_details.invoice_item;
+      const gone = item ? await stripeCall(key, "invoiceitems/" + encodeURIComponent(item), null, "DELETE") : { ok: false, message: "Stripe's copy had a line that can't be changed." };
+      if (!gone.ok) { await dropDraft(); return { ok: false, error: gone.message }; }
+    }
+    const added = await addChargeLines(key, draft.data.customer, newId, items, totals.tax_cents, S);
+    if (!added.ok) { await dropDraft(); return { ok: false, error: added.message }; }
+  }
+
+  // A revision doesn't copy the due date, and Stripe refuses one in the past: an overdue invoice left
+  // on its old date prints tomorrow. Our own due_date stays, so reminders and the final notice keep theirs.
+  const nowUnix = Math.floor(Date.now() / 1000), dueUnix = dueDateToUnix(newDue);
+  const dueMoved = !(dueUnix && dueUnix > nowUnix + 3600);
+  const note = input.notify ? String(input.note || "").replace(/\s+/g, " ").trim().slice(0, 300) : "";
+  const params = { auto_advance: "false", due_date: String(dueMoved ? nowUnix + 86400 : dueUnix), description: note };
+  if (job !== oldJob) {
+    if (job) { params["custom_fields[0][name]"] = "Job / Work order"; params["custom_fields[0][value]"] = job; }
+    else params.custom_fields = "";
+  }
+  const upd = await stripeCall(key, path, params);
+  if (!upd.ok) { await dropDraft(); return { ok: false, error: upd.message }; }
+  // Never let a replacement bill anything but the amount Joseph was shown.
+  if (upd.data.total !== (linesChanged ? totals.total_cents : cur.data.total)) {
     await dropDraft();
     return { ok: false, error: "Stripe's copy came out a different amount, so nothing was changed." };
   }
-
-  // A revision doesn't copy the due date, and Stripe refuses one in the past: an overdue invoice
-  // prints tomorrow. Our own due_date stays, so reminders and the final notice keep their dates.
-  const nowUnix = Math.floor(Date.now() / 1000), dueUnix = dueDateToUnix(row.due_date);
-  const dueMoved = !(dueUnix && dueUnix > nowUnix + 3600);
-  const upd = await stripeCall(key, path, {
-    "custom_fields[0][name]": "Job / Work order",
-    "custom_fields[0][value]": job,
-    auto_advance: "false",
-    due_date: String(dueMoved ? nowUnix + 86400 : dueUnix),
-  });
-  if (!upd.ok) { await dropDraft(); return { ok: false, error: upd.message }; }
 
   // Point the row at the copy BEFORE the original is voided, so the invoice.voided webhook for the
   // original finds no row and can't mark this bill void.
@@ -407,16 +435,35 @@ export async function setInvoiceJobRef(env, S, id, value) {
     await dropDraft();
     return { ok: false, error: fin.message };
   }
+
+  const noticeDays = Number(S.invoiceFinalNoticeDays) || 0;
+  const finalNotice = newDue !== (row.due_date || "") && row.final_notice_date && !row.final_notice_sent_at && noticeDays > 0
+    ? addDays(newDue, noticeDays) : row.final_notice_date;
   try {
-    await env.DB.prepare("UPDATE invoices SET number=?1, hosted_url=?2, pdf_url=?3, job_ref=?4 WHERE id=?5")
-      .bind(fin.data.number || "", fin.data.hosted_invoice_url || "", fin.data.invoice_pdf || "", job, id).run();
+    await env.DB.prepare(
+      "UPDATE invoices SET number=?1, hosted_url=?2, pdf_url=?3, job_ref=?4, line_items=?5, subtotal_cents=?6, tax_cents=?7, total_cents=?8, due_date=?9, final_notice_date=?10 WHERE id=?11"
+    ).bind(fin.data.number || "", fin.data.hosted_invoice_url || "", fin.data.invoice_pdf || "", job || null, JSON.stringify(items),
+      totals.subtotal_cents, totals.tax_cents, totals.total_cents, newDue, finalNotice || null, id).run();
   } catch (e) {
     console.error("[invoice] revise details not saved", id, e && e.message ? e.message : e);
     return { ok: false, error: "Stripe made the new invoice " + (fin.data.number || newId) + " but saving it here failed. Do NOT send another. Check Stripe." };
   }
-  // The emailed link to the original is dead now, so they need the new one.
-  const sent = await stripeCall(key, path + "/send", {});
-  return { ok: true, number: fin.data.number || "", job_ref: job, hosted_url: fin.data.hosted_invoice_url || "", emailed: sent.ok, due_moved: dueMoved };
+
+  let emailed = false, texted = false;
+  if (input.notify) {
+    emailed = (await stripeCall(key, path + "/send", {})).ok;
+    try {
+      const base = (S.publicBaseUrl || "").replace(/\/+$/, "");
+      const message = fillTemplate((S.templates && S.templates.invoice_edited) || "", {
+        name: row.customer_name, number: fin.data.number || "", total: money(totals.total_cents), due: newDue,
+        note: note && !/[.!?]$/.test(note) ? note + "." : note,
+        invoice_link: base + "/inv/" + id, phone: (S.business && S.business.phone) || "",
+      }).replace(/ {2,}/g, " ").trim();
+      if (row.phone && message) { await sendInvoiceSms(S, row.phone, message); texted = true; }
+    } catch (e) { console.error("[invoice] edited text failed", id, e && e.message ? e.message : e); }
+  }
+  return { ok: true, number: fin.data.number || "", job_ref: job, hosted_url: fin.data.hosted_invoice_url || "", due_date: newDue, final_notice_date: finalNotice || "",
+    subtotal_cents: totals.subtotal_cents, tax_cents: totals.tax_cents, total_cents: totals.total_cents, was_cents: row.total_cents, emailed, texted, due_moved: dueMoved };
 }
 
 // Re-texts the pay link for an already-sent invoice. Creates NOTHING in Stripe, so
