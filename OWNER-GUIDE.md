@@ -170,6 +170,13 @@ invoice (PDF, email and pay page), and you can search invoices by it. The same
 box is on the console's New invoice and on "weigh and bill" for regulars billed
 after pickup. Leave it blank for everyone else.
 
+**Forgot the job number on an invoice you already sent?** In the console, open the
+customer, find it under "Invoices you've sent" and tap "Add job #". Stripe can't
+change a sent invoice, so this cancels it and emails the customer a new one: same
+amount, the job number on it, and the next invoice number. Your late-payment texts
+keep going from the original due date. An overdue invoice will print as due
+tomorrow, because Stripe won't print a past date. Paid invoices can't be changed.
+
 **Bin switch day:** on the console's New invoice, tap "+ Bin switch" and a
 "Switch day" box shows under it. Pick the day and the invoice line reads
 "Bin switch · Wed Nov 4". If you already booked the switch from the job, the

@@ -1,3 +1,19 @@
+*** JOB LINE ON A SENT INVOICE 2026-11-09 (worker v 3066ba65 via deploy.mjs, previous a1603fbe, checkout probe OK; previews
+    back OFF; console = trykellan Pages deployment 94241a73) ***
+- Joseph: "editing invoices that I've already sent that I forgot to put the job number on". Stripe refuses every edit to a
+  finalized invoice except metadata ("Finalized invoices can't be updated in this way", sandbox-tested custom_fields,
+  description, footer). invoice.js setInvoiceJobRef = Stripe's REVISION: from_invoice action=revision, set custom_fields +
+  due_date on the draft, repoint the D1 row at the draft (so the original's invoice.voided webhook finds no row), finalize
+  (Stripe voids the original), save number/hosted_url/pdf_url/job_ref, then /send emails it. Same D1 row, so /inv/<id>,
+  late texts and final notice carry on. Number goes -0001 -> -0002. Paid/void refused. Total mismatch or failed finalize
+  = draft deleted, nothing changed. A revision drops the due date and Stripe refuses a past one, so an OVERDUE invoice
+  prints due tomorrow; D1 due_date is untouched.
+- POST /api/console/invoice/<id>/job {job_ref} (owners). Console: customer card > Invoices you've sent > "Add job #" /
+  "Change job #" on unpaid rows; the box says it replaces the invoice and emails a new one. Not on /admin.
+- npm test 97/97. Real run of setInvoiceJobRef on Stripe SANDBOX (due in future + overdue; PDF shows the job line); sample
+  console at 375 px. NOT run on a live invoice (it emails a real customer); live console not opened (sign-in).
+- Pages deploy: run wrangler WITHOUT the .env token (that token gets auth error 10000 on Pages; wrangler's own login works).
+
 *** SEO BIBLE FIXES 2026-11-07 night (worker v 748b5e70 then a1603fbe via deploy.mjs, previous 3e6eff8c, checkout probe
     OK both; previews back OFF) ***
 - Boston: "fix those" (the bible gaps), skip the top-menu one. His picks: retire Springville only; WAIT on moving the other

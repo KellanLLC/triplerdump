@@ -14,6 +14,7 @@
 //   POST /api/console/invoice  { customer_name, email, phone, company, booking_id, items, taxable, ask_review, job_ref }  (owners)
 //   POST /api/console/invoice/<id>/resend | /void                                       (owners)
 //   POST /api/console/invoice/<id>/notice   { on }       the final notice text on or off for that invoice (owners)
+//   POST /api/console/invoice/<id>/job      { job_ref }  job line on a sent invoice; Stripe replaces it with a revised copy (owners)
 //   POST /api/console/booking/<id>/details   { name, phone, email, address }             (owners)
 //   POST /api/console/booking/<id>/dates     { delivery, pickup }  move the drop-off; reminders re-arm (owners)
 //   POST /api/console/booking/<id>/size      { size }      a different bin; the price difference is noted, not charged (owners)
@@ -31,7 +32,7 @@
 // the invoice link) are unchanged.
 import { loadSettings } from "./settings.js";
 import { startReview } from "./review.js";
-import { createInvoice, resendInvoice, voidInvoice, setFinalNotice, totalsFor } from "./invoice.js";
+import { createInvoice, resendInvoice, voidInvoice, setFinalNotice, setInvoiceJobRef, totalsFor } from "./invoice.js";
 import { sendInvoiceSms } from "./sms.js";
 import { isISODate, todayISO } from "./util.js";
 import { saveSetting } from "./settings.js";
@@ -383,7 +384,7 @@ export async function consoleApi(request, env, url) {
   }
 
   // ---- invoices (owners) ----
-  if (p === "invoice" || /^invoice\/[A-Za-z0-9-]{1,40}\/(resend|void|notice)$/.test(p)) {
+  if (p === "invoice" || /^invoice\/[A-Za-z0-9-]{1,40}\/(resend|void|notice|job)$/.test(p)) {
     if (who.role === "driver") return fail("A driver can't do that.", 403);
     const S = await loadSettings(env);
     if (p === "invoice") {
@@ -400,7 +401,12 @@ export async function consoleApi(request, env, url) {
       await log(env, who, "invoice", r.id || null, { ok: r.ok, error: r.error || null, total_cents: totalsFor(items, S.taxRate, body.taxable !== false).total_cents });
       return r.ok ? J({ ok: true, id: r.id, number: r.number, hosted_url: r.hosted_url, final_notice_date: r.final_notice_date }) : fail(r.error || "Couldn't make the invoice.");
     }
-    const [, iid, act] = /^invoice\/([A-Za-z0-9-]+)\/(resend|void|notice)$/.exec(p);
+    const [, iid, act] = /^invoice\/([A-Za-z0-9-]+)\/(resend|void|notice|job)$/.exec(p);
+    if (act === "job") {
+      const r = await setInvoiceJobRef(env, S, iid, body.job_ref);
+      await log(env, who, "invoice-job", iid, { ok: r.ok, job_ref: r.job_ref || null, number: r.number || null, emailed: !!r.emailed, error: r.error || null });
+      return r.ok ? J(r) : fail(r.error || "That didn't work.");
+    }
     if (act === "notice") {
       const r = await setFinalNotice(env, S, iid, body.on === true);
       await log(env, who, "invoice-notice", iid, { ok: r.ok, on: body.on === true, date: r.date || null, error: r.error || null });

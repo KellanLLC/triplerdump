@@ -351,6 +351,74 @@ export async function voidInvoice(env, S, id) {
   return { ok: true };
 }
 
+// Puts a job / work order line on an invoice that has already gone out (Joseph 11/09: "invoices
+// that I've already sent that I forgot to put the job number on"). Stripe won't edit a sent invoice
+// (only metadata; verified in sandbox), so this is Stripe's own revision: a copy with the same lines
+// and total that replaces the original (voided the moment the copy is finalized) and gets the next
+// number (-0001 -> -0002). Same row here, so /inv/<id>, the late-payment texts, the final notice and
+// due_date all carry on. Paid and voided invoices can't be revised.
+export async function setInvoiceJobRef(env, S, id, value) {
+  const job = jobRefOf(value);
+  if (!job) return { ok: false, error: "Type the job or work order number first." };
+  const row = await env.DB.prepare("SELECT * FROM invoices WHERE id=?1").bind(id).first();
+  if (!row) return { ok: false, error: "Invoice not found." };
+  if (row.status === "paid") return { ok: false, error: "That invoice is already paid, so Stripe won't let it change." };
+  if (row.status === "void") return { ok: false, error: "That invoice was voided." };
+  if (!row.stripe_invoice_id) return { ok: false, error: "That invoice isn't in Stripe." };
+  if (row.job_ref === job) return { ok: true, unchanged: true, number: row.number || "", job_ref: job, emailed: false };
+  const { key } = stripeKey(env, S);
+  if (!key) return { ok: false, error: "Stripe key not configured." };
+
+  const oldId = row.stripe_invoice_id;
+  const cur = await stripeCall(key, "invoices/" + encodeURIComponent(oldId), null, "GET");
+  if (!cur.ok) return { ok: false, error: cur.message };
+  if (cur.data.status !== "open") return { ok: false, error: "That invoice isn't open any more. Reload and check whether it's been paid." };
+
+  const draft = await stripeCall(key, "invoices", { "from_invoice[invoice]": oldId, "from_invoice[action]": "revision" });
+  if (!draft.ok) return { ok: false, error: draft.message };
+  const newId = draft.data.id, path = "invoices/" + encodeURIComponent(newId);
+  const dropDraft = () => stripeCall(key, path, null, "DELETE");
+  // Never let a replacement bill a different amount than the one it replaces.
+  if (draft.data.total !== cur.data.total) {
+    await dropDraft();
+    return { ok: false, error: "Stripe's copy came out a different amount, so nothing was changed." };
+  }
+
+  // A revision doesn't copy the due date, and Stripe refuses one in the past: an overdue invoice
+  // prints tomorrow. Our own due_date stays, so reminders and the final notice keep their dates.
+  const nowUnix = Math.floor(Date.now() / 1000), dueUnix = dueDateToUnix(row.due_date);
+  const dueMoved = !(dueUnix && dueUnix > nowUnix + 3600);
+  const upd = await stripeCall(key, path, {
+    "custom_fields[0][name]": "Job / Work order",
+    "custom_fields[0][value]": job,
+    auto_advance: "false",
+    due_date: String(dueMoved ? nowUnix + 86400 : dueUnix),
+  });
+  if (!upd.ok) { await dropDraft(); return { ok: false, error: upd.message }; }
+
+  // Point the row at the copy BEFORE the original is voided, so the invoice.voided webhook for the
+  // original finds no row and can't mark this bill void.
+  try { await env.DB.prepare("UPDATE invoices SET stripe_invoice_id=?1 WHERE id=?2").bind(newId, id).run(); }
+  catch (e) { console.error("[invoice] revise persist failed", e); await dropDraft(); return { ok: false, error: "Couldn't save that. Nothing was changed." }; }
+
+  const fin = await stripeCall(key, path + "/finalize", { auto_advance: "false" });
+  if (!fin.ok) {
+    await env.DB.prepare("UPDATE invoices SET stripe_invoice_id=?1 WHERE id=?2").bind(oldId, id).run();
+    await dropDraft();
+    return { ok: false, error: fin.message };
+  }
+  try {
+    await env.DB.prepare("UPDATE invoices SET number=?1, hosted_url=?2, pdf_url=?3, job_ref=?4 WHERE id=?5")
+      .bind(fin.data.number || "", fin.data.hosted_invoice_url || "", fin.data.invoice_pdf || "", job, id).run();
+  } catch (e) {
+    console.error("[invoice] revise details not saved", id, e && e.message ? e.message : e);
+    return { ok: false, error: "Stripe made the new invoice " + (fin.data.number || newId) + " but saving it here failed. Do NOT send another. Check Stripe." };
+  }
+  // The emailed link to the original is dead now, so they need the new one.
+  const sent = await stripeCall(key, path + "/send", {});
+  return { ok: true, number: fin.data.number || "", job_ref: job, hosted_url: fin.data.hosted_invoice_url || "", emailed: sent.ok, due_moved: dueMoved };
+}
+
 // Re-texts the pay link for an already-sent invoice. Creates NOTHING in Stripe, so
 // it can never double-bill.
 export async function resendInvoice(env, S, id) {
