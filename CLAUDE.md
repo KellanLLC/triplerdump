@@ -8,8 +8,10 @@
   late texts and final notice carry on. Number goes -0001 -> -0002. Paid/void refused. Total mismatch or failed finalize
   = draft deleted, nothing changed. A revision drops the due date and Stripe refuses a past one, so an OVERDUE invoice
   prints due tomorrow; D1 due_date is untouched.
-- POST /api/console/invoice/<id>/job {job_ref} (owners). Console: customer card > Invoices you've sent > "Add job #" /
-  "Change job #" on unpaid rows; the box says it replaces the invoice and emails a new one. Not on /admin.
+- POST /api/console/invoice/<id>/job {job_ref} (owners). Console: customer card > Invoices you've sent > "Add" / "Change"
+  beside the job line on unpaid rows (restyled same day at Boston's ask, Pages cc565ff0; each action sits beside its line; the
+  phone CSS forces 44 px on every button, so the links use negative margins); the box says it replaces the invoice and
+  emails a new one. Not on /admin.
 - npm test 97/97. Real run of setInvoiceJobRef on Stripe SANDBOX (due in future + overdue; PDF shows the job line); sample
   console at 375 px. NOT run on a live invoice (it emails a real customer); live console not opened (sign-in).
 - Pages deploy: run wrangler WITHOUT the .env token (that token gets auth error 10000 on Pages; wrangler's own login works).
