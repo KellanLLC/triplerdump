@@ -38,6 +38,7 @@ function productIdFor(booking) {
 function lineName(booking) {
   const s = booking.service_type;
   if (s === "dumpster") {
+    if (booking.rental_tier === "ton") return `${booking.bin_size}-Yd Bin | 7 Day Rental | Tons Billed After Pickup`;
     const tier = booking.rental_tier === "4-7" ? "4–7" : "1–3";
     return `${booking.bin_size}-Yd Bin | ${tier} Day Rental | Dump Included`;
   }

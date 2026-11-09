@@ -83,8 +83,10 @@ export function renderBookingPage(S, service) {
     ((b.blurb || binFor[size]) ? '<small>' + escHtml(b.blurb || binFor[size]) + '</small>' : "") + '</span>' +
     '<svg class="ck" width="18" height="18"><use href="#i-check"/></svg></span></label>'
   ).join("");
-  const tierRadios = Object.entries(S.tiers).map(([t, v]) =>
-    '<label class="opt"><input type="radio" name="rental_tier" value="' + t + '"><span class="card"><b>' + v.label + ' rental</b><em data-tier="' + t + '"></em></span></label>'
+  const tonWords = S.payByTon && S.payByTon.on ? money0(S.payByTon.tonCents) + " a ton" : "";
+  const tierRadios = Object.entries(S.tiers).map(([t, v]) => t === "ton"
+    ? '<label class="opt" style="grid-column:1/-1"><input type="radio" name="rental_tier" value="ton"><span class="card" style="flex-wrap:wrap;gap:4px 12px"><b style="white-space:nowrap">Pay by the ton</b><em data-tier="ton"></em><small style="display:block;flex-basis:100%;font-size:.86rem;line-height:1.35;color:var(--mut,#5a6b7d);font-weight:500">Up to ' + v.maxDays + ' days, any size. No tons included: you pay ' + tonWords + ' after pickup, plus tax.</small></span></label>'
+    : '<label class="opt"><input type="radio" name="rental_tier" value="' + t + '"><span class="card"><b>' + v.label + ' rental</b><em data-tier="' + t + '"></em></span></label>'
   ).join("");
   // Option lists for the custom dropdowns (built client-side from these arrays).
   const groundCdd = S.groundConditions.map((g) => ({ value: g, label: g }));
@@ -358,7 +360,7 @@ ICON_SPRITE +
 '<h1 id="pagetitle">Book Your ' + svcLabels[svc] + '</h1>' +
 '<p class="lede">Pick what you need, a date and an address. You&rsquo;ll see the full price, tax included, before you pay. Questions? <a href="' + telHref + '">' + phone + '</a></p>' +
 (g.count ? '<div class="bk-proof"><span><span class="stars">' + '<svg width="15" height="15"><use href="#i-star"/></svg>'.repeat(5) + '</span><b>' + Number(g.rating).toFixed(1) + '</b> from ' + g.count + ' Google reviews</span>' : '<div class="bk-proof">') +
-'<span><svg width="16" height="16"><use href="#i-check"/></svg>Dump fee included</span>' +
+'<span><svg width="16" height="16"><use href="#i-check"/></svg><span data-dump>Dump fee included</span></span>' +
 '<span><svg width="16" height="16"><use href="#i-lock"/></svg>Secure checkout by Stripe</span></div>' +
 '</section>' +
 '<main class="bk"><div class="bk-main">' +
@@ -476,7 +478,7 @@ debrisField + addonBoxes +
 '<div class="sumrow"><span>Utah sales tax</span><span id="sumtax">-</span></div>' +
 '<div class="sumrow" id="sumdeprow" style="display:none"><span>Refundable deposit</span><span id="sumdep">-</span></div>' +
 '<div class="sumrow tot"><span>Total</span><span id="sumtot">-</span></div></div>' +
-'<ul class="incl"><li><svg width="16" height="16"><use href="#i-check"/></svg>Delivery and pickup</li><li><svg width="16" height="16"><use href="#i-check"/></svg>Dump fee included</li><li><svg width="16" height="16"><use href="#i-check"/></svg>Text confirmation and pickup reminder</li></ul>' +
+'<ul class="incl"><li><svg width="16" height="16"><use href="#i-check"/></svg>Delivery and pickup</li><li><svg width="16" height="16"><use href="#i-check"/></svg><span data-dump>Dump fee included</span></li><li><svg width="16" height="16"><use href="#i-check"/></svg>Text confirmation and pickup reminder</li></ul>' +
 '</div></div>' +
 '<div class="sum__trust"><span class="stars">' + '<svg width="14" height="14"><use href="#i-star"/></svg>'.repeat(5) + '</span> <b>' + Number(g.rating || 5).toFixed(1) + '</b>' + (g.count ? ' &middot; ' + g.count + ' Google reviews' : '') +
 '<p>&ldquo;Dropped off the dumpster exactly when they said, and set it on wooden beams so it wouldn&rsquo;t damage my driveway.&rdquo;</p><cite>Nadine Rendon, Google review</cite></div>' +
@@ -524,7 +526,7 @@ debrisField + addonBoxes +
 'document.getElementById("sumAside").classList.toggle("hidden",isC);document.getElementById("paybar").classList.toggle("hidden",isC);document.getElementById("secureLine").classList.toggle("hidden",isC);document.body.classList.toggle("has-paybar",!isC);' +
 'if(isC){document.getElementById("pagetitle").textContent="Request a Commercial Quote";document.title="Request a Quote - "+BIZ;btn.textContent="Send request";}' +
 'else{switchSvc(curSvc());}}' +
-'function paintPrices(){var tr=sel("rental_tier")||"1-3",sz=sel("bin_size")||"20";[].forEach.call(document.querySelectorAll("[data-px]"),function(e){var b=PRICING.bins[e.getAttribute("data-px")];if(b&&b.prices[tr]!=null)e.textContent=money0(b.prices[tr]);});[].forEach.call(document.querySelectorAll("[data-tier]"),function(e){var b=PRICING.bins[sz];var v=b&&b.prices[e.getAttribute("data-tier")];e.textContent=v!=null?money0(v):"";});}' +
+'function paintPrices(){var tr=sel("rental_tier")||"1-3",sz=sel("bin_size")||"20";[].forEach.call(document.querySelectorAll("[data-dump]"),function(e){e.textContent=tr==="ton"&&curSvc()==="dumpster"?"Tons billed after pickup":"Dump fee included";});[].forEach.call(document.querySelectorAll("[data-px]"),function(e){var b=PRICING.bins[e.getAttribute("data-px")];if(b&&b.prices[tr]!=null)e.textContent=money0(b.prices[tr]);});[].forEach.call(document.querySelectorAll("[data-tier]"),function(e){var b=PRICING.bins[sz];var v=b&&b.prices[e.getAttribute("data-tier")];e.textContent=v!=null?money0(v):"";});}' +
 'function money0(c){return "$"+(c%100===0?String(c/100):(c/100).toFixed(2));}' +
 'function payUi(total,label){var pt=document.getElementById("pbTotal"),ps=document.getElementById("pbSub");if(total==null){pt.textContent="-";ps.textContent="Pick what you need";if(acctType()==="residential")btn.textContent="Continue to secure payment";return;}pt.textContent=money(total);ps.textContent=label+" - total";if(acctType()==="residential")btn.textContent="Continue to secure payment - "+money(total);}' +
 'function recalc(){paintPrices();var svc=curSvc();var lab=document.getElementById("sumlabel"),sub=document.getElementById("sumsub"),tx=document.getElementById("sumtax"),to=document.getElementById("sumtot");' +
@@ -636,7 +638,7 @@ debrisField + addonBoxes +
 // ---- residential confirmation screen ----
 'function showConfirm(j){var b=j.booking;var rows="";' +
 'rows+="<li><span class=\\"k\\">Service</span><span class=\\"v\\">"+esc(SVC_LABELS[b.service_type]||b.service_type)+"</span></li>";' +
-'if(b.service_type==="dumpster"){rows+="<li><span class=\\"k\\">Bin size</span><span class=\\"v\\">"+esc(b.bin_size)+" yard</span></li>";rows+="<li><span class=\\"k\\">Rental length</span><span class=\\"v\\">"+esc(b.rental_tier)+" day</span></li>";}' +
+'if(b.service_type==="dumpster"){rows+="<li><span class=\\"k\\">Bin size</span><span class=\\"v\\">"+esc(b.bin_size)+" yard</span></li>";rows+="<li><span class=\\"k\\">Rental length</span><span class=\\"v\\">"+(b.rental_tier==="ton"?"7 days, pay by the ton":esc(b.rental_tier)+" day")+"</span></li>";}' +
 'else if(b.service_type==="trailer"){rows+="<li><span class=\\"k\\">Rental days</span><span class=\\"v\\">"+esc(b.rental_days)+" day"+(b.rental_days>1?"s":"")+"</span></li>";}' +
 'rows+="<li><span class=\\"k\\">Delivery date</span><span class=\\"v\\">"+esc(fmtDisplay(b.delivery_date))+(b.delivery_time?(" &middot; "+esc(b.delivery_time)):"")+"</span></li>";' +
 'if(b.pickup_date&&b.pickup_date!==b.delivery_date){rows+="<li><span class=\\"k\\">Pickup date</span><span class=\\"v\\">"+esc(fmtDisplay(b.pickup_date))+"</span></li>";}' +

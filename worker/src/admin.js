@@ -361,6 +361,10 @@ export function renderPanel(S, data) {
     '<div class="row"><div><label>15 yard</label><input name="tons_15" inputmode="decimal" value="' + esc(f.tons15) + '"></div>' +
       '<div><label>20 yard</label><input name="tons_20" inputmode="decimal" value="' + esc(f.tons20) + '"></div>' +
       '<div><label>25 yard</label><input name="tons_25" inputmode="decimal" value="' + esc(f.tons25) + '"></div></div>' +
+    '<h3>Pay-by-the-ton bin</h3>' +
+    '<p class="what" style="margin:-2px 0 4px">One price for any size, up to 7 days, no tons included. You bill every ton after pickup.</p>' +
+    '<label style="display:flex;gap:8px;align-items:center;margin:6px 0"><input type="checkbox" name="pbt_on" style="width:auto"' + (S.payByTon && S.payByTon.on ? " checked" : "") + '> Offer it on the booking page</label>' +
+    '<div class="row">' + cashField("pbt_price", "Price, any size", S.payByTon.cents, "What they pay online.") + cashField("pbt_ton", "Per ton", S.payByTon.tonCents, "Billed from the scale ticket.") + '</div>' +
     '<p class="muted" style="margin-top:14px"><a href="/terms" target="_blank" rel="noopener" style="color:#116DFF;font-weight:600;text-decoration:none">See your Terms page &rarr;</a></p></div>');
 
   // Discount codes. Indexed field names (dc_code_0 …) because the whole panel
@@ -629,6 +633,10 @@ export async function saveSettings(env, form) {
     tons20: numOr(form.tons_20, cur.tons20),
     tons25: numOr(form.tons_25, cur.tons25),
   });
+  {
+    const was = curS.payByTon, price = cents(form.pbt_price, was.cents), ton = cents(form.pbt_ton, was.tonCents);
+    await saveSetting(env, "pay_by_ton", { on: form.pbt_on === "on", cents: price > 0 ? price : was.cents, tonCents: ton > 0 ? ton : was.tonCents });
+  }
   await saveSetting(env, "invoice_terms", String(form.invoice_terms || ""));
   await saveSetting(env, "invoice_due_days", parseInt(form.invoice_due_days, 10) || 14);
   await saveSetting(env, "invoice_tax_default", form.invoice_tax_default === "on" || form.invoice_tax_default === "true");
@@ -675,7 +683,7 @@ export function renderBookingDetail(S, b, flash) {
   let body = '<div class="top"><h1>' + esc(b.id) + '</h1><a href="/admin/bookings" style="color:#64748b;text-decoration:none">&larr; Bookings</a></div>';
   body += flashHtml(flash, "");
   body += '<div class="card">';
-  body += r("Status", b.status) + r("Account", b.account_type) + r("Service", b.service_type) + r("Bin size", b.bin_size ? b.bin_size + "yd" : "") + r("Rental", b.rental_tier ? b.rental_tier + " day" : (b.rental_days ? b.rental_days + " days" : "")) + r("Customer", b.customer_name) + r("Phone", b.phone) + r("Email", b.email) + r("Company", b.company);
+  body += r("Status", b.status) + r("Account", b.account_type) + r("Service", b.service_type) + r("Bin size", b.bin_size ? b.bin_size + "yd" : "") + r("Rental", b.rental_tier === "ton" ? (b.rental_days || 7) + " days, PAY BY THE TON: bill every ton after pickup" : b.rental_tier ? b.rental_tier + " day" : (b.rental_days ? b.rental_days + " days" : "")) + r("Customer", b.customer_name) + r("Phone", b.phone) + r("Email", b.email) + r("Company", b.company);
   body += r("Delivery", b.delivery_date + (b.delivery_time ? " " + b.delivery_time : "")) + r("Pickup", b.pickup_date) + r("Address", b.address) + r("Ground", b.ground_condition) + r("Customer note", b.message);
   body += r("Subtotal", money(b.subtotal_cents)) + (b.discount_cents ? r("Discount" + (b.promo_code ? " (" + b.promo_code + ")" : ""), "-" + money(b.discount_cents)) : "") + r("Tax", money(b.tax_cents)) + r("Total", money(b.amount_cents)) + (b.deposit_cents ? r("Deposit", money(b.deposit_cents)) : "") + r("Payment", b.payment_type) + r("Paid at", b.paid_at) + r("Review", reviewState) + r("Stripe session", b.stripe_session_id);
   body += '<div style="margin-top:12px"><a href="' + gmap + '" target="_blank" rel="noopener" style="color:#116DFF;font-weight:600;text-decoration:none">Open in Google Maps</a> &nbsp;·&nbsp; <a href="' + amap + '" target="_blank" rel="noopener" style="color:#116DFF;font-weight:600;text-decoration:none">Apple Maps</a></div>';

@@ -117,6 +117,8 @@ export function defaultSettings(env = {}) {
     // Hours from the PREVIOUS message to each follow-up: +24h, +24h, +48h.
     // A 0 (or blank) ends the ladder at that rung.
     reviewFollowupHours: [24, 24, 48],
+    // The any-size, pay-your-own-tonnage bin (Joseph 11/09). D1 key pay_by_ton; Extra fees tab in /admin.
+    payByTon: { on: true, cents: 25000, tonCents: 6500 },
     requirePayment: false,
     stripeMode: "sandbox",
     notifyOwnerBookings: true,
@@ -234,6 +236,14 @@ export async function loadSettings(env) {
   if (Array.isArray(o.sms_off)) s.smsOff = o.sms_off.map(String);
   if (o.review_off !== undefined) s.reviewOff = o.review_off === true;
   if (o.daily_runs !== undefined && o.daily_runs !== null) { const n = num(o.daily_runs, 0); s.dailyRuns = n > 0 ? n : null; }
+  if (o.pay_by_ton && typeof o.pay_by_ton === "object") s.payByTon = { ...s.payByTon, ...o.pay_by_ton };
+  // A third rental tier, so holds, capacity, the calendar and Checkout all run exactly as a normal bin.
+  // Added here, after D1's bins, because saved bins only carry the 1-3 and 4-7 prices.
+  if (s.payByTon.on) {
+    const days = s.tiers["4-7"].maxDays;
+    s.tiers = { ...s.tiers, ton: { label: days + "-day, pay by the ton", maxDays: days } };
+    s.bins = Object.fromEntries(Object.entries(s.bins).map(([k, b]) => [k, { ...b, prices: { ...b.prices, ton: s.payByTon.cents } }]));
+  }
   return s;
 }
 
@@ -317,6 +327,7 @@ export function itemLabel(b) {
 // {length}: human rental length. Dumpster keeps its tier wording ("1-3 day");
 // trailer uses the day count ("5 days"); junk/binswitch are single-day ("1 day").
 export function lengthLabel(b) {
+  if (b && b.rental_tier === "ton") return (Number(b.rental_days) || 7) + " day, pay by the ton";
   if (b && b.rental_tier) return b.rental_tier + " day";
   const d = Number(b && b.rental_days);
   if (Number.isFinite(d) && d > 0) return d + (d === 1 ? " day" : " days");

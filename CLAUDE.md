@@ -1,3 +1,22 @@
+*** PAY-BY-THE-TON BIN + CREDIT BEFORE TAX 2026-11-09 night (worker v d5466b58 via deploy.mjs, previous 7ac0f5de, checkout probe OK;
+    previews back OFF; console = trykellan Pages deployment a9e06929) ***
+- Joseph's text: "$250 any size seven-day rental ... they pay their own way at $65 a ton, no tonnage is included". Boston: "idk
+  u pick" on the open points, so it behaves like a normal bin: tax on the rental and on the tons, usual extra-day fee, promo
+  and fuel as normal. settings.js S.payByTon {on, cents, tonCents} (D1 key pay_by_ton, NOT written yet, default serves;
+  /admin Extra fees tab "Pay-by-the-ton bin"). loadSettings adds a third tier "ton" (maxDays = the 4-7 tier's) and
+  bins[size].prices.ton AFTER D1's bins, so holds, capacity, calendar and Checkout are the normal path. bookings.rental_tier = 'ton'.
+- /book: third length card, "Dump fee included" lines swap to "Tons billed after pickup" (data-dump). Stripe line "15-Yd Bin | 7 Day
+  Rental | Tons Billed After Pickup" (no prod_ id, uses the name fallback). /terms Weight Limits sentence, Last updated Nov 9.
+  Marketing pages NOT changed (still lead with the tons-included prices).
+- Console: real-data rec.tonRate (cents, CURRENT setting, not frozen at booking); weigh-and-bill requires the tons, bills tons x rate
+  + tax by invoice (`inv`), the card is not charged. A DRIVER finishing one gets a 403 on the invoice (owners only). Phone bookings
+  can't pick this tier yet.
+- CREDIT BEFORE TAX: New invoice + weigh-and-bill forms now match totalsFor (Boston: "u pick", that's what customers are billed);
+  a credit bigger than the charges is refused on New invoice. Resolves the KNOWN MISMATCH in the entry below.
+- npm test 105/105 (test/pay-by-ton.test.mjs). LIVE: real /api/book tier ton -> cs_live session $268.75 ($250 + $18.75 tax), 7 days,
+  hold released + row deleted; /book + /terms show $65. Weigh-and-bill checked in the sample console by forcing the rate in a
+  throwaway build (3.2 t = $208 + $15.60 = $223.60; refused without a weight). Live console not opened (sign-in).
+
 *** EDIT A SENT INVOICE + NOTICE 2026-11-09 later (worker v 7ac0f5de via deploy.mjs, previous 3066ba65, checkout probe OK;
     previews back OFF; console = trykellan Pages deployment e89a7673) -- SUPERSEDES the job-only route in the entry below ***
 - Boston: "make more configurable", and if the customer needs a notice: "hey name your invoice has been edited, <note>"

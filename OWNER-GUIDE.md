@@ -170,6 +170,11 @@ invoice (PDF, email and pay page), and you can search invoices by it. The same
 box is on the console's New invoice and on "weigh and bill" for regulars billed
 after pickup. Leave it blank for everyone else.
 
+**Pay-by-the-ton bin:** customers can book any size for $250, up to 7 days, with no
+tons included. When you pick it up, tap "Picked up" and type the tons from the scale
+ticket. The console bills $65 a ton plus tax and sends them an invoice to pay. Change
+the prices or turn it off in /admin, Extra fees tab, "Pay-by-the-ton bin".
+
 **Need to fix an invoice you already sent?** In the console, open the customer, find
 it under "Invoices you've sent" and tap "Edit". You can change the job number, the
 charges and prices, the tax and the due date. Stripe can't change a sent invoice, so

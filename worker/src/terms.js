@@ -43,7 +43,7 @@ export function renderTermsPage(S) {
     '.contact div{margin:2px 0}' +
     '</style></head><body><main class="wrap">' +
     '<a class="back" href="/book">&larr; Back to booking</a>' +
-    '<h1>Terms &amp; Policies</h1><p class="sub">Triple R Dump &middot; West Haven, UT &middot; Last updated October 29, 2026</p>' +
+    '<h1>Terms &amp; Policies</h1><p class="sub">Triple R Dump &middot; West Haven, UT &middot; Last updated November 9, 2026</p>' +
 
     '<h2>Terms and Conditions</h2>' +
     '<h3>1. Rental Period and Fees</h3><ul>' +
@@ -53,7 +53,7 @@ export function renderTermsPage(S) {
     '<li><b>Late Payment &amp; Automatic Charge:</b> Invoiced balances are due by the due date shown on the invoice. If a balance remains unpaid after the due date, the customer authorizes the company to charge the full outstanding balance, plus any accrued late charges, to the payment card on file, without further notice, on or after the day following the due date. Balances unpaid more than ' + lateDays + ' days past the due date accrue a late charge of ' + latePct + '% per month on the outstanding amount. If no card is on file or the charge is declined, the balance remains due and may be referred to collections, and the customer is responsible for reasonable collection costs.</li></ul>' +
     '<h3>2. Loading Requirements</h3><ul>' +
     '<li><b>Fill Line:</b> Debris must be level with the top rim of the dumpster. Loading items above the "Top Off" line is illegal for transport and may result in an immediate refusal to haul or an overfilling fee.</li>' +
-    '<li><b>Weight Limits:</b> Each dumpster size includes a set weight allowance (' + t15 + ' tons for a 15-yard bin, ' + t20 + ' tons for a 20-yard bin, ' + t25 + ' tons for a 25-yard bin). Overages are billed at ' + overweight + ' per ton.</li>' +
+    '<li><b>Weight Limits:</b> Each dumpster size includes a set weight allowance (' + t15 + ' tons for a 15-yard bin, ' + t20 + ' tons for a 20-yard bin, ' + t25 + ' tons for a 25-yard bin). Overages are billed at ' + overweight + ' per ton.' + (S && S.payByTon && S.payByTon.on ? ' <b>Pay-by-the-ton rentals</b> include no weight: every ton on the scale ticket is billed at ' + d(S.payByTon.tonCents, 6500) + ' per ton, plus tax, after pickup.' : '') + '</li>' +
     '<li><b>Distribution:</b> Weight must be evenly distributed within the container to ensure safe transport.</li></ul>' +
     '<h3>3. Prohibited Materials</h3>' +
     '<p>Placement of the following hazardous or restricted items is strictly prohibited and will result in additional fines (' + prohibited + ' per item):</p><ul>' +
