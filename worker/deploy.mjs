@@ -15,7 +15,7 @@ import path from "node:path";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const REQUIRED_SECRETS = ["ADMIN_PASSWORD","ADMIN_SECRET","CALENDAR_TOKEN","GHL_SMS_WEBHOOK_URL","STRIPE_SECRET_KEY","STRIPE_SECRET_KEY_LIVE","STRIPE_WEBHOOK_SECRET_LIVE"];
-const REQUIRED_BINDINGS = ["env.DB","env.ASSETS","env.SITE_ORIGIN"];
+const REQUIRED_BINDINGS = ["env.DB","env.ASSETS","env.SITE_ORIGIN","env.CONSOLE_TEXT_MODE"];
 const SITE = "https://www.triplerdump.com";
 const D1 = "c9394039-46ce-4d42-99cc-4fc195d7ded0";
 

@@ -1,3 +1,20 @@
+*** CONSOLE TEXTS GO TO CUSTOMERS 2026-11-12 (worker v 9f0f1878 via deploy.mjs, previous d5466b58, checkout probe OK;
+    previews back OFF; console = trykellan Pages deployment 36a136c8) -- SUPERSEDES "TEXTS: ... owner" in the 10/26 entry ***
+- Boston sent Joseph's screenshot of "[Preview of a text to Roger Lundquist, ...]" texts and said "Yes, switch".
+  wrangler.toml [vars] CONSOLE_TEXT_MODE = "customers"; deploy.mjs REQUIRED_BINDINGS has env.CONSOLE_TEXT_MODE, so a
+  version without it is refused. Texts the console writes (bin on the ground, cancelled, pickup/drop-off moved, bin
+  switch, truck in the shop, picked up, on my way, typed texts) now reach the customer; Joseph gets no copy.
+  BACK TO PREVIEWS: set it to "owner" and deploy (don't delete the line; the guard wants it).
+- The two previews in the screenshot (Roger Lundquist's drop-off, Christopher Silva's cancel TRD-GC3JCQ) never reached
+  those customers and were NOT re-sent.
+- Console wording fixed before the switch: the cancel text ended "Call or text 801-564-3164. Questions? 801-564-3164"
+  (now one phone line); the re-sent confirmation said "Dump fees included" on a pay-by-the-ton bin (now "Tons are
+  billed after pickup." when rec.tonRate).
+- Picked up = two texts back to back for the customer: the console's "we picked up your bin" (Setup can turn it off)
+  and the worker's review ask.
+- test/console-text.test.mjs (npm test 111/111). Live: versions view shows env.CONSOLE_TEXT_MODE ("customers"); no
+  real text was sent as a test, so the first console text Joseph sends is the first live one.
+
 *** PAY-BY-THE-TON BIN + CREDIT BEFORE TAX 2026-11-09 night (worker v d5466b58 via deploy.mjs, previous 7ac0f5de, checkout probe OK;
     previews back OFF; console = trykellan Pages deployment a9e06929) ***
 - Joseph's text: "$250 any size seven-day rental ... they pay their own way at $65 a ton, no tonnage is included". Boston: "idk

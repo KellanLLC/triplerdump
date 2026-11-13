@@ -31,3 +31,7 @@ crons = ["0 * * * *"]
 # search engines and existing links keep working; the apex 301s here via a Cloudflare
 # redirect rule. Must stay in step with the CMS "Website address used in links".
 SITE_ORIGIN = "https://www.triplerdump.com"
+# Texts the Pull Count console writes (bin on the ground, cancelled, pickup moved, on my way...).
+# "customers" = they go to the customer (Boston's OK, 2026-11-12). "owner" = back to previews on
+# Joseph's phone, marked "[Preview of a text to NAME, PHONE]". See src/console-api.js.
+CONSOLE_TEXT_MODE = "customers"
